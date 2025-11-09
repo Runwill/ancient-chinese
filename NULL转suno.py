@@ -61,7 +61,7 @@ def 解析韵头(text: str):
     return text, 0
 
 def 改善咽化替换(text: str):
-    text = text.replace("ขع","ข").replace("кع","к").replace('عΡ','ع')
+    text = text.replace("бعΡ","бr").replace("ขع","ข").replace("кع","к").replace('عΡ','ع')
     return text
 
 def 白沙(text):
@@ -85,11 +85,19 @@ def NULL(text):
     
     if 分析: 
         print(Fore.RESET + 声母类(声母,1) + 韵头类(韵头,1) + Fore.GREEN + text + Fore.RESET + 韵尾类(韵尾,1) + 声类(声调,1),end='')
-    else: return 声母类(声母,0) + 韵头类(韵头,0) + 解析剩余(text) + 元音类(元音,0) + 韵尾类(韵尾,0) + 声类(声调,0)
+    else: 
+        value = 声母类(声母,0) + 韵头类(韵头,0) + 解析剩余(text) + 元音类(元音,0) + 韵尾类(韵尾,0) + 声类(声调,0)
+        if(改善咽化):
+            value = 改善咽化替换(value)
+        return 合写(value)
+    
+def 合写(text):
+    text = text.replace("йα","я")
+    return text
 
-def 解析剩余(text):
+def 解析剩余(text):# 剩下没有移动到null方案里的替换
     if(改善咽化):
-        text = text.replace("pˤr","pr").replace("qhˤe","qhe").replace("ˤi","i")
+        text = text.replace("qhˤe","qhe").replace("ˤi","i")
     if(改善音节):
         text = ( text
             .replace("ɢw","gw")
@@ -105,17 +113,14 @@ def 解析剩余(text):
         .replace("qh","ყ").replace("qw","къу")
         .replace("kw","кв")
         .replace("aw","औ")
-        .replace("ja","я").replace("ju","ю")
+        .replace("ju","ю")
         .replace("ɨ","ừ").replace("ɑ","ا")
-        .replace("kˤ","კ")
         .replace("ɫ","л")
         .replace("ɲ","ñ")
         .replace("ᵯ","m")
         .replace("ʂ","ш")
         .replace("q","ق").replace("ɢ","ق")
         .replace("x","χ")
-        #.replace("w","و")
-        #晚期上古
     )
     return text
 
@@ -167,9 +172,6 @@ def 白沙声母韵头(text):
         .replace("h","ხ")
         .replace("x","χ")
         .replace("ˤ","ع")
-        #.replace("w","و")
-        #晚期上古
-        .replace("j","й")
     )
     return text
 
