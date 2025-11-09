@@ -21,17 +21,10 @@ def 声母类(index,mode):
 
 
 def 解析声调(text: str):
-    tone_single = {'ʔ':1, 'p':7, 't':8, 'k':9, 'h':10}
-    tone_consonant = {'p':3, 't':4, 'k':5, 'ʔ':6}
-    last = text[-1:]
-    if last == 's':
-        text = text[:-1]
-        last = text[-1:]
-        if last in tone_consonant:
-            return text[:-1], tone_consonant[last]
-        return text, 2
-    if last in tone_single:
-        return text[:-1], tone_single[last]
+    tone_map = {'ps':3, 'ts':4, 'ks':5, 'ʔs':6, 'ʔ':1, 's':2, 'p':7, 't':8, 'k':9, 'h':10}
+    for key in sorted(tone_map.keys(), key=lambda k: tone_map[k]):
+        if text.startswith(key):
+            return text[len(key):], tone_map[key]
     return text, 0
 
 def 解析韵尾(text: str):
@@ -49,10 +42,10 @@ def 解析元音(text: str):
     return text, 0
 
 def 解析声母(text: str):
-    vowel_map = {'a':1, 'A':2, 'e':3, 'o':4, 'ə':5, 'i':6, 'u':7}
-    last = text[-1:]
-    if last in vowel_map:
-        return text[:-1], vowel_map[last]
+    consonant_map = {'tsʰ':1, 'ts':2}
+    for cons in sorted(consonant_map.keys(), key=lambda k: consonant_map[k]):
+        if text.startswith(cons):
+            return text[len(cons):], consonant_map[cons]
     return text, 0
 
 
