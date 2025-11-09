@@ -1,5 +1,5 @@
 from colorama import init, Fore, Back, Style
-分析=1
+分析=0
 去咽化=1
 去C=1
 去闪音=0
@@ -7,7 +7,7 @@ from colorama import init, Fore, Back, Style
 
 def 声类(index,mode):
     if mode: return ['平','上','去','p入去通谐','t入去通谐','k入去通谐','上去通谐','p入','t入','k入','k入/k入去通押'][index]
-    else: return ['','ء','s','бs','ც','ξ','s','б','д','ก','ხ'][index]
+    else: return ['','ء','s','бs','ც','ξ','s','б','д','ก','ㅎ'][index]
 def 韵尾类(index,mode):
     if mode:return ['','浊唇-软腭:','双唇鼻:','硬腭近:','龈颤:','龈鼻:','软颚鼻:'][index]
     else: return ['','w','m','й','r','n','ง'][index]
@@ -17,10 +17,14 @@ def 元音类(index,mode):
     else: return ['','α','a','ए','o','으','ი','უ'][index]
 def 声母类(index,mode):
     if mode: return ['','清送气龈有咝塞擦:','清龈有咝塞擦:','浊龈有咝塞擦:','清龈有咝擦-塞:','清龈有咝擦:','清送气龈塞:','清龈塞:','浊龈塞:','清送气双唇塞:','清双唇塞:','浊双唇塞:','清送气软腭塞:','清软腭塞:','浊软腭塞:','清双唇鼻:','浊双唇鼻:','清龈鼻:','浊龈鼻:','清龈颤:','浊龈颤:','超切浊龈颤:','清龈边近:','浊龈边近:','清软腭鼻:','浊软腭鼻:','喉塞','清声门擦','清唇-软腭近','浊唇-软腭近'][index]
-    else: return ['','ц','ც','ძ','sд','s','თ','д','द','พ','б','ბ','ข','к','გ','mh','m','nh','n','rh','Ρ','Ρ','hl','л','hŋ','ŋ','ء','ㅎ','wh','و'][index]
+    else: return ['','ц','ც','ძ','sд','s','თ','д','द','พ','б','ბ','ข','к','g','mh','m','nh','n','rh','Ρ','Ρ','hl','л','hŋ','ŋ','ء','ㅎ','wh','و'][index]
 def 韵头类(index,mode):
     if mode: return ['','浊龈颤:','咽近-浊龈颤:','咽化浊龈边近:','浊龈边近:','咽化唇-软腭近','浊唇-软腭近', '清硬腭近', '浊硬腭近', '咽近'][index]
-    else: return ['','Ρ','عΡ','lع','л','وع','و','hj','й','ع'][index]
+    else:
+        value = ['','r','عΡ','lع','л','وع','و','hj','й','ع'][index]
+        if 改善音节:
+            value = value.replace('عΡ','ع')
+        return value
 
 
 def 解析声调(text: str):
@@ -93,7 +97,6 @@ def 解析剩余(text):
         text = ( text
             .replace("ɢw","gw")
             .replace("mq","q")
-            .replace("ˤr","ˤ")
             .replace("kph","khw")
             .replace("wr","wˤ")
         )
