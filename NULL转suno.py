@@ -16,15 +16,15 @@ def 元音类(index,mode):
     if mode: return ['','开前:','待定:','半闭前:','半闭后:','中央:','闭前:','闭后圆唇:'][index]
     else: return ['','α','a','ए','o','으','ი','უ'][index]
 def 声母类(index,mode):
-    if mode: return ['','开前:','待定:','半闭前:','半闭后:','中央:','闭前:','闭后圆唇:'][index]
-    else: return ['','α','a','ए','o','으','ი','უ'][index]
+    if mode: return ['','清送气龈有咝塞擦:','清龈有咝塞擦:','浊龈有咝塞擦:','清龈有咝擦-塞:','清龈有咝擦:','清送气龈塞:','清龈塞:','浊龈塞:','清送气双唇塞:','清双唇塞:','浊双唇塞:','清送气软腭塞:','清软腭塞:','浊软腭塞:','清双唇鼻:','浊双唇鼻:','清龈鼻:','浊龈鼻:','清龈颤:','浊龈颤:','超切浊龈颤:','清龈边近:','浊龈边近:','清软腭鼻:','浊软腭鼻:','喉塞','清声门擦','清唇-软腭近','浊唇-软腭近'][index]
+    else: return ['','ц','ც','ძ','sд','s','თ','д','द','พ','б','ბ','ข','к','გ','mh','m','nh','n','rh','Ρ','Ρ','hl','л','hŋ','ŋ','ء','ㅎ','wh','w'][index]
 
 
 def 解析声调(text: str):
     tone_map = {'ps':3, 'ts':4, 'ks':5, 'ʔs':6, 'ʔ':1, 's':2, 'p':7, 't':8, 'k':9, 'h':10}
     for key in sorted(tone_map.keys(), key=lambda k: tone_map[k]):
-        if text.startswith(key):
-            return text[len(key):], tone_map[key]
+        if text.endswith(key):
+            return text[:-len(key)], tone_map[key]
     return text, 0
 
 def 解析韵尾(text: str):
@@ -42,7 +42,9 @@ def 解析元音(text: str):
     return text, 0
 
 def 解析声母(text: str):
-    consonant_map = {'tsʰ':1, 'ts':2}
+    # 变音处理
+    text = text.replace("ʰ","h")
+    consonant_map = {'tsh':1, 'ts':2, 'dz':3, 'st':4, 's':5, 'th':6, 't':7, 'd':8, 'ph':9, 'p':10, 'b':11, 'kh':12, 'k':13, 'g':14, 'm̥':15, 'm':16, 'n̥':17, 'n':18, 'r̥':19, 'r':20, 'C.r':21, 'l̥':22, 'l':23, 'ŋ̊':24, 'ŋ':25, 'ʔ':26, 'h':27, 'ẘ':28, 'w':29}
     for cons in sorted(consonant_map.keys(), key=lambda k: consonant_map[k]):
         if text.startswith(cons):
             return text[len(cons):], consonant_map[cons]
@@ -51,13 +53,10 @@ def 解析声母(text: str):
 
 def 白沙(text):
     声调,韵尾=0,0
-    # 变音处理
-    text = text.replace('ᵊ','').replace("ʰ","h")
 
-    # 解析
     text, 声调 = 解析声调(text)
     text, 韵尾 = 解析韵尾(text)
-    
+
     if 分析: 
         print(Fore.GREEN + text + Fore.RESET + ' ' + 韵尾类(韵尾,1) + 声类(声调,1),end='')
     else: return 白沙声母韵头(text) + 韵尾类(韵尾,0) + 声类(声调,0)
@@ -65,18 +64,58 @@ def 白沙(text):
 def NULL(text):
     声调,韵尾,声母,元音=0,0,0,0
 
-    # 解析
     text, 声调 = 解析声调(text)
     text, 韵尾 = 解析韵尾(text)
     text, 声母 = 解析声母(text)
-    text, 元音 = 解析元音(text)
+    #text, 元音 = 解析元音(text)
     
     if 分析: 
-        print(Fore.GREEN + text + Fore.RESET + ' ' + 元音类(元音,1) + 韵尾类(韵尾,1) + 声类(声调,1),end='')
-    else: return 白沙声母韵头(text) + 韵尾类(韵尾,0) + 声类(声调,0)
+        print(Fore.RESET + 声母类(声母,1) + Fore.GREEN + text + Fore.RESET + ' ' + 韵尾类(韵尾,1) + 声类(声调,1),end='')
+    else: return 声母类(声母,0)+ 韵头(text) + 韵尾类(韵尾,0) + 声类(声调,0)
+
+def 韵头(text):
+    if(去咽化):
+        text = text.replace("khˤ","kh").replace("kˤ","k").replace("gˤ","g").replace("pˤr","pr").replace("qhˤe","qhe").replace("ˤi","i")
+    if(去C):
+        text = text.replace("C","")
+    else:
+        text = text.replace("C","კ")
+    if(去闪音):
+        text = text.replace("r","")
+    if(改善音节):
+        text = ( text
+            .replace("ɢw","gw")
+            .replace("mq","q")
+            .replace("ˤr","ˤ")
+            .replace("kph","khw")
+            .replace("wr","wˤ")
+        )
+    text = ( text
+        .replace("N","n")
+        .replace("tʂ","č")
+        .replace("tɕh","ฉ").replace("tɕ","ć").replace("ɕ","ś")
+        .replace("dʑ","dź")
+        .replace("qh","ყ").replace("qw","къу")
+        .replace("kw","кв")
+        .replace("aw","औ")
+        .replace("ja","я").replace("ju","ю")
+        .replace("ɨ","ừ").replace("ɑ","ا")
+        .replace("kˤ","კ")
+        .replace("ɫ","л")
+        .replace("ɲ","ñ")
+        .replace("ᵯ","m")
+        .replace("ʂ","ш")
+        .replace("q","ق").replace("ɢ","ق")
+        .replace("x","χ")
+        .replace("ˤ","ع")
+        #.replace("w","و")
+        #晚期上古
+        .replace("j","й")
+    )
+    return text
 
 def 白沙声母韵头(text):
-    text = text.replace("-","").replace("•","")
+    text = text.replace("-","").replace("•","").replace('ᵊ','')
     if(去咽化):
         text = text.replace("khˤ","kh").replace("kˤ","k").replace("gˤ","g").replace("pˤr","pr").replace("qhˤe","qhe").replace("ˤi","i")
     if(去C):
@@ -143,10 +182,10 @@ while(1):
     else:
         if 分析:
             for token in b:
-                白沙(token)
+                NULL(token)
                 print(' ', end='')
             print()
         else:
             for token in b:
-                a.append(白沙(token))
+                a.append(NULL(token))
             a.append('\n')
