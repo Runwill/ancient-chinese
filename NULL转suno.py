@@ -18,6 +18,9 @@ def 元音类(index,mode):
 def 声母类(index,mode):
     if mode: return ['','清送气龈有咝塞擦:','清龈有咝塞擦:','浊龈有咝塞擦:','清龈有咝擦-塞:','清龈有咝擦:','清送气龈塞:','清龈塞:','浊龈塞:','清送气双唇塞:','清双唇塞:','浊双唇塞:','清送气软腭塞:','清软腭塞:','浊软腭塞:','清双唇鼻:','浊双唇鼻:','清龈鼻:','浊龈鼻:','清龈颤:','浊龈颤:','超切浊龈颤:','清龈边近:','浊龈边近:','清软腭鼻:','浊软腭鼻:','喉塞','清声门擦','清唇-软腭近','浊唇-软腭近'][index]
     else: return ['','ц','ც','ძ','sд','s','თ','д','द','พ','б','ბ','ข','к','გ','mh','m','nh','n','rh','Ρ','Ρ','hl','л','hŋ','ŋ','ء','ㅎ','wh','w'][index]
+def 韵头类(index,mode):
+    if mode: return ['','清送气龈有咝塞擦:','清龈有咝塞擦:','浊龈有咝塞擦:','清龈有咝擦-塞:','清龈有咝擦:','清送气龈塞:','清龈塞:','浊龈塞:','清送气双唇塞:','清双唇塞:','浊双唇塞:','清送气软腭塞:','清软腭塞:','浊软腭塞:','清双唇鼻:','浊双唇鼻:','清龈鼻:','浊龈鼻:','清龈颤:','浊龈颤:','超切浊龈颤:','清龈边近:','浊龈边近:','清软腭鼻:','浊软腭鼻:','喉塞','清声门擦','清唇-软腭近','浊唇-软腭近'][index]
+    else: return ['','ц','ც','ძ','sд','s','თ','д','द','พ','б','ბ','ข','к','გ','mh','m','nh','n','rh','Ρ','Ρ','hl','л','hŋ','ŋ','ء','ㅎ','wh','w'][index]
 
 
 def 解析声调(text: str):
@@ -50,6 +53,15 @@ def 解析声母(text: str):
             return text[len(cons):], consonant_map[cons]
     return text, 0
 
+def 解析韵头(text: str):
+    # 变音处理
+    text = text.replace("ʰ","h")
+    consonant_map = {'tsh':1, 'ts':2, 'dz':3, 'st':4, 's':5, 'th':6, 't':7, 'd':8, 'ph':9, 'p':10, 'b':11, 'kh':12, 'k':13, 'g':14, 'm̥':15, 'm':16, 'n̥':17, 'n':18, 'r̥':19, 'r':20, 'C.r':21, 'l̥':22, 'l':23, 'ŋ̊':24, 'ŋ':25, 'ʔ':26, 'h':27, 'ẘ':28, 'w':29}
+    for cons in sorted(consonant_map.keys(), key=lambda k: consonant_map[k]):
+        if text.startswith(cons):
+            return text[len(cons):], consonant_map[cons]
+    return text, 0
+
 
 def 白沙(text):
     声调,韵尾=0,0
@@ -62,11 +74,12 @@ def 白沙(text):
     else: return 白沙声母韵头(text) + 韵尾类(韵尾,0) + 声类(声调,0)
 
 def NULL(text):
-    声调,韵尾,声母,元音=0,0,0,0
+    声调,韵尾,声母,韵头,元音=0,0,0,0
 
     text, 声调 = 解析声调(text)
     text, 韵尾 = 解析韵尾(text)
     text, 声母 = 解析声母(text)
+    text, 韵头 = 解析韵头(text)
     #text, 元音 = 解析元音(text)
     
     if 分析: 
@@ -75,11 +88,7 @@ def NULL(text):
 
 def 韵头(text):
     if(去咽化):
-        text = text.replace("khˤ","kh").replace("kˤ","k").replace("gˤ","g").replace("pˤr","pr").replace("qhˤe","qhe").replace("ˤi","i")
-    if(去C):
-        text = text.replace("C","")
-    else:
-        text = text.replace("C","კ")
+        text = text.replace("khˤ","kh").replace("kˤ","k").replace("pˤr","pr").replace("qhˤe","qhe").replace("ˤi","i")
     if(去闪音):
         text = text.replace("r","")
     if(改善音节):
