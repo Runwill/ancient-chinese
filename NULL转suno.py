@@ -1,6 +1,6 @@
 from colorama import init, Fore, Back, Style
 分析=0
-去咽化=1
+改善咽化=1
 去C=1
 去闪音=0
 改善音节=1
@@ -20,11 +20,7 @@ def 声母类(index,mode):
     else: return ['','ц','ც','ძ','sд','s','თ','д','д','พ','б','ბ','ข','к','g','mh','m','nh','n','rh','r','r','hl','л','hŋ','ŋ','ء','ㅎ','wh','و'][index]
 def 韵头类(index,mode):
     if mode: return ['','浊龈颤:','咽近-浊龈颤:','咽化浊龈边近:','浊龈边近:','咽化唇-软腭近','浊唇-软腭近', '清硬腭近', '浊硬腭近', '咽近'][index]
-    else:
-        value = ['','r','عΡ','lع','л','وع','و','hj','й','ع'][index]
-        if 改善音节:
-            value = value.replace('عΡ','ع')
-        return value
+    else: return ['','r','عΡ','lع','л','وع','w','hj','й','ع'][index]
 
 
 def 解析声调(text: str):
@@ -64,6 +60,9 @@ def 解析韵头(text: str):
             return text[len(cons):], consonant_map[cons]
     return text, 0
 
+def 改善咽化替换(text: str):
+    text = text.replace("ขع","ข").replace("кع","к").replace('عΡ','ع')
+    return text
 
 def 白沙(text):
     声调,韵尾=0,0
@@ -89,10 +88,8 @@ def NULL(text):
     else: return 声母类(声母,0) + 韵头类(韵头,0) + 解析剩余(text) + 元音类(元音,0) + 韵尾类(韵尾,0) + 声类(声调,0)
 
 def 解析剩余(text):
-    if(去咽化):
-        text = text.replace("khˤ","kh").replace("kˤ","k").replace("pˤr","pr").replace("qhˤe","qhe").replace("ˤi","i")
-    if(去闪音):
-        text = text.replace("r","")
+    if(改善咽化):
+        text = text.replace("pˤr","pr").replace("qhˤe","qhe").replace("ˤi","i")
     if(改善音节):
         text = ( text
             .replace("ɢw","gw")
@@ -124,7 +121,7 @@ def 解析剩余(text):
 
 def 白沙声母韵头(text):
     text = text.replace("-","").replace("•","").replace('ᵊ','')
-    if(去咽化):
+    if(改善咽化):
         text = text.replace("khˤ","kh").replace("kˤ","k").replace("gˤ","g").replace("pˤr","pr").replace("qhˤe","qhe").replace("ˤi","i")
     if(去C):
         text = text.replace("C","")
