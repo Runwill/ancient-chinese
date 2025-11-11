@@ -60,7 +60,7 @@ def 解析韵头(text: str):
     return text, 0
 
 def 改善咽化替换(text: str):
-    text = text.replace("бعΡ","бr").replace("ขع","ข").replace("кع","к").replace('عΡ','ع')
+    text = text.replace("бعΡ","бr").replace("ขع","ข").replace("кع","к").replace('عΡ','ع').replace('عი','ი')
     return text
 
 def 改善音节替换(text: str):
@@ -106,7 +106,7 @@ def 合写(text):
 
 def 解析剩余(text):# 剩下没有移动到null方案里的替换
     if(改善咽化):
-        text = text.replace("qhˤe","qhe").replace("ˤi","i")
+        text = text.replace("qhˤe","qhe")
     if(改善音节):
         text = ( text
             .replace("ɢw","gw")
