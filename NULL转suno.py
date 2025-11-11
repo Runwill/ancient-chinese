@@ -6,7 +6,7 @@ from colorama import init, Fore, Back, Style
 
 def 声类(index,mode):
     if mode: return ['平','上','去','p入去通谐','t入去通谐','k入去通谐','上去通谐','p入','t入','k入','k入/k入去通押'][index]
-    else: return ['','ء','s','бs','ც','ξ','s','б','т','ก','h'][index]
+    else: return ['','ء','s','бs','ც','ξ','s','б','д','ก','h'][index]
 def 韵尾类(index,mode):
     if mode:return ['','浊唇-软腭:','双唇鼻:','硬腭近:','龈颤:','龈鼻:','软颚鼻:'][index]
     else: return ['','w','m','й','r','n','ง'][index]
