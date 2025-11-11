@@ -1,7 +1,6 @@
 from colorama import init, Fore, Back, Style
 分析=0
 改善咽化=1
-去C=1
 去闪音=0
 改善音节=1
 
@@ -17,7 +16,7 @@ def 元音类(index,mode):
     else: return ['','α','a','ए','o','으','ი','უ'][index]
 def 声母类(index,mode):
     if mode: return ['','清送气龈有咝塞擦:','清龈有咝塞擦:','浊龈有咝塞擦:','清龈有咝擦-塞:','清龈有咝擦:','清送气龈塞:','清龈塞:','浊龈塞:','清送气双唇塞:','清双唇塞:','浊双唇塞:','清送气软腭塞:','清软腭塞:','浊软腭塞:','清双唇鼻:','浊双唇鼻:','清龈鼻:','浊龈鼻:','清龈颤:','浊龈颤:','超切浊龈颤:','清龈边近:','浊龈边近:','清软腭鼻:','浊软腭鼻:','喉塞','清声门擦','清唇-软腭近','浊唇-软腭近'][index]
-    else: return ['','ц','ც','ძ','sд','s','თ','д','д','พ','б','ბ','ข','к','g','mh','m','nh','n','rh','r','r','hl','л','hŋ','ŋ','ء','ㅎ','wh','و'][index]
+    else: return ['','ц','ც','ძ','sд','s','თ','д','д','พ','б','ბ','ข','к','g','mh','m','nh','n','rh','r','r','hl','л','hŋ','ง','ء','ㅎ','wh','و'][index]
 def 韵头类(index,mode):
     if mode: return ['','浊龈颤:','咽近-浊龈颤:','咽化浊龈边近:','浊龈边近:','咽化唇-软腭近','浊唇-软腭近', '清硬腭近', '浊硬腭近', '咽近'][index]
     else: return ['','r','عΡ','lع','л','وع','w','hj','й','ع'][index]
@@ -64,6 +63,11 @@ def 改善咽化替换(text: str):
     text = text.replace("бعΡ","бr").replace("ขع","ข").replace("кع","к").replace('عΡ','ع')
     return text
 
+def 改善音节替换(text: str):
+    text = text
+    return text
+
+
 def 白沙(text):
     声调,韵尾=0,0
 
@@ -89,10 +93,15 @@ def NULL(text):
         value = 声母类(声母,0) + 韵头类(韵头,0) + 解析剩余(text) + 元音类(元音,0) + 韵尾类(韵尾,0) + 声类(声调,0)
         if(改善咽化):
             value = 改善咽化替换(value)
+            value = 改善音节替换(value)
         return 合写(value)
     
 def 合写(text):
-    text = text.replace("йα","я")
+    text = ( text
+        .replace("кw","кв") # kw
+        .replace("йα","я").replace("йუ","ю") # ja ju
+        .replace("αw","औ") # aw
+    )
     return text
 
 def 解析剩余(text):# 剩下没有移动到null方案里的替换
@@ -111,9 +120,6 @@ def 解析剩余(text):# 剩下没有移动到null方案里的替换
         .replace("tɕh","ฉ").replace("tɕ","ć").replace("ɕ","ś")
         .replace("dʑ","dź")
         .replace("qh","ყ").replace("qw","къу")
-        .replace("kw","кв")
-        .replace("aw","औ")
-        .replace("ju","ю")
         .replace("ɨ","ừ").replace("ɑ","ا")
         .replace("ɫ","л")
         .replace("ɲ","ñ")
@@ -128,10 +134,7 @@ def 白沙声母韵头(text):
     text = text.replace("-","").replace("•","").replace('ᵊ','')
     if(改善咽化):
         text = text.replace("khˤ","kh").replace("kˤ","k").replace("gˤ","g").replace("pˤr","pr").replace("qhˤe","qhe").replace("ˤi","i")
-    if(去C):
-        text = text.replace("C","")
-    else:
-        text = text.replace("C","კ")
+    text = text.replace("C","")
     if(去闪音):
         text = text.replace("r","")
     if(改善音节):
