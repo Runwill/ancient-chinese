@@ -60,11 +60,11 @@ def 解析韵头(text: str):
     return text, 0
 
 def 改善咽化替换(text: str):
-    text = text.replace("бعΡ","бr").replace("ขع","ข").replace("gع","g").replace('عΡ','ع').replace('عი','ი')
+    text = text.replace("ขع","ข").replace("gع","g").replace('عი','ი')
     return text
 
 def 改善音节替换(text: str):
-    text = text
+    text = text.replace('عΡ','Ρ')
     return text
 
 
