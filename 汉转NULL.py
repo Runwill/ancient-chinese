@@ -171,6 +171,48 @@ def collect_polyphones(lines):
                 })
     return tasks
 
+def show_new_occurrences(ch: str, lines: list[str], processed_positions: set[tuple[int,int]]):
+    """显示该字尚未处理的具体位置(按字符位置)。
+    规则:
+      - 首次出现：打印所有包含该字的行；行内未处理位置高亮(黄底)，已处理位置(理论上首次没有)普通。
+      - 后续出现：只输出仍存在未处理位置的行；并在行末标注新增/剩余计数。
+      - 若所有出现位置都已处理，提示已全部处理。
+    processed_positions: 已确认读音的 (line_idx,char_idx) 集合。
+    """
+    # 收集所有出现位置
+    all_positions: list[tuple[int,int]] = []
+    for li, line in enumerate(lines):
+        for ci, c in enumerate(line):
+            if c == ch:
+                all_positions.append((li, ci))
+    unprocessed = [pos for pos in all_positions if pos not in processed_positions]
+    if not processed_positions:
+        header = "首次出现，所有位置："
+    else:
+        header = "剩余未处理位置：" if unprocessed else "无未处理位置（全部已选择）"
+    print(Fore.MAGENTA + f"\n『{ch}』 {header}" + Fore.RESET)
+    if not unprocessed:
+        return
+    # 按行分组展示
+    by_line: dict[int, list[int]] = {}
+    for li, ci in unprocessed:
+        by_line.setdefault(li, []).append(ci)
+    for li in sorted(by_line.keys()):
+        line = lines[li]
+        # 构造高亮：未处理位置黄底，已处理位置淡灰底
+        rendered_chars = []
+        for ci, c in enumerate(line):
+            if c != ch:
+                rendered_chars.append(c)
+            else:
+                if (li, ci) in processed_positions:
+                    # 已处理用淡灰前景
+                    rendered_chars.append("\x1b[38;5;244m" + c + Style.RESET_ALL)
+                else:
+                    rendered_chars.append(Back.YELLOW + c + Style.RESET_ALL)
+        print(Fore.WHITE + f"  行{li+1:>3}: " + Fore.RESET + ''.join(rendered_chars))
+    print(Fore.CYAN + f"未处理位置数: {len(unprocessed)} / 总出现: {len(all_positions)}\n" + Fore.RESET)
+
 def show_line_with_pointer(line, pos):
     return (line[:pos] + Back.YELLOW + line[pos] + Style.RESET_ALL + line[pos+1:])
 
@@ -182,6 +224,8 @@ def choose_readings(lines):
     # 对同一字的全局选择缓存
     global_choice = {}
     per_position_choice = {}
+    # 跟踪某字已处理过的具体位置 (line_idx,char_idx)
+    processed_positions: dict[str, set[tuple[int,int]]] = {}
     i = 0
     total = len(tasks)
     while i < total:
@@ -195,6 +239,11 @@ def choose_readings(lines):
             per_position_choice[(line_idx, char_idx)] = global_choice[ch]
             i += 1
             continue
+        # 自动预览：在未设置全局读音前，只要该字在缓存行出现次数>1，每次到该字都展示上下文
+        total_count = sum(ln.count(ch) for ln in lines)
+        if total_count > 1:
+            pos_set = processed_positions.setdefault(ch, set())
+            show_new_occurrences(ch, lines, pos_set)
         line_display = show_line_with_pointer(lines[line_idx], char_idx)
         print("\n" + Fore.CYAN + f"[{i+1}/{total}] 行{line_idx+1} 字『{ch}』: " + Fore.RESET)
         print(line_display)
@@ -205,7 +254,7 @@ def choose_readings(lines):
             print(f"  {oi}. " + Style.BRIGHT + Fore.GREEN + f"{phon}" + Style.RESET_ALL)
             if note_txt:
                 print_note_block(note_txt)
-        # 简化交互提示：仅保留 a全局 与 b返回
+        # 交互提示：自动预览已开启，无需手动 v
         print(Fore.CYAN + "选择序号:" + Style.RESET_ALL + Fore.CYAN + " (a序号 -> 全局; b -> 返回上一个) " + Style.RESET_ALL)
         user = input('> ').strip().lower()
         if user == 'b':
@@ -227,6 +276,9 @@ def choose_readings(lines):
                     global_choice[ch] = chosen
                     per_position_choice[(line_idx, char_idx)] = chosen
                     print(Fore.GREEN + f"已将『{ch}』设为全局读音: {chosen}" + Fore.RESET)
+                    # 全局选择也视为处理过当前行
+                    # 标记当前具体位置已处理
+                    processed_positions.setdefault(ch, set()).add((line_idx, char_idx))
                     i += 1
                     continue
             print(Fore.RED + '格式 a序号 无效。' + Fore.RESET)
@@ -237,6 +289,7 @@ def choose_readings(lines):
                 chosen_item = opts[idx-1]
                 chosen = chosen_item['phonetic'] if isinstance(chosen_item, dict) else str(chosen_item)
                 per_position_choice[(line_idx, char_idx)] = chosen
+                processed_positions.setdefault(ch, set()).add((line_idx, char_idx))
                 i += 1
                 continue
             else:
