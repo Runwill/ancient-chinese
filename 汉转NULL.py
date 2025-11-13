@@ -158,7 +158,23 @@ def collect_polyphones(lines):
     """
     tasks = []
     for li, line in enumerate(lines):
+        # 预处理：标记方括号区间，不对其中内容做替换或选择
+        bracket_ranges = []
+        stack = []
+        for idx, ch in enumerate(line):
+            if ch == '[':
+                stack.append(idx)
+            elif ch == ']' and stack:
+                start = stack.pop()
+                bracket_ranges.append((start, idx))
+        def in_bracket(pos: int) -> bool:
+            for s, e in bracket_ranges:
+                if s <= pos <= e:
+                    return True
+            return False
         for ci, ch in enumerate(line):
+            if in_bracket(ci):
+                continue  # 方括号内跳过
             opts = mapping.get(ch)
             if not opts:
                 continue
@@ -303,7 +319,19 @@ def translate_lines(lines, position_choices):
     out_lines = []
     for li, line in enumerate(lines):
         phonetics = []
-        for ci, ch in enumerate(line):
+        ci = 0
+        L = len(line)
+        while ci < L:
+            ch = line[ci]
+            if ch == '[':
+                # 寻找匹配的 ]，若无则按普通字符处理
+                end = line.find(']', ci + 1)
+                if end != -1:
+                    segment = line[ci:end+1]
+                    phonetics.append(segment)  # 原样保留，不拆分
+                    ci = end + 1
+                    continue
+            # 非方括号或无匹配情况
             opts = mapping.get(ch)
             if not opts:
                 phonetics.append(ch)
@@ -311,13 +339,14 @@ def translate_lines(lines, position_choices):
                 only = opts[0]
                 phonetics.append(only['phonetic'] if isinstance(only, dict) else str(only))
             else:
-                # 多音字: 优先位置选择，其次回退到第一个
                 chosen = position_choices.get((li, ci)) if position_choices else None
                 if chosen:
                     phonetics.append(chosen)
                 else:
                     first = opts[0]
                     phonetics.append(first['phonetic'] if isinstance(first, dict) else str(first))
+            ci += 1
+        # 连接时：保持方括号段不被空格拆分——当前处理下方括号段作为一个整体元素，不做额外处理
         out_lines.append(' '.join(phonetics))
     return out_lines
 
@@ -327,7 +356,9 @@ while True:
     except EOFError:
         break
     s = s.rstrip('\n')
+    # 保留空行：原先直接 continue 会丢失换行结构
     if s == '':
+        raw_lines.append('')
         continue
     if s == '/q':
         break

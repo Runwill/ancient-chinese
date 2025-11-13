@@ -162,5 +162,10 @@ while(1):
         print('')
     else:
         for i in range(len(b)):
-            a.append(白沙(b[i]))
+            token = b[i]
+            # 若被 [] 包裹则不替换，原样保留
+            if token.startswith('[') and token.endswith(']'):
+                a.append(token)
+            else:
+                a.append(白沙(token))
         a.append('\n')
