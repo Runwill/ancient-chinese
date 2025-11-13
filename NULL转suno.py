@@ -6,7 +6,7 @@ from colorama import init, Fore, Back, Style
 
 def 声类(index,mode):
     if mode: return ['平','上','去','p入去通谐','t入去通谐','k入去通谐','上去通谐','p入','t入','k入','k入/k入去通押'][index]
-    else: return ['','ء','s','бς','ც','ξ','ς','б','д','ก','h'][index]
+    else: return ['','ء','s','бς','ც','ξ','ς','б','д','ข','h'][index]
 def 韵尾类(index,mode):
     if mode:return ['','浊唇-软腭:','双唇鼻:','硬腭近:','龈颤:','龈鼻:','软颚鼻:'][index]
     else: return ['','w','m','й','r','n','ง'][index]
@@ -20,7 +20,7 @@ def 声母类(index,mode):
         ''
         ][index]
     else: return [
-        '','ц','ც','ძ','sд','σ','თ','д','д','พ','б','ბ','ข','g','g','mh','m','nh','n','rh','r','r','hl','л','hŋ','ง','ء','ㅎ','wh','و',
+        '','ц','ც','ძ','sд','s','თ','д','д','พ','б','ბ','ข','g','g','mh','m','nh','n','rh','r','r','hl','л','hŋ','ง','ء','ㅎ','wh','و',
 
         ][index]
 def 韵头类(index,mode):
@@ -70,7 +70,7 @@ def 改善咽化替换(text: str):
     return text
 
 def 改善音节替换(text: str):
-    text = text
+    text = text.replace("sρ","σρ") # sr
     return text
 
 
