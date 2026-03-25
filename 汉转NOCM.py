@@ -1,14 +1,11 @@
 import pandas as pd
-from colorama import init, Fore, Back, Style
 import sys
 import re
-import ctypes
-from typing import Dict, List, Any
+import tkinter as tk
+from tkinter import ttk, messagebox, scrolledtext
+from typing import Dict, List, Any, Optional
 
-# ── openpyxl 3.1.x Fill bug workaround ──────────────────────────
-# 某些 Excel 文件的样式包含 openpyxl 无法直接反序列化的 Fill 节点，
-# 导致 TypeError: expected <class 'openpyxl.styles.fills.Fill'>。
-# 在此 monkey-patch _convert，遇到 Fill 转换失败时回退为空 PatternFill。
+# == openpyxl 3.1.x Fill bug workaround ============================
 try:
     import openpyxl.descriptors.sequence as _seq_mod
     from openpyxl.styles.fills import Fill as _Fill, PatternFill as _PFill
@@ -22,71 +19,21 @@ try:
             raise
     _seq_mod._convert = _safe_convert
 except Exception:
-    pass  # 如果 openpyxl 结构变动，静默跳过，不影响其它功能
-# ─────────────────────────────────────────────────────────────────
+    pass
+# ===================================================================
 
-def _enable_vt_mode() -> bool:
-    """在 Windows 上启用 VT(ANSI) 模式以支持 256 色/真彩色。
-    返回是否成功启用。非 Windows 平台直接返回 True。
-    """
-    if sys.platform.startswith("win"):
-        try:
-            kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
-            # 句柄常量
-            STD_OUTPUT_HANDLE = -11
-            STD_ERROR_HANDLE = -12
-            ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+EXCEL_FILE = '上古汉语音节表.xlsx'
+EXCEL_NOTE_COL = 10
 
-            def _set(handle_id: int) -> bool:
-                h = kernel32.GetStdHandle(handle_id)
-                if h in (0, -1):
-                    return False
-                mode = ctypes.c_uint()
-                if not kernel32.GetConsoleMode(h, ctypes.byref(mode)):
-                    return False
-                new_mode = mode.value | ENABLE_VIRTUAL_TERMINAL_PROCESSING
-                if not kernel32.SetConsoleMode(h, new_mode):
-                    return False
-                # 读取回校验是否已生效
-                mode2 = ctypes.c_uint()
-                if not kernel32.GetConsoleMode(h, ctypes.byref(mode2)):
-                    return False
-                return bool(mode2.value & ENABLE_VIRTUAL_TERMINAL_PROCESSING)
 
-            ok_out = _set(STD_OUTPUT_HANDLE)
-            ok_err = _set(STD_ERROR_HANDLE)
-            return ok_out or ok_err
-        except Exception:
-            return False
-    # 非 Windows 终端普遍支持 ANSI
-    return True
-
-# 先尝试启用 VT，再按结果决定 colorama 转换策略
-_vt = _enable_vt_mode()
-if _vt:
-    # VT 可用时，关闭 colorama 的转换，让 ANSI 真彩色序列直通
-    init(autoreset=True, convert=False, strip=False)
-else:
-    # 回退到默认：保留原有 16 色兼容转换
-    init(autoreset=True)
-
-def load_map_from_excel(file_path, sheet_name='字典表', note_col_index: int = 2):
-    """从 Excel 读取映射，允许同一汉字出现多行，收集为列表保持顺序且不去重。
-    返回: dict[char] = [ { 'phonetic': str, 'note': Optional[str] }, ... ]
-    参数 note_col_index 使用 0 基索引（0=第一列）。例如注释在 Excel 第 k 列，则 note_col_index = k-1。
-    """
+def load_map_from_excel(file_path, sheet_name='字典表', note_col_index=2):
     try:
-        # 读整表，避免列数不够时报错
         df = pd.read_excel(file_path, sheet_name=sheet_name, header=None, engine='openpyxl')
-        # 清理：至少前两列需要有值
         df = df.dropna(how='any', subset=[0, 1])
         mapping: Dict[str, List[Dict[str, Any]]] = {}
         for row in df.itertuples(index=False, name=None):
-            # row 是 tuple
-            c_raw = row[0]
-            p_raw = row[1]
-            c = str(c_raw)
-            p = str(p_raw).strip() if p_raw is not None else ''
+            c = str(row[0])
+            p = str(row[1]).strip() if row[1] is not None else ''
             if not p:
                 continue
             note = None
@@ -97,304 +44,668 @@ def load_map_from_excel(file_path, sheet_name='字典表', note_col_index: int =
                         nt = str(n).strip()
                         if nt and nt.lower() not in ('nan', 'none'):
                             note = nt
-            lst = mapping.setdefault(c, [])
-            # 不去重：即便音标相同也保留（注释可能不同）
-            lst.append({'phonetic': p, 'note': note})
+            mapping.setdefault(c, []).append({'phonetic': p, 'note': note})
         return mapping
     except FileNotFoundError:
-        print(Fore.RED + f"错误：找不到 '{file_path}' 文件。")
-        print("请确保该文件与脚本位于同一目录中。")
+        messagebox.showerror('错误', f"找不到 '{file_path}' 文件。\n请确保该文件与脚本位于同一目录中。")
         return None
     except Exception as e:
-        print(Fore.RED + f"读取Excel文件时出错: {e}")
+        messagebox.showerror('错误', f'读取Excel文件时出错: {e}')
         return None
 
-EXCEL_FILE = '上古汉语音节表.xlsx'
-# 注释所在的 Excel 列（0 基索引）。
-EXCEL_NOTE_COL = 10
 
-# 输入的原始行缓存
-raw_lines: list[str] = []
-
-mapping = load_map_from_excel(EXCEL_FILE, note_col_index=EXCEL_NOTE_COL)
-if mapping is None:
-    sys.exit(1)
-
-HELP_TEXT = f"""指令：
-  直接输入文本行缓存；
-  输入 1 -> 开始多音字统一选择并输出结果；
-  输入 /h 或 /help 查看帮助；
-  输入 /q 退出。
-说明：同一字的选定读音可一次性应用于所有出现位置；也可单独逐个位置指定。
-"""
-
-print(Fore.MAGENTA + "多音字批量处理模式。输入行后按 1 进入选择。/h 帮助。" + Fore.RESET)
-
-def format_note_multiline(note_txt: str) -> str:
-    """将注释中紧贴中文的编号(1,2,3,...)前面插入换行, 使每条义项独立一行。
-    规则: 非行首且前面不是换行的数字, 且其后紧跟中文字符(基本汉字范围), 则在数字前加换行。
-    例如: '1修飾……2掩飾……' -> '1修飾……\n2掩飾……'
-    保留原有换行, 避免重复插入。"""
+def format_note(note_txt):
     if not note_txt:
         return note_txt
-    # 去除首尾空白
     s = note_txt.strip()
-    # 在满足条件的数字前插入换行: 不是开头且前面不是\n, 后跟汉字
-    # 汉字范围 \u4e00-\u9fff (基本区) 已足够本场景
     s = re.sub(r'(?<!^)(?<!\n)(\d+)(?=[\u4e00-\u9fff])', r'\n\1', s)
     return s
 
-def print_note_block(note_txt: str):
-    """彩色打印注释块（已简化：不再单独输出“注:”标题行）。"""
-    formatted = format_note_multiline(note_txt)
-    # 定义 256 色灰度（需 VT 支持）：
-    #  - 38;5;250 约等于浅灰，38;5;244/240 为较深的灰
-    def ansi_256(n: int) -> str:
-        n = max(0, min(255, int(n)))
-        return f"\x1b[38;5;{n}m"
 
-    LIGHT_GRAY = ansi_256(250)
-    DARK_GRAY = ansi_256(244)
+# ====================================================================
+#  GUI — 即编即显，实时注音
+# ====================================================================
 
-    # 使用“浅灰(真灰)”与“灰(深灰)”两色交替
-    palette = [LIGHT_GRAY, DARK_GRAY]
-    for idx, ln in enumerate(formatted.split('\n')):
-        seg = ln.strip()
-        color = palette[idx % 2]
-        m = re.match(r'^(\d+)(.*)$', seg)
-        if m:
-            num, rest = m.groups()
-            print("        " + color + num + rest + Style.RESET_ALL)
+MAX_UNDO = 200
+
+
+class App(tk.Tk):
+    def __init__(self, mapping):
+        super().__init__()
+        self.mapping = mapping
+        self.title('汉字转 NOCM 音标')
+        self.geometry('960x680')
+        self.minsize(720, 480)
+
+        self.buffer: List[List[str]] = [[]]
+        self.cell_info: List[List[dict]] = [[]]
+        self.cur_line = 0
+        self.cur_col = 0
+        self.popup: Optional[tk.Toplevel] = None
+        self._overlay: Optional[tk.Toplevel] = None
+        self._cell_frames: List[tk.Frame] = []
+        self.undo_stack: list = []
+        self.redo_stack: list = []
+
+        self._build_ui()
+
+    # ── 构建界面 ──────────────────────────────────
+
+    def _build_ui(self):
+        main = ttk.Frame(self, padding=10)
+        main.pack(fill=tk.BOTH, expand=True)
+
+        btn = ttk.Frame(main)
+        btn.pack(fill=tk.X, pady=(0, 4))
+        ttk.Button(btn, text='撤回', command=self._undo).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(btn, text='重做', command=self._redo).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(btn, text='清空', command=self._on_clear).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(btn, text='帮助', command=self._on_help).pack(side=tk.LEFT)
+        ttk.Button(btn, text='复制结果', command=self._on_copy).pack(side=tk.RIGHT)
+
+        edit_lf = ttk.LabelFrame(
+            main, text='编辑区（输入即注音 · 点击彩色字修改读音）', padding=5)
+        edit_lf.pack(fill=tk.BOTH, expand=True, pady=4)
+        edit_inner = ttk.Frame(edit_lf)
+        edit_inner.pack(fill=tk.BOTH, expand=True)
+
+        self.edit_text = tk.Text(
+            edit_inner, wrap=tk.WORD,
+            bg='#FAFAFA', relief=tk.FLAT,
+            font=('Microsoft YaHei', 12),
+            spacing1=4, spacing3=4,
+            insertwidth=3, insertbackground='#5C6BC0')
+        edit_scroll = ttk.Scrollbar(edit_inner, orient=tk.VERTICAL,
+                                     command=self.edit_text.yview)
+        self.edit_text.configure(yscrollcommand=edit_scroll.set)
+        self.edit_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        edit_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.edit_text.bind('<Key>', self._on_key)
+        self.edit_text.bind('<<Paste>>', self._on_paste)
+        self.edit_text.bind('<Button-1>', self._on_text_click)
+        self.edit_text.bind('<B1-Motion>', lambda e: 'break')
+        self.edit_text.bind('<Double-Button-1>', lambda e: 'break')
+        self.edit_text.bind('<Triple-Button-1>', lambda e: 'break')
+        self.edit_text.focus_set()
+
+        out_lf = ttk.LabelFrame(main, text='输出结果', padding=5)
+        out_lf.pack(fill=tk.X, pady=(4, 0))
+        self.output_text = scrolledtext.ScrolledText(
+            out_lf, wrap=tk.WORD, height=4,
+            font=('Consolas', 11), state=tk.DISABLED)
+        self.output_text.pack(fill=tk.BOTH, expand=True)
+
+    # ── 撤回 / 重做 ──────────────────────────────
+
+    def _snapshot(self):
+        return (
+            [row[:] for row in self.buffer],
+            [[d.copy() for d in row] for row in self.cell_info],
+            self.cur_line,
+            self.cur_col,
+        )
+
+    def _restore_snapshot(self, snap):
+        self.buffer, self.cell_info, self.cur_line, self.cur_col = (
+            snap[0], snap[1], snap[2], snap[3])
+
+    def _save_undo(self):
+        self.undo_stack.append(self._snapshot())
+        if len(self.undo_stack) > MAX_UNDO:
+            self.undo_stack.pop(0)
+        self.redo_stack.clear()
+
+    def _undo(self):
+        if not self.undo_stack:
+            return
+        self.redo_stack.append(self._snapshot())
+        self._restore_snapshot(self.undo_stack.pop())
+        self._rebuild_display()
+        self._refresh_output()
+
+    def _redo(self):
+        if not self.redo_stack:
+            return
+        self.undo_stack.append(self._snapshot())
+        self._restore_snapshot(self.redo_stack.pop())
+        self._rebuild_display()
+        self._refresh_output()
+
+    # ── 键盘处理 ──────────────────────────────────
+
+    def _on_key(self, event):
+        ctrl = bool(event.state & 0x4)
+        if ctrl:
+            k = event.keysym.lower()
+            if k == 'v':
+                return  # let <<Paste>> handle
+            if k == 'c':
+                self._copy_raw()
+                return 'break'
+            if k == 'z':
+                if event.state & 0x1:  # Shift → redo
+                    self._redo()
+                else:
+                    self._undo()
+                return 'break'
+            if k == 'y':
+                self._redo()
+                return 'break'
+            if k == 'a':
+                return 'break'  # no select-all in this widget
+            return 'break'
+
+        ks = event.keysym
+        if ks == 'BackSpace':
+            self._backspace()
+            return 'break'
+        if ks == 'Delete':
+            self._delete_char()
+            return 'break'
+        if ks == 'Return':
+            self._insert_newline()
+            return 'break'
+        if ks in ('Left', 'Right', 'Up', 'Down', 'Home', 'End'):
+            self._handle_nav(ks)
+            return 'break'
+
+        if event.char and len(event.char) == 1 and event.char.isprintable():
+            self._insert_chars(event.char)
+            return 'break'
+
+        return 'break'
+
+    def _on_paste(self, event):
+        try:
+            text = self.clipboard_get()
+        except tk.TclError:
+            return 'break'
+        if text:
+            self._save_undo()
+            self._insert_chars_raw(text)
+        return 'break'
+
+    def _on_text_click(self, event):
+        self.after_idle(self._sync_cursor)
+
+    def _sync_cursor(self):
+        try:
+            idx = self.edit_text.index(tk.INSERT)
+            ln, col = idx.split('.')
+            self.cur_line = max(0, min(int(ln) - 1, len(self.buffer) - 1))
+            self.cur_col = max(0, min(int(col), len(self.buffer[self.cur_line])))
+        except (ValueError, IndexError):
+            pass
+
+    # ── 缓冲区操作 ────────────────────────────────
+
+    def _make_cell_info(self, ch):
+        opts = self.mapping.get(ch)
+        if not opts:
+            return {'phonetic': ch, 'options': None, 'is_poly': False, 'selected': 'none'}
+        first = opts[0]
+        phon = first['phonetic'] if isinstance(first, dict) else str(first)
+        is_poly = len(opts) > 1
+        return {
+            'phonetic': phon,
+            'options': opts if is_poly else None,
+            'is_poly': is_poly,
+            'selected': 'none',
+        }
+
+    def _insert_chars(self, text):
+        """Single char insert with undo save."""
+        self._save_undo()
+        self._insert_chars_raw(text)
+
+    def _insert_chars_raw(self, text):
+        """Insert without saving undo (caller must save)."""
+        for ch in text:
+            if ch == '\n':
+                self._do_newline()
+            elif ch == '\r':
+                continue
+            else:
+                self.buffer[self.cur_line].insert(self.cur_col, ch)
+                self.cell_info[self.cur_line].insert(self.cur_col,
+                                                     self._make_cell_info(ch))
+                self.cur_col += 1
+        self._rebuild_display()
+        self._refresh_output()
+
+    def _do_newline(self):
+        rest = self.buffer[self.cur_line][self.cur_col:]
+        rest_info = self.cell_info[self.cur_line][self.cur_col:]
+        self.buffer[self.cur_line] = self.buffer[self.cur_line][:self.cur_col]
+        self.cell_info[self.cur_line] = self.cell_info[self.cur_line][:self.cur_col]
+        self.cur_line += 1
+        self.cur_col = 0
+        self.buffer.insert(self.cur_line, rest)
+        self.cell_info.insert(self.cur_line, rest_info)
+
+    def _insert_newline(self):
+        self._save_undo()
+        self._do_newline()
+        self._rebuild_display()
+        self._refresh_output()
+
+    def _backspace(self):
+        if self.cur_col == 0 and self.cur_line == 0:
+            return
+        self._save_undo()
+        if self.cur_col > 0:
+            self.cur_col -= 1
+            del self.buffer[self.cur_line][self.cur_col]
+            del self.cell_info[self.cur_line][self.cur_col]
+        elif self.cur_line > 0:
+            prev = self.buffer[self.cur_line - 1]
+            prev_info = self.cell_info[self.cur_line - 1]
+            self.cur_col = len(prev)
+            prev.extend(self.buffer[self.cur_line])
+            prev_info.extend(self.cell_info[self.cur_line])
+            del self.buffer[self.cur_line]
+            del self.cell_info[self.cur_line]
+            self.cur_line -= 1
+        self._rebuild_display()
+        self._refresh_output()
+
+    def _delete_char(self):
+        line = self.buffer[self.cur_line]
+        if self.cur_col >= len(line) and self.cur_line >= len(self.buffer) - 1:
+            return
+        self._save_undo()
+        if self.cur_col < len(line):
+            del line[self.cur_col]
+            del self.cell_info[self.cur_line][self.cur_col]
+        elif self.cur_line < len(self.buffer) - 1:
+            line.extend(self.buffer[self.cur_line + 1])
+            self.cell_info[self.cur_line].extend(self.cell_info[self.cur_line + 1])
+            del self.buffer[self.cur_line + 1]
+            del self.cell_info[self.cur_line + 1]
+        self._rebuild_display()
+        self._refresh_output()
+
+    def _handle_nav(self, ks):
+        if ks == 'Left':
+            if self.cur_col > 0:
+                self.cur_col -= 1
+            elif self.cur_line > 0:
+                self.cur_line -= 1
+                self.cur_col = len(self.buffer[self.cur_line])
+        elif ks == 'Right':
+            if self.cur_col < len(self.buffer[self.cur_line]):
+                self.cur_col += 1
+            elif self.cur_line < len(self.buffer) - 1:
+                self.cur_line += 1
+                self.cur_col = 0
+        elif ks == 'Up':
+            if self.cur_line > 0:
+                self.cur_line -= 1
+                self.cur_col = min(self.cur_col, len(self.buffer[self.cur_line]))
+        elif ks == 'Down':
+            if self.cur_line < len(self.buffer) - 1:
+                self.cur_line += 1
+                self.cur_col = min(self.cur_col, len(self.buffer[self.cur_line]))
+        elif ks == 'Home':
+            self.cur_col = 0
+        elif ks == 'End':
+            self.cur_col = len(self.buffer[self.cur_line])
+        self._update_cursor()
+
+    def _update_cursor(self):
+        cursor_idx = f'{self.cur_line + 1}.{self.cur_col}'
+        self.edit_text.mark_set(tk.INSERT, cursor_idx)
+        self.edit_text.see(cursor_idx)
+
+    def _copy_raw(self):
+        raw = '\n'.join(''.join(ln) for ln in self.buffer)
+        if raw:
+            self.clipboard_clear()
+            self.clipboard_append(raw)
+
+    # ── 显示重建 ──────────────────────────────────
+
+    @staticmethod
+    def _find_bracket_ranges(line_chars):
+        ranges = []
+        stk = []
+        for i, ch in enumerate(line_chars):
+            if ch == '[':
+                stk.append(i)
+            elif ch == ']' and stk:
+                ranges.append((stk.pop(), i))
+        return ranges
+
+    @staticmethod
+    def _in_bracket(pos, ranges):
+        return any(s <= pos <= e for s, e in ranges)
+
+    def _rebuild_display(self):
+        self._close_popup()
+
+        # Phase 1: pre-create all new widgets (slow, but no visual change)
+        new_frames = []
+        all_line_frames = []
+        for li, (line_chars, line_info) in enumerate(
+                zip(self.buffer, self.cell_info)):
+            br = self._find_bracket_ranges(line_chars)
+            line_frames = []
+            for ci, (ch, info) in enumerate(zip(line_chars, line_info)):
+                in_brk = self._in_bracket(ci, br)
+                if in_brk:
+                    frame = self._make_cell_widget(ch, ch, False, None, li, ci)
+                else:
+                    frame = self._make_cell_widget(
+                        ch, info['phonetic'], info['is_poly'],
+                        info['options'], li, ci,
+                        info.get('selected', 'none'))
+                line_frames.append(frame)
+                new_frames.append(frame)
+            all_line_frames.append(line_frames)
+
+        # Phase 2: swap content (fast — just delete + window_create)
+        old_frames = self._cell_frames
+        self.edit_text.delete('1.0', tk.END)
+        for li, line_frames in enumerate(all_line_frames):
+            for frame in line_frames:
+                self.edit_text.window_create(tk.END, window=frame)
+            if li < len(all_line_frames) - 1:
+                self.edit_text.insert(tk.END, '\n')
+
+        cursor_idx = f'{self.cur_line + 1}.{self.cur_col}'
+        self.edit_text.mark_set(tk.INSERT, cursor_idx)
+        self.edit_text.see(cursor_idx)
+
+        # Phase 3: destroy old widgets (cleanup, no visual impact)
+        self._cell_frames = new_frames
+        for f in old_frames:
+            f.destroy()
+
+    def _make_cell_widget(self, char_disp, phonetic, is_poly, options, li, ci,
+                          selected='none'):
+        if is_poly:
+            if selected == 'manual':
+                bg, fg_ch = '#E8F5E9', '#2E7D32'
+            elif selected == 'global':
+                bg, fg_ch = '#E3F2FD', '#1565C0'
+            else:
+                bg, fg_ch = '#FFF8E1', '#F57F17'
+            fg_ph = '#5C6BC0'
+            relief = tk.RIDGE
         else:
-            print("        " + color + seg + Style.RESET_ALL)
+            bg, fg_ch, fg_ph = '#FAFAFA', '#37474F', '#B0BEC5'
+            relief = tk.FLAT
+        frame = tk.Frame(self.edit_text, bg=bg, padx=1, pady=1,
+                         bd=1, relief=relief)
 
-def collect_polyphones(lines):
-    """扫描所有行，返回需要用户选择的多音字位置列表。
-    返回结构: list[dict] 每个元素包含
-        index_line: 行号
-        index_char: 字在该行中的位置
-        char: 该汉字
-        options: 其可选读音列表
-    """
-    tasks = []
-    for li, line in enumerate(lines):
-        # 预处理：标记方括号区间，不对其中内容做替换或选择
-        bracket_ranges = []
-        stack = []
-        for idx, ch in enumerate(line):
-            if ch == '[':
-                stack.append(idx)
-            elif ch == ']' and stack:
-                start = stack.pop()
-                bracket_ranges.append((start, idx))
-        def in_bracket(pos: int) -> bool:
-            for s, e in bracket_ranges:
-                if s <= pos <= e:
-                    return True
-            return False
-        for ci, ch in enumerate(line):
-            if in_bracket(ci):
-                continue  # 方括号内跳过
-            opts = mapping.get(ch)
-            if not opts:
-                continue
-            if len(opts) > 1:
-                tasks.append({
-                    'index_line': li,
-                    'index_char': ci,
-                    'char': ch,
-                    'options': opts
-                })
-    return tasks
+        char_lbl = tk.Label(frame, text=char_disp,
+                            font=('Microsoft YaHei', 13),
+                            bg=bg, fg=fg_ch)
+        char_lbl.pack()
 
-def show_new_occurrences(ch: str, lines: list[str], processed_positions: set[tuple[int,int]]):
-    """显示该字尚未处理的具体位置(按字符位置)。
-    规则:
-      - 首次出现：打印所有包含该字的行；行内未处理位置高亮(黄底)，已处理位置(理论上首次没有)普通。
-      - 后续出现：只输出仍存在未处理位置的行；并在行末标注新增/剩余计数。
-      - 若所有出现位置都已处理，提示已全部处理。
-    processed_positions: 已确认读音的 (line_idx,char_idx) 集合。
-    """
-    # 收集所有出现位置
-    all_positions: list[tuple[int,int]] = []
-    for li, line in enumerate(lines):
-        for ci, c in enumerate(line):
-            if c == ch:
-                all_positions.append((li, ci))
-    unprocessed = [pos for pos in all_positions if pos not in processed_positions]
-    if not processed_positions:
-        header = "首次出现，所有位置："
-    else:
-        header = "剩余未处理位置：" if unprocessed else "无未处理位置（全部已选择）"
-    print(Fore.MAGENTA + f"\n『{ch}』 {header}" + Fore.RESET)
-    if not unprocessed:
-        return
-    # 按行分组展示
-    by_line: dict[int, list[int]] = {}
-    for li, ci in unprocessed:
-        by_line.setdefault(li, []).append(ci)
-    for li in sorted(by_line.keys()):
-        line = lines[li]
-        # 构造高亮：未处理位置黄底，已处理位置淡灰底
-        rendered_chars = []
-        for ci, c in enumerate(line):
-            if c != ch:
-                rendered_chars.append(c)
-            else:
-                if (li, ci) in processed_positions:
-                    # 已处理用淡灰前景
-                    rendered_chars.append("\x1b[38;5;244m" + c + Style.RESET_ALL)
-                else:
-                    rendered_chars.append(Back.YELLOW + c + Style.RESET_ALL)
-        print(Fore.WHITE + f"  行{li+1:>3}: " + Fore.RESET + ''.join(rendered_chars))
-    print(Fore.CYAN + f"未处理位置数: {len(unprocessed)} / 总出现: {len(all_positions)}\n" + Fore.RESET)
+        phon_lbl = tk.Label(frame, text=phonetic,
+                            font=('Consolas', 9),
+                            bg=bg, fg=fg_ph)
+        phon_lbl.pack()
 
-def show_line_with_pointer(line, pos):
-    return (line[:pos] + Back.YELLOW + line[pos] + Style.RESET_ALL + line[pos+1:])
+        if is_poly and options:
+            for w in (frame, char_lbl, phon_lbl):
+                w.configure(cursor='hand2')
+                w.bind('<Button-1>',
+                       lambda e, _li=li, _ci=ci: self._on_cell_click(_li, _ci))
+        else:
+            for w in (frame, char_lbl, phon_lbl):
+                w.bind('<Button-1>',
+                       lambda e, _li=li, _ci=ci: self._set_cursor(_li, _ci + 1))
 
-def choose_readings(lines):
-    tasks = collect_polyphones(lines)
-    if not tasks:
-        print(Fore.GREEN + "没有多音字，直接输出。" + Fore.RESET)
-        return {}
-    # 对同一字的全局选择缓存
-    global_choice = {}
-    per_position_choice = {}
-    # 跟踪某字已处理过的具体位置 (line_idx,char_idx)
-    processed_positions: dict[str, set[tuple[int,int]]] = {}
-    i = 0
-    total = len(tasks)
-    while i < total:
-        t = tasks[i]
-        ch = t['char']
-        line_idx = t['index_line']
-        char_idx = t['index_char']
-        opts = t['options']
-        # 若该字已有全局选择，直接使用
-        if ch in global_choice:
-            per_position_choice[(line_idx, char_idx)] = global_choice[ch]
-            i += 1
-            continue
-        # 自动预览：在未设置全局读音前，只要该字在缓存行出现次数>1，每次到该字都展示上下文
-        total_count = sum(ln.count(ch) for ln in lines)
-        if total_count > 1:
-            pos_set = processed_positions.setdefault(ch, set())
-            show_new_occurrences(ch, lines, pos_set)
-        line_display = show_line_with_pointer(lines[line_idx], char_idx)
-        print("\n" + Fore.CYAN + f"[{i+1}/{total}] 行{line_idx+1} 字『{ch}』: " + Fore.RESET)
-        print(line_display)
-        for oi, o in enumerate(opts, 1):
+        return frame
+
+    def _set_cursor(self, line, col):
+        self.cur_line = line
+        self.cur_col = col
+        self._update_cursor()
+        self.edit_text.focus_set()
+
+    # ── 点击多音字弹出选择 ────────────────────────
+
+    def _on_cell_click(self, li, ci):
+        self._close_popup()
+        info = self.cell_info[li][ci]
+        ch = self.buffer[li][ci]
+        opts = info['options']
+        if not opts:
+            return
+
+        self.cur_line = li
+        self.cur_col = ci + 1
+
+        # 全屏透明遮罩，点击即关闭
+        overlay = tk.Toplevel(self)
+        overlay.overrideredirect(True)
+        overlay.attributes('-alpha', 0.01)
+        overlay.geometry(f'{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0')
+        overlay.bind('<Button-1>', lambda e: self._close_popup())
+        overlay.lift()
+
+        popup = tk.Toplevel(self)
+        popup.overrideredirect(True)
+        popup.configure(bg='white', bd=0)
+        popup.attributes('-topmost', True)
+        self.popup = popup
+        self._overlay = overlay
+
+        # 阴影边框
+        shadow = tk.Frame(popup, bg='#D5D5D5')
+        shadow.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
+        card = tk.Frame(shadow, bg='white', padx=14, pady=10)
+        card.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
+
+        # 标题行
+        title_f = tk.Frame(card, bg='white')
+        title_f.pack(fill=tk.X, pady=(0, 8))
+        tk.Label(title_f, text=ch,
+                 font=('Microsoft YaHei', 18, 'bold'),
+                 bg='white', fg='#F57F17').pack(side=tk.LEFT)
+        tk.Label(title_f, text='  选择读音',
+                 font=('Microsoft YaHei', 10),
+                 bg='white', fg='#9E9E9E').pack(side=tk.LEFT, padx=(4, 0))
+
+        sep = tk.Frame(card, bg='#EEEEEE', height=1)
+        sep.pack(fill=tk.X, pady=(0, 8))
+
+        total = sum(ln.count(ch) for ln in self.buffer)
+
+        for oi, o in enumerate(opts):
             phon = o.get('phonetic') if isinstance(o, dict) else str(o)
-            note = o.get('note') if isinstance(o, dict) else None
-            note_txt = (str(note).strip() if note is not None else '')
-            print(f"  {oi}. " + Style.BRIGHT + Fore.GREEN + f"{phon}" + Style.RESET_ALL)
+            note_raw = o.get('note') if isinstance(o, dict) else None
+            note_txt = format_note(str(note_raw).strip()) if note_raw else ''
+            is_current = (info['phonetic'] == phon)
+
+            row_bg = '#F5F5F5' if is_current else 'white'
+            row = tk.Frame(card, bg=row_bg, padx=8, pady=6,
+                           bd=0, relief=tk.FLAT)
+            row.pack(fill=tk.X, pady=1)
+
+            # 悬停效果
+            def _enter(e, r=row):
+                r.configure(bg='#EEEEEE')
+                for w in r.winfo_children():
+                    try: w.configure(bg='#EEEEEE')
+                    except tk.TclError: pass
+            def _leave(e, r=row, bg=row_bg):
+                r.configure(bg=bg)
+                for w in r.winfo_children():
+                    try: w.configure(bg=bg)
+                    except tk.TclError: pass
+            for w in (row,):
+                w.bind('<Enter>', _enter)
+                w.bind('<Leave>', _leave)
+
+            # 音标
+            phon_lbl = tk.Label(row, text=phon,
+                                font=('Consolas', 12, 'bold'),
+                                bg=row_bg, fg='#5C6BC0',
+                                cursor='hand2')
+            phon_lbl.pack(side=tk.LEFT, padx=(0, 6))
+
+            # 全局应用
+            if total > 1:
+                ga = tk.Label(row, text='全局',
+                              font=('Microsoft YaHei', 8),
+                              bg='#FFF8E1', fg='#F57F17',
+                              padx=4, pady=1, cursor='hand2',
+                              relief=tk.FLAT, bd=1)
+                ga.pack(side=tk.LEFT, padx=(0, 8))
+                ga.bind('<Button-1>',
+                        lambda e, p=phon: (self._apply_reading(li, ci, p, True), 'break')[-1])
+                ga.bind('<Enter>', lambda e, w=ga: w.configure(bg='#FFE082'))
+                ga.bind('<Leave>', lambda e, w=ga: w.configure(bg='#FFF8E1'))
+
+            # 注释
             if note_txt:
-                print_note_block(note_txt)
-        # 交互提示：自动预览已开启，无需手动 v
-        print(Fore.CYAN + "选择序号:" + Style.RESET_ALL + Fore.CYAN + " (a序号 -> 全局; b -> 返回上一个) " + Style.RESET_ALL)
-        user = input('> ').strip().lower()
-        if user == 'b':
-            if i > 0:
-                # 回退到上一个，需要清除之前的选择（若是全局？保持全局不变以免混乱，简化：不回滚全局）
-                i -= 1
-                prev = tasks[i]
-                per_position_choice.pop((prev['index_line'], prev['index_char']), None)
-            else:
-                print('已经是第一个。')
-            continue
-        if user.startswith('a'):
-            num_part = user[1:]
-            if num_part.isdigit():
-                idx = int(num_part)
-                if 1 <= idx <= len(opts):
-                    chosen_item = opts[idx-1]
-                    chosen = chosen_item['phonetic'] if isinstance(chosen_item, dict) else str(chosen_item)
-                    global_choice[ch] = chosen
-                    per_position_choice[(line_idx, char_idx)] = chosen
-                    print(Fore.GREEN + f"已将『{ch}』设为全局读音: {chosen}" + Fore.RESET)
-                    # 全局选择也视为处理过当前行
-                    # 标记当前具体位置已处理
-                    processed_positions.setdefault(ch, set()).add((line_idx, char_idx))
-                    i += 1
-                    continue
-            print(Fore.RED + '格式 a序号 无效。' + Fore.RESET)
-            continue
-        if user.isdigit():
-            idx = int(user)
-            if 1 <= idx <= len(opts):
-                chosen_item = opts[idx-1]
-                chosen = chosen_item['phonetic'] if isinstance(chosen_item, dict) else str(chosen_item)
-                per_position_choice[(line_idx, char_idx)] = chosen
-                processed_positions.setdefault(ch, set()).add((line_idx, char_idx))
-                i += 1
-                continue
-            else:
-                print(Fore.RED + '序号超出范围。' + Fore.RESET)
-                continue
-        print(Fore.RED + '输入无效，请重试。' + Fore.RESET)
-    # 直接返回逐位置选择；全局选择已经在遍历时写入 per_position_choice
-    return per_position_choice
+                tk.Label(row, text=note_txt, fg='#9E9E9E', bg=row_bg,
+                         font=('Microsoft YaHei', 8),
+                         wraplength=360, justify=tk.LEFT,
+                         anchor=tk.W
+                         ).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-def translate_lines(lines, position_choices):
-    out_lines = []
-    for li, line in enumerate(lines):
-        phonetics = []
-        ci = 0
-        L = len(line)
-        while ci < L:
-            ch = line[ci]
-            if ch == '[':
-                # 寻找匹配的 ]，若无则按普通字符处理
-                end = line.find(']', ci + 1)
-                if end != -1:
-                    segment = line[ci:end+1]
-                    phonetics.append(segment)  # 原样保留，不拆分
-                    ci = end + 1
-                    continue
-            # 非方括号或无匹配情况
-            opts = mapping.get(ch)
-            if not opts:
-                phonetics.append(ch)
-            elif len(opts) == 1:
-                only = opts[0]
-                phonetics.append(only['phonetic'] if isinstance(only, dict) else str(only))
-            else:
-                chosen = position_choices.get((li, ci)) if position_choices else None
-                if chosen:
-                    phonetics.append(chosen)
+            # 整行可点击
+            def _bind_click(widget, p=phon):
+                widget.bind('<Button-1>',
+                            lambda e: (self._apply_reading(li, ci, p, False), 'break')[-1])
+            _bind_click(row)
+            _bind_click(phon_lbl)
+
+            for child in row.winfo_children():
+                child.bind('<Enter>', _enter)
+                child.bind('<Leave>', _leave)
+
+        popup.update_idletasks()
+        x = self.winfo_pointerx() - 20
+        y = self.winfo_pointery() + 16
+        pw = popup.winfo_reqwidth()
+        ph = popup.winfo_reqheight()
+        sw = self.winfo_screenwidth()
+        sh = self.winfo_screenheight()
+        if x + pw > sw:
+            x = max(0, sw - pw - 8)
+        if x < 0:
+            x = 4
+        if y + ph > sh:
+            y = max(0, self.winfo_pointery() - ph - 8)
+        popup.geometry(f'+{x}+{y}')
+
+        popup.bind('<Escape>', lambda e: self._close_popup())
+        popup.focus_set()
+
+    def _close_popup(self):
+        if hasattr(self, '_overlay') and self._overlay:
+            try:
+                self._overlay.destroy()
+            except tk.TclError:
+                pass
+            self._overlay = None
+        if self.popup and self.popup.winfo_exists():
+            self.popup.destroy()
+        self.popup = None
+
+    def _apply_reading(self, li, ci, phonetic, global_apply):
+        self._close_popup()
+        # Defer data update + rebuild so ButtonRelease finishes first,
+        # preventing the Text widget from interpreting it as a selection drag.
+        self.after(20, lambda: self._do_apply(li, ci, phonetic, global_apply))
+
+    def _do_apply(self, li, ci, phonetic, global_apply):
+        self._save_undo()
+        if global_apply:
+            ch = self.buffer[li][ci]
+            for _li, (lc, linfo) in enumerate(zip(self.buffer, self.cell_info)):
+                for _ci, (c, info) in enumerate(zip(lc, linfo)):
+                    if c == ch and info['is_poly']:
+                        info['phonetic'] = phonetic
+                        if _li == li and _ci == ci:
+                            info['selected'] = 'manual'
+                        else:
+                            info['selected'] = 'global'
+        else:
+            self.cell_info[li][ci]['phonetic'] = phonetic
+            self.cell_info[li][ci]['selected'] = 'manual'
+        self._rebuild_display()
+        self._refresh_output()
+
+    # ── 输出刷新 ──────────────────────────────────
+
+    def _refresh_output(self):
+        lines = []
+        for line_chars, line_info in zip(self.buffer, self.cell_info):
+            br = self._find_bracket_ranges(line_chars)
+            parts = []
+            bracket_buf = []
+            for ci, (ch, info) in enumerate(zip(line_chars, line_info)):
+                if self._in_bracket(ci, br):
+                    bracket_buf.append(ch)
                 else:
-                    first = opts[0]
-                    phonetics.append(first['phonetic'] if isinstance(first, dict) else str(first))
-            ci += 1
-        # 连接时：保持方括号段不被空格拆分——当前处理下方括号段作为一个整体元素，不做额外处理
-        out_lines.append(' '.join(phonetics))
-    return out_lines
+                    if bracket_buf:
+                        parts.append(''.join(bracket_buf))
+                        bracket_buf = []
+                    parts.append(info['phonetic'])
+            if bracket_buf:
+                parts.append(''.join(bracket_buf))
+            lines.append(' '.join(parts))
+        self.output_text.configure(state=tk.NORMAL)
+        self.output_text.delete('1.0', tk.END)
+        self.output_text.insert(tk.END, '\n'.join(lines))
+        self.output_text.configure(state=tk.DISABLED)
 
-while True:
-    try:
-        s = input()
-    except EOFError:
-        break
-    s = s.rstrip('\n')
-    # 保留空行：原先直接 continue 会丢失换行结构
-    if s == '':
-        raw_lines.append('')
-        continue
-    if s == '/q':
-        break
-    if s in ('/h', '/help'):
-        print(HELP_TEXT)
-        continue
-    if s == '1':
-        if not raw_lines:
-            print(Fore.YELLOW + '没有缓存的行。' + Fore.RESET)
-            continue
-        choices = choose_readings(raw_lines)
-        result_lines = translate_lines(raw_lines, choices)
-        # 输出结果
-        for line, out in zip(raw_lines, result_lines):
-            print(Fore.CYAN + out + Fore.RESET)
-        raw_lines.clear()
-        continue
-    # 普通文本行
-    raw_lines.append(s)
+    # ── 辅助 ─────────────────────────────────────
+
+    def _on_clear(self):
+        self._close_popup()
+        if any(self.buffer[0]) or len(self.buffer) > 1:
+            self._save_undo()
+        self.buffer = [[]]
+        self.cell_info = [[]]
+        self.cur_line = 0
+        self.cur_col = 0
+        self._rebuild_display()
+        self.output_text.configure(state=tk.NORMAL)
+        self.output_text.delete('1.0', tk.END)
+        self.output_text.configure(state=tk.DISABLED)
+
+    def _on_copy(self):
+        text = self.output_text.get('1.0', tk.END).strip()
+        if text:
+            self.clipboard_clear()
+            self.clipboard_append(text)
+            messagebox.showinfo('提示', '结果已复制到剪贴板。')
+        else:
+            messagebox.showinfo('提示', '没有可复制的内容。')
+
+    def _on_help(self):
+        messagebox.showinfo('帮助', (
+            '使用说明：\n\n'
+            '1. 直接在编辑区输入或粘贴汉字文本\n'
+            '2. 每个字实时显示注音\n'
+            '3. 多音字颜色含义：\n'
+            '   · 橙色 = 未手动选择读音\n'
+            '   · 绿色 = 已手动选择读音\n'
+            '   · 蓝色 = 通过「全局」间接选择\n'
+            '4. 点击多音字可弹出面板修改读音\n'
+            '   · 点击「全局」将读音应用到所有同字\n'
+            '5. 点击「复制结果」复制输出到剪贴板\n\n'
+            '方括号 [] 内的内容原样保留，不做转换。\n'
+            'Ctrl+Z 撤回，Ctrl+Y / Ctrl+Shift+Z 重做\n'
+            'Ctrl+C 复制原文，Ctrl+V 粘贴'
+        ))
+
+
+if __name__ == '__main__':
+    _tmp = tk.Tk()
+    _tmp.withdraw()
+    mapping = load_map_from_excel(EXCEL_FILE, note_col_index=EXCEL_NOTE_COL)
+    _tmp.destroy()
+    if mapping is None:
+        sys.exit(1)
+    app = App(mapping)
+    app.mainloop()
