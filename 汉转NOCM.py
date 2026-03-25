@@ -467,6 +467,26 @@ class App(tk.Tk):
         self._update_cursor()
         self.edit_text.focus_set()
 
+    # ── 注释着色辅助 ─────────────────────────────
+
+    def _create_note_widget(self, parent, note_txt, bg):
+        """创建注释控件，《》内文字用独立颜色。"""
+        text_lines = note_txt.split('\n')
+        est_h = sum(max(1, (len(ln) + 44) // 45) for ln in text_lines)
+        tw = tk.Text(parent, wrap=tk.WORD, bg=bg, fg='#9E9E9E',
+                     font=('Microsoft YaHei', 8),
+                     borderwidth=0, highlightthickness=0,
+                     cursor='hand2', height=est_h,
+                     padx=0, pady=0, spacing1=0, spacing3=0)
+        tw.tag_configure('book', foreground='#00897B')
+        for part in re.split(r'(《[^》]*》)', note_txt):
+            if part.startswith('《') and part.endswith('》'):
+                tw.insert(tk.END, part, 'book')
+            else:
+                tw.insert(tk.END, part)
+        tw.configure(state=tk.DISABLED)
+        return tw
+
     # ── 点击多音字弹出选择 ────────────────────────
 
     def _on_cell_click(self, li, ci):
@@ -562,13 +582,10 @@ class App(tk.Tk):
                 ga.bind('<Enter>', lambda e, w=ga: w.configure(bg='#FFE082'))
                 ga.bind('<Leave>', lambda e, w=ga: w.configure(bg='#FFF8E1'))
 
-            # 注释
+            # 注释（《》书名号内容着色）
             if note_txt:
-                tk.Label(row, text=note_txt, fg='#9E9E9E', bg=row_bg,
-                         font=('Microsoft YaHei', 8),
-                         wraplength=360, justify=tk.LEFT,
-                         anchor=tk.W
-                         ).pack(side=tk.LEFT, fill=tk.X, expand=True)
+                note_w = self._create_note_widget(row, note_txt, row_bg)
+                note_w.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
             # 整行可点击
             def _bind_click(widget, p=phon):
