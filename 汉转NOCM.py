@@ -17,23 +17,79 @@ BASE_JSON_GZ_LOCAL = os.path.join(_SCRIPT_DIR, 'base.json.gz')
 EXTRA_JSON_GZ_LOCAL = os.path.join(_SCRIPT_DIR, 'extra.json.gz')
 
 
+def _get_remote_last_modified(url):
+    """获取远程文件的 Last-Modified 时间戳，失败返回 None。"""
+    try:
+        req = urllib.request.Request(url, method='HEAD', headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            lm = resp.headers.get('Last-Modified')
+            if lm:
+                from email.utils import parsedate_to_datetime
+                return parsedate_to_datetime(lm).timestamp()
+    except Exception:
+        pass
+    return None
+
+
+def _needs_update(url, local_path):
+    """比较远程和本地文件时间，判断是否需要更新。"""
+    if not os.path.exists(local_path):
+        return True
+    remote_ts = _get_remote_last_modified(url)
+    if remote_ts is None:
+        return True  # 无法获取远程时间，保守起见尝试下载
+    local_ts = os.path.getmtime(local_path)
+    return remote_ts > local_ts
+
+
 def download_and_update():
     """下载 base.json.gz 和 extra.json.gz 到脚本目录，静默失败。"""
     for url, local_path in [
         (BASE_JSON_GZ_URL, BASE_JSON_GZ_LOCAL),
         (EXTRA_JSON_GZ_URL, EXTRA_JSON_GZ_LOCAL),
     ]:
+        name = os.path.basename(local_path)
         try:
+            # 检查是否需要更新
+            if not _needs_update(url, local_path):
+                print(f'[跳过] {name} 已是最新')
+                continue
+
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=30) as resp:
-                data = resp.read()
+                total = resp.headers.get('Content-Length')
+                total = int(total) if total else 0
+                downloaded = 0
+                chunks = []
+                block_size = 8192
+
+                while True:
+                    chunk = resp.read(block_size)
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    downloaded += len(chunk)
+                    if total > 0:
+                        pct = downloaded * 100 // total
+                        bar = '█' * (pct // 5) + '░' * (20 - pct // 5)
+                        print(f'\r[下载] {name} [{bar}] {pct}%', end='', flush=True)
+                    else:
+                        print(f'\r[下载] {name} {downloaded} bytes', end='', flush=True)
+
+                data = b''.join(chunks)
+                print()  # 换行
+
             tmp_path = local_path + '.tmp'
             with open(tmp_path, 'wb') as f:
                 f.write(data)
             os.replace(tmp_path, local_path)
-            print(f'[更新] {os.path.basename(local_path)} ({len(data)} bytes)')
+            # 设置本地文件时间与远程一致
+            remote_ts = _get_remote_last_modified(url)
+            if remote_ts:
+                os.utime(local_path, (remote_ts, remote_ts))
+            print(f'[完成] {name} ({len(data)} bytes)')
         except Exception as e:
-            print(f'[跳过] {os.path.basename(local_path)} 下载失败: {e}')
+            print(f'\n[跳过] {name} 下载失败: {e}')
 
 
 def load_map_from_json_gz():
@@ -55,7 +111,7 @@ def load_map_from_json_gz():
     mapping: Dict[str, List[Dict[str, Any]]] = {}
     for i, entry in enumerate(base_data):
         ch = entry.get('z', '')
-        phonetic = entry.get('p', '').strip()
+        phonetic = entry.get('y', '').strip()
         if not ch or not phonetic:
             continue
 
