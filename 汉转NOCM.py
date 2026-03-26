@@ -1,57 +1,88 @@
-import pandas as pd
 import sys
 import re
+import os
+import gzip
+import json
+import urllib.request
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 from typing import Dict, List, Any, Optional
 
-# == openpyxl 3.1.x Fill bug workaround ============================
-try:
-    import openpyxl.descriptors.sequence as _seq_mod
-    from openpyxl.styles.fills import Fill as _Fill, PatternFill as _PFill
-    _orig_convert = _seq_mod._convert
-    def _safe_convert(expected_type, value):
+# 在线数据源（xlsx 的替代品）
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_JSON_GZ_URL = 'https://qwert-ly.github.io/xtext/base.json.gz'
+EXTRA_JSON_GZ_URL = 'https://qwert-ly.github.io/xtext/extra.json.gz'
+BASE_JSON_GZ_LOCAL = os.path.join(_SCRIPT_DIR, 'base.json.gz')
+EXTRA_JSON_GZ_LOCAL = os.path.join(_SCRIPT_DIR, 'extra.json.gz')
+
+
+def download_and_update():
+    """下载 base.json.gz 和 extra.json.gz 到脚本目录，静默失败。"""
+    for url, local_path in [
+        (BASE_JSON_GZ_URL, BASE_JSON_GZ_LOCAL),
+        (EXTRA_JSON_GZ_URL, EXTRA_JSON_GZ_LOCAL),
+    ]:
         try:
-            return _orig_convert(expected_type, value)
-        except TypeError:
-            if expected_type is _Fill:
-                return _PFill()
-            raise
-    _seq_mod._convert = _safe_convert
-except Exception:
-    pass
-# ===================================================================
-
-EXCEL_FILE = '上古汉语音节表.xlsx'
-EXCEL_NOTE_COL = 10
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = resp.read()
+            tmp_path = local_path + '.tmp'
+            with open(tmp_path, 'wb') as f:
+                f.write(data)
+            os.replace(tmp_path, local_path)
+            print(f'[更新] {os.path.basename(local_path)} ({len(data)} bytes)')
+        except Exception as e:
+            print(f'[跳过] {os.path.basename(local_path)} 下载失败: {e}')
 
 
-def load_map_from_excel(file_path, sheet_name='字典表', note_col_index=2):
+def load_map_from_json_gz():
+    """从本地 base.json.gz + extra.json.gz 构建映射字典。"""
     try:
-        df = pd.read_excel(file_path, sheet_name=sheet_name, header=None, engine='openpyxl')
-        df = df.dropna(how='any', subset=[0, 1])
-        mapping: Dict[str, List[Dict[str, Any]]] = {}
-        for row in df.itertuples(index=False, name=None):
-            c = str(row[0])
-            p = str(row[1]).strip() if row[1] is not None else ''
-            if not p:
-                continue
-            note = None
-            if note_col_index is not None and isinstance(note_col_index, int) and note_col_index >= 0:
-                if len(row) > note_col_index:
-                    n = row[note_col_index]
-                    if n is not None:
-                        nt = str(n).strip()
-                        if nt and nt.lower() not in ('nan', 'none'):
-                            note = nt
-            mapping.setdefault(c, []).append({'phonetic': p, 'note': note})
-        return mapping
-    except FileNotFoundError:
-        messagebox.showerror('错误', f"找不到 '{file_path}' 文件。\n请确保该文件与脚本位于同一目录中。")
-        return None
+        with gzip.open(BASE_JSON_GZ_LOCAL, 'rt', encoding='utf-8') as f:
+            base_data = json.load(f)
     except Exception as e:
-        messagebox.showerror('错误', f'读取Excel文件时出错: {e}')
+        print(f'[错误] 读取 base.json.gz 失败: {e}')
         return None
+
+    extra_data = None
+    try:
+        with gzip.open(EXTRA_JSON_GZ_LOCAL, 'rt', encoding='utf-8') as f:
+            extra_data = json.load(f)
+    except Exception as e:
+        print(f'[警告] 读取 extra.json.gz 失败 (注释将不可用): {e}')
+
+    mapping: Dict[str, List[Dict[str, Any]]] = {}
+    for i, entry in enumerate(base_data):
+        ch = entry.get('z', '')
+        phonetic = entry.get('p', '').strip()
+        if not ch or not phonetic:
+            continue
+
+        note = None
+        if extra_data and i < len(extra_data):
+            ext = extra_data[i]
+            parts = []
+            d = ext.get('d')
+            if d and isinstance(d, list):
+                if len(d) > 0 and isinstance(d[0], str) and d[0].strip():
+                    parts.append(d[0].strip())
+                if len(d) > 1 and isinstance(d[1], list):
+                    for j, defn in enumerate(d[1], 1):
+                        if defn and isinstance(defn, str):
+                            parts.append(f'{j}{defn}')
+            e_val = ext.get('e')
+            if e_val and isinstance(e_val, str) and e_val.strip():
+                parts.append(e_val.strip())
+            n_val = ext.get('n')
+            if n_val and isinstance(n_val, str) and n_val.strip():
+                parts.append(n_val.strip())
+            if parts:
+                note = '\n'.join(parts)
+
+        mapping.setdefault(ch, []).append({'phonetic': phonetic, 'note': note})
+
+    print(f'[加载] 从 JSON 加载了 {len(mapping)} 个字的音标数据')
+    return mapping if mapping else None
 
 
 def format_note(note_txt):
@@ -83,7 +114,7 @@ class App(tk.Tk):
         self.cur_col = 0
         self.popup: Optional[tk.Toplevel] = None
         self._overlay: Optional[tk.Toplevel] = None
-        self._cell_frames: List[tk.Frame] = []
+        self._line_widgets: List[List[tk.Frame]] = [[]]
         self.undo_stack: list = []
         self.redo_stack: list = []
 
@@ -159,18 +190,86 @@ class App(tk.Tk):
     def _undo(self):
         if not self.undo_stack:
             return
-        self.redo_stack.append(self._snapshot())
-        self._restore_snapshot(self.undo_stack.pop())
-        self._rebuild_display()
+        old_snap = self._snapshot()
+        self.redo_stack.append(old_snap)
+        new_snap = self.undo_stack.pop()
+        self._restore_snapshot(new_snap)
+        if not self._try_incremental_swap(old_snap, new_snap):
+            self._rebuild_display()
         self._refresh_output()
 
     def _redo(self):
         if not self.redo_stack:
             return
-        self.undo_stack.append(self._snapshot())
-        self._restore_snapshot(self.redo_stack.pop())
-        self._rebuild_display()
+        old_snap = self._snapshot()
+        self.undo_stack.append(old_snap)
+        new_snap = self.redo_stack.pop()
+        self._restore_snapshot(new_snap)
+        if not self._try_incremental_swap(old_snap, new_snap):
+            self._rebuild_display()
         self._refresh_output()
+
+    def _try_incremental_swap(self, old_snap, new_snap):
+        """Compare two snapshots; if only 1 char was added or removed
+        on a single line (same line count, no bracket involvement),
+        apply an incremental widget update and return True.
+        Otherwise return False so caller does a full rebuild."""
+        old_buf, old_info = old_snap[0], old_snap[1]
+        new_buf, new_info = new_snap[0], new_snap[1]
+        if len(old_buf) != len(new_buf):
+            return False
+        # find which line(s) differ
+        diff_li = None
+        for i in range(len(old_buf)):
+            if old_buf[i] != new_buf[i]:
+                if diff_li is not None:
+                    return False  # more than one line differs
+                diff_li = i
+        if diff_li is None:
+            # no data change — just move cursor
+            self._update_cursor()
+            return True
+        old_line = old_buf[diff_li]
+        new_line = new_buf[diff_li]
+        delta = len(new_line) - len(old_line)
+        if delta == 1:
+            # one char was inserted — find which position
+            ci = self._find_insert_pos(old_line, new_line)
+            if ci is None:
+                return False
+            if self._line_has_brackets(new_line):
+                return False
+            ch = new_line[ci]
+            info = new_info[diff_li][ci]
+            self._incremental_insert(diff_li, ci, ch, info)
+            self._update_cursor()
+            return True
+        if delta == -1:
+            # one char was deleted — find which position
+            ci = self._find_insert_pos(new_line, old_line)
+            if ci is None:
+                return False
+            if self._line_has_brackets(old_line):
+                return False
+            self._incremental_delete(diff_li, ci)
+            self._update_cursor()
+            return True
+        return False
+
+    @staticmethod
+    def _find_insert_pos(shorter, longer):
+        """Given two lists where longer has exactly one extra element,
+        find the index of the inserted element. Return None if the
+        lists differ in more than just that one insertion."""
+        n = len(shorter)
+        ci = 0
+        while ci < n and shorter[ci] == longer[ci]:
+            ci += 1
+        # verify the rest matches
+        for j in range(ci, n):
+            if shorter[j] != longer[ci + 1 + (j - ci)]:
+                return None
+        return ci
 
     # ── 键盘处理 ──────────────────────────────────
 
@@ -254,10 +353,47 @@ class App(tk.Tk):
             'selected': 'none',
         }
 
+    @staticmethod
+    def _line_has_brackets(line_chars):
+        return any(ch in '[]' for ch in line_chars)
+
+    def _incremental_delete(self, li, ci):
+        """Remove one widget from display at (li, ci). O(line_len)."""
+        self.edit_text.delete(f'{li + 1}.{ci}', f'{li + 1}.{ci + 1}')
+        frame = self._line_widgets[li].pop(ci)
+        frame.destroy()
+        for i in range(ci, len(self._line_widgets[li])):
+            self._line_widgets[li][i]._cell_ci = i
+
+    def _incremental_insert(self, li, ci, ch, info):
+        """Insert one widget into display at (li, ci). O(line_len)."""
+        frame = self._make_cell_widget(
+            ch, info['phonetic'], info['is_poly'],
+            info['options'], li, ci,
+            info.get('selected', 'none'))
+        self.edit_text.window_create(f'{li + 1}.{ci}', window=frame)
+        self._line_widgets[li].insert(ci, frame)
+        for i in range(ci + 1, len(self._line_widgets[li])):
+            self._line_widgets[li][i]._cell_ci = i
+
     def _insert_chars(self, text):
         """Single char insert with undo save."""
         self._save_undo()
-        self._insert_chars_raw(text)
+        ch = text
+        can_incr = (ch not in '[]'
+                    and not self._line_has_brackets(self.buffer[self.cur_line]))
+        self.buffer[self.cur_line].insert(self.cur_col, ch)
+        info = self._make_cell_info(ch)
+        self.cell_info[self.cur_line].insert(self.cur_col, info)
+        if can_incr:
+            self._incremental_insert(self.cur_line, self.cur_col, ch, info)
+            self.cur_col += 1
+            self._update_cursor()
+            self._refresh_output()
+        else:
+            self.cur_col += 1
+            self._rebuild_display()
+            self._refresh_output()
 
     def _insert_chars_raw(self, text):
         """Insert without saving undo (caller must save)."""
@@ -294,37 +430,56 @@ class App(tk.Tk):
         if self.cur_col == 0 and self.cur_line == 0:
             return
         self._save_undo()
-        if self.cur_col > 0:
+        if self.cur_col > 0 and not self._line_has_brackets(self.buffer[self.cur_line]):
+            # Incremental: same-line delete, no brackets
             self.cur_col -= 1
             del self.buffer[self.cur_line][self.cur_col]
             del self.cell_info[self.cur_line][self.cur_col]
-        elif self.cur_line > 0:
-            prev = self.buffer[self.cur_line - 1]
-            prev_info = self.cell_info[self.cur_line - 1]
-            self.cur_col = len(prev)
-            prev.extend(self.buffer[self.cur_line])
-            prev_info.extend(self.cell_info[self.cur_line])
-            del self.buffer[self.cur_line]
-            del self.cell_info[self.cur_line]
-            self.cur_line -= 1
-        self._rebuild_display()
-        self._refresh_output()
+            self._incremental_delete(self.cur_line, self.cur_col)
+            self._update_cursor()
+            self._refresh_output()
+        else:
+            # Full rebuild: cross-line merge or brackets on line
+            if self.cur_col > 0:
+                self.cur_col -= 1
+                del self.buffer[self.cur_line][self.cur_col]
+                del self.cell_info[self.cur_line][self.cur_col]
+            elif self.cur_line > 0:
+                prev = self.buffer[self.cur_line - 1]
+                prev_info = self.cell_info[self.cur_line - 1]
+                self.cur_col = len(prev)
+                prev.extend(self.buffer[self.cur_line])
+                prev_info.extend(self.cell_info[self.cur_line])
+                del self.buffer[self.cur_line]
+                del self.cell_info[self.cur_line]
+                self.cur_line -= 1
+            self._rebuild_display()
+            self._refresh_output()
 
     def _delete_char(self):
         line = self.buffer[self.cur_line]
         if self.cur_col >= len(line) and self.cur_line >= len(self.buffer) - 1:
             return
         self._save_undo()
-        if self.cur_col < len(line):
+        if self.cur_col < len(line) and not self._line_has_brackets(line):
+            # Incremental: same-line delete, no brackets
             del line[self.cur_col]
             del self.cell_info[self.cur_line][self.cur_col]
-        elif self.cur_line < len(self.buffer) - 1:
-            line.extend(self.buffer[self.cur_line + 1])
-            self.cell_info[self.cur_line].extend(self.cell_info[self.cur_line + 1])
-            del self.buffer[self.cur_line + 1]
-            del self.cell_info[self.cur_line + 1]
-        self._rebuild_display()
-        self._refresh_output()
+            self._incremental_delete(self.cur_line, self.cur_col)
+            self._update_cursor()
+            self._refresh_output()
+        else:
+            # Full rebuild: cross-line merge or brackets on line
+            if self.cur_col < len(line):
+                del line[self.cur_col]
+                del self.cell_info[self.cur_line][self.cur_col]
+            elif self.cur_line < len(self.buffer) - 1:
+                line.extend(self.buffer[self.cur_line + 1])
+                self.cell_info[self.cur_line].extend(self.cell_info[self.cur_line + 1])
+                del self.buffer[self.cur_line + 1]
+                del self.cell_info[self.cur_line + 1]
+            self._rebuild_display()
+            self._refresh_output()
 
     def _handle_nav(self, ks):
         if ks == 'Left':
@@ -384,13 +539,13 @@ class App(tk.Tk):
     def _rebuild_display(self):
         self._close_popup()
 
-        # Phase 1: pre-create all new widgets (slow, but no visual change)
-        new_frames = []
-        all_line_frames = []
+        old_frames = [f for line in self._line_widgets for f in line]
+
+        new_line_widgets: List[List[tk.Frame]] = []
         for li, (line_chars, line_info) in enumerate(
                 zip(self.buffer, self.cell_info)):
             br = self._find_bracket_ranges(line_chars)
-            line_frames = []
+            line_frames: List[tk.Frame] = []
             for ci, (ch, info) in enumerate(zip(line_chars, line_info)):
                 in_brk = self._in_bracket(ci, br)
                 if in_brk:
@@ -401,24 +556,20 @@ class App(tk.Tk):
                         info['options'], li, ci,
                         info.get('selected', 'none'))
                 line_frames.append(frame)
-                new_frames.append(frame)
-            all_line_frames.append(line_frames)
+            new_line_widgets.append(line_frames)
 
-        # Phase 2: swap content (fast — just delete + window_create)
-        old_frames = self._cell_frames
         self.edit_text.delete('1.0', tk.END)
-        for li, line_frames in enumerate(all_line_frames):
+        for li, line_frames in enumerate(new_line_widgets):
             for frame in line_frames:
                 self.edit_text.window_create(tk.END, window=frame)
-            if li < len(all_line_frames) - 1:
+            if li < len(new_line_widgets) - 1:
                 self.edit_text.insert(tk.END, '\n')
 
         cursor_idx = f'{self.cur_line + 1}.{self.cur_col}'
         self.edit_text.mark_set(tk.INSERT, cursor_idx)
         self.edit_text.see(cursor_idx)
 
-        # Phase 3: destroy old widgets (cleanup, no visual impact)
-        self._cell_frames = new_frames
+        self._line_widgets = new_line_widgets
         for f in old_frames:
             f.destroy()
 
@@ -449,15 +600,20 @@ class App(tk.Tk):
                             bg=bg, fg=fg_ph)
         phon_lbl.pack()
 
+        frame._cell_li = li
+        frame._cell_ci = ci
+
         if is_poly and options:
             for w in (frame, char_lbl, phon_lbl):
                 w.configure(cursor='hand2')
                 w.bind('<Button-1>',
-                       lambda e, _li=li, _ci=ci: self._on_cell_click(_li, _ci))
+                       lambda e, _f=frame: self._on_cell_click(
+                           _f._cell_li, _f._cell_ci))
         else:
             for w in (frame, char_lbl, phon_lbl):
                 w.bind('<Button-1>',
-                       lambda e, _li=li, _ci=ci: self._set_cursor(_li, _ci + 1))
+                       lambda e, _f=frame: self._set_cursor(
+                           _f._cell_li, _f._cell_ci + 1))
 
         return frame
 
@@ -718,11 +874,16 @@ class App(tk.Tk):
 
 
 if __name__ == '__main__':
-    _tmp = tk.Tk()
-    _tmp.withdraw()
-    mapping = load_map_from_excel(EXCEL_FILE, note_col_index=EXCEL_NOTE_COL)
-    _tmp.destroy()
+    print('正在更新在线音节数据...')
+    download_and_update()
+    print('数据更新完成。')
+
+    mapping = load_map_from_json_gz()
     if mapping is None:
+        _tmp = tk.Tk()
+        _tmp.withdraw()
+        messagebox.showerror('错误', '无法加载音节数据。\n请检查网络连接或确保数据文件存在。')
+        _tmp.destroy()
         sys.exit(1)
     app = App(mapping)
     app.mainloop()
