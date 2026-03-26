@@ -5,8 +5,9 @@ import gzip
 import json
 import urllib.request
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
-from typing import Dict, List, Any, Optional
+import tkinter.font as tkFont
+from tkinter import ttk, messagebox
+from typing import Dict, List, Any, Optional, Tuple
 
 # 在线数据源（xlsx 的替代品）
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -97,6 +98,11 @@ def format_note(note_txt):
 #  GUI — 即编即显，实时注音
 # ====================================================================
 
+_CELL_PAD = 4
+_CELL_GAP = 2
+_LINE_GAP = 10
+_CANVAS_MARGIN = 4
+
 MAX_UNDO = 200
 
 
@@ -114,7 +120,10 @@ class App(tk.Tk):
         self.cur_col = 0
         self.popup: Optional[tk.Toplevel] = None
         self._overlay: Optional[tk.Toplevel] = None
-        self._line_widgets: List[List[tk.Frame]] = [[]]
+        self._cell_rects: List[List[Tuple[int, int, int, int]]] = [[]]
+        self._line_y: List[int] = [_CANVAS_MARGIN]
+        self._cursor_id = None
+        self._last_canvas_w = 0
         self.undo_stack: list = []
         self.redo_stack: list = []
 
@@ -128,8 +137,6 @@ class App(tk.Tk):
 
         btn = ttk.Frame(main)
         btn.pack(fill=tk.X, pady=(0, 4))
-        ttk.Button(btn, text='撤回', command=self._undo).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(btn, text='重做', command=self._redo).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(btn, text='清空', command=self._on_clear).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(btn, text='帮助', command=self._on_help).pack(side=tk.LEFT)
         ttk.Button(btn, text='复制结果', command=self._on_copy).pack(side=tk.RIGHT)
@@ -140,32 +147,26 @@ class App(tk.Tk):
         edit_inner = ttk.Frame(edit_lf)
         edit_inner.pack(fill=tk.BOTH, expand=True)
 
-        self.edit_text = tk.Text(
-            edit_inner, wrap=tk.WORD,
-            bg='#FAFAFA', relief=tk.FLAT,
-            font=('Microsoft YaHei', 12),
-            spacing1=4, spacing3=4,
-            insertwidth=3, insertbackground='#5C6BC0')
+        self.canvas = tk.Canvas(edit_inner, bg='#FAFAFA',
+                                highlightthickness=0,
+                                yscrollincrement=20)
         edit_scroll = ttk.Scrollbar(edit_inner, orient=tk.VERTICAL,
-                                     command=self.edit_text.yview)
-        self.edit_text.configure(yscrollcommand=edit_scroll.set)
-        self.edit_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+                                     command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=edit_scroll.set)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         edit_scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.edit_text.bind('<Key>', self._on_key)
-        self.edit_text.bind('<<Paste>>', self._on_paste)
-        self.edit_text.bind('<Button-1>', self._on_text_click)
-        self.edit_text.bind('<B1-Motion>', lambda e: 'break')
-        self.edit_text.bind('<Double-Button-1>', lambda e: 'break')
-        self.edit_text.bind('<Triple-Button-1>', lambda e: 'break')
-        self.edit_text.focus_set()
+        self._char_font = tkFont.Font(family='Microsoft YaHei', size=13)
+        self._phon_font = tkFont.Font(family='Consolas', size=9)
+        self._char_h = self._char_font.metrics('linespace')
+        self._phon_h = self._phon_font.metrics('linespace')
+        self._cell_h = self._char_h + self._phon_h + _CELL_PAD * 2
 
-        out_lf = ttk.LabelFrame(main, text='输出结果', padding=5)
-        out_lf.pack(fill=tk.X, pady=(4, 0))
-        self.output_text = scrolledtext.ScrolledText(
-            out_lf, wrap=tk.WORD, height=4,
-            font=('Consolas', 11), state=tk.DISABLED)
-        self.output_text.pack(fill=tk.BOTH, expand=True)
+        self.canvas.bind('<Key>', self._on_key)
+        self.canvas.bind('<Button-1>', self._on_canvas_click)
+        self.canvas.bind('<MouseWheel>', self._on_mousewheel)
+        self.canvas.bind('<Configure>', self._on_configure)
+        self.canvas.focus_set()
 
     # ── 撤回 / 重做 ──────────────────────────────
 
@@ -188,88 +189,17 @@ class App(tk.Tk):
         self.redo_stack.clear()
 
     def _undo(self):
-        if not self.undo_stack:
-            return
-        old_snap = self._snapshot()
-        self.redo_stack.append(old_snap)
-        new_snap = self.undo_stack.pop()
-        self._restore_snapshot(new_snap)
-        if not self._try_incremental_swap(old_snap, new_snap):
-            self._rebuild_display()
-        self._refresh_output()
+        self._do_undo_redo(self.undo_stack, self.redo_stack)
 
     def _redo(self):
-        if not self.redo_stack:
+        self._do_undo_redo(self.redo_stack, self.undo_stack)
+
+    def _do_undo_redo(self, src, dst):
+        if not src:
             return
-        old_snap = self._snapshot()
-        self.undo_stack.append(old_snap)
-        new_snap = self.redo_stack.pop()
-        self._restore_snapshot(new_snap)
-        if not self._try_incremental_swap(old_snap, new_snap):
-            self._rebuild_display()
-        self._refresh_output()
-
-    def _try_incremental_swap(self, old_snap, new_snap):
-        """Compare two snapshots; if only 1 char was added or removed
-        on a single line (same line count, no bracket involvement),
-        apply an incremental widget update and return True.
-        Otherwise return False so caller does a full rebuild."""
-        old_buf, old_info = old_snap[0], old_snap[1]
-        new_buf, new_info = new_snap[0], new_snap[1]
-        if len(old_buf) != len(new_buf):
-            return False
-        # find which line(s) differ
-        diff_li = None
-        for i in range(len(old_buf)):
-            if old_buf[i] != new_buf[i]:
-                if diff_li is not None:
-                    return False  # more than one line differs
-                diff_li = i
-        if diff_li is None:
-            # no data change — just move cursor
-            self._update_cursor()
-            return True
-        old_line = old_buf[diff_li]
-        new_line = new_buf[diff_li]
-        delta = len(new_line) - len(old_line)
-        if delta == 1:
-            # one char was inserted — find which position
-            ci = self._find_insert_pos(old_line, new_line)
-            if ci is None:
-                return False
-            if self._line_has_brackets(new_line):
-                return False
-            ch = new_line[ci]
-            info = new_info[diff_li][ci]
-            self._incremental_insert(diff_li, ci, ch, info)
-            self._update_cursor()
-            return True
-        if delta == -1:
-            # one char was deleted — find which position
-            ci = self._find_insert_pos(new_line, old_line)
-            if ci is None:
-                return False
-            if self._line_has_brackets(old_line):
-                return False
-            self._incremental_delete(diff_li, ci)
-            self._update_cursor()
-            return True
-        return False
-
-    @staticmethod
-    def _find_insert_pos(shorter, longer):
-        """Given two lists where longer has exactly one extra element,
-        find the index of the inserted element. Return None if the
-        lists differ in more than just that one insertion."""
-        n = len(shorter)
-        ci = 0
-        while ci < n and shorter[ci] == longer[ci]:
-            ci += 1
-        # verify the rest matches
-        for j in range(ci, n):
-            if shorter[j] != longer[ci + 1 + (j - ci)]:
-                return None
-        return ci
+        dst.append(self._snapshot())
+        self._restore_snapshot(src.pop())
+        self._rebuild_display()
 
     # ── 键盘处理 ──────────────────────────────────
 
@@ -278,7 +208,8 @@ class App(tk.Tk):
         if ctrl:
             k = event.keysym.lower()
             if k == 'v':
-                return  # let <<Paste>> handle
+                self._on_paste()
+                return 'break'
             if k == 'c':
                 self._copy_raw()
                 return 'break'
@@ -315,7 +246,7 @@ class App(tk.Tk):
 
         return 'break'
 
-    def _on_paste(self, event):
+    def _on_paste(self, event=None):
         try:
             text = self.clipboard_get()
         except tk.TclError:
@@ -325,17 +256,40 @@ class App(tk.Tk):
             self._insert_chars_raw(text)
         return 'break'
 
-    def _on_text_click(self, event):
-        self.after_idle(self._sync_cursor)
+    def _on_canvas_click(self, event):
+        self.canvas.focus_set()
+        cx = self.canvas.canvasx(event.x)
+        cy = self.canvas.canvasy(event.y)
+        for li, line_rects in enumerate(self._cell_rects):
+            for ci, (x1, y1, x2, y2) in enumerate(line_rects):
+                if x1 <= cx <= x2 and y1 <= cy <= y2:
+                    info = self.cell_info[li][ci]
+                    br = self._find_bracket_ranges(self.buffer[li])
+                    if info['is_poly'] and info['options'] and not self._in_bracket(ci, br):
+                        self._on_cell_click(li, ci)
+                        return
+                    self.cur_line = li
+                    self.cur_col = min(ci + 1, len(self.buffer[li]))
+                    self._update_cursor()
+                    return
+        best_li = 0
+        for i, ly in enumerate(self._line_y):
+            if cy >= ly:
+                best_li = i
+        best_li = min(best_li, len(self.buffer) - 1)
+        self.cur_line = best_li
+        self.cur_col = len(self.buffer[best_li])
+        self._update_cursor()
 
-    def _sync_cursor(self):
-        try:
-            idx = self.edit_text.index(tk.INSERT)
-            ln, col = idx.split('.')
-            self.cur_line = max(0, min(int(ln) - 1, len(self.buffer) - 1))
-            self.cur_col = max(0, min(int(col), len(self.buffer[self.cur_line])))
-        except (ValueError, IndexError):
-            pass
+    def _on_mousewheel(self, event):
+        if event.delta > 0 and self.canvas.yview()[0] <= 0:
+            return
+        self.canvas.yview_scroll(-event.delta // 120, 'units')
+
+    def _on_configure(self, event):
+        if event.width != self._last_canvas_w:
+            self._last_canvas_w = event.width
+            self._rebuild_display()
 
     # ── 缓冲区操作 ────────────────────────────────
 
@@ -353,47 +307,12 @@ class App(tk.Tk):
             'selected': 'none',
         }
 
-    @staticmethod
-    def _line_has_brackets(line_chars):
-        return any(ch in '[]' for ch in line_chars)
-
-    def _incremental_delete(self, li, ci):
-        """Remove one widget from display at (li, ci). O(line_len)."""
-        self.edit_text.delete(f'{li + 1}.{ci}', f'{li + 1}.{ci + 1}')
-        frame = self._line_widgets[li].pop(ci)
-        frame.destroy()
-        for i in range(ci, len(self._line_widgets[li])):
-            self._line_widgets[li][i]._cell_ci = i
-
-    def _incremental_insert(self, li, ci, ch, info):
-        """Insert one widget into display at (li, ci). O(line_len)."""
-        frame = self._make_cell_widget(
-            ch, info['phonetic'], info['is_poly'],
-            info['options'], li, ci,
-            info.get('selected', 'none'))
-        self.edit_text.window_create(f'{li + 1}.{ci}', window=frame)
-        self._line_widgets[li].insert(ci, frame)
-        for i in range(ci + 1, len(self._line_widgets[li])):
-            self._line_widgets[li][i]._cell_ci = i
-
     def _insert_chars(self, text):
-        """Single char insert with undo save."""
         self._save_undo()
-        ch = text
-        can_incr = (ch not in '[]'
-                    and not self._line_has_brackets(self.buffer[self.cur_line]))
-        self.buffer[self.cur_line].insert(self.cur_col, ch)
-        info = self._make_cell_info(ch)
-        self.cell_info[self.cur_line].insert(self.cur_col, info)
-        if can_incr:
-            self._incremental_insert(self.cur_line, self.cur_col, ch, info)
-            self.cur_col += 1
-            self._update_cursor()
-            self._refresh_output()
-        else:
-            self.cur_col += 1
-            self._rebuild_display()
-            self._refresh_output()
+        self.buffer[self.cur_line].insert(self.cur_col, text)
+        self.cell_info[self.cur_line].insert(self.cur_col, self._make_cell_info(text))
+        self.cur_col += 1
+        self._rebuild_display()
 
     def _insert_chars_raw(self, text):
         """Insert without saving undo (caller must save)."""
@@ -408,7 +327,6 @@ class App(tk.Tk):
                                                      self._make_cell_info(ch))
                 self.cur_col += 1
         self._rebuild_display()
-        self._refresh_output()
 
     def _do_newline(self):
         rest = self.buffer[self.cur_line][self.cur_col:]
@@ -424,62 +342,40 @@ class App(tk.Tk):
         self._save_undo()
         self._do_newline()
         self._rebuild_display()
-        self._refresh_output()
 
     def _backspace(self):
         if self.cur_col == 0 and self.cur_line == 0:
             return
         self._save_undo()
-        if self.cur_col > 0 and not self._line_has_brackets(self.buffer[self.cur_line]):
-            # Incremental: same-line delete, no brackets
+        if self.cur_col > 0:
             self.cur_col -= 1
             del self.buffer[self.cur_line][self.cur_col]
             del self.cell_info[self.cur_line][self.cur_col]
-            self._incremental_delete(self.cur_line, self.cur_col)
-            self._update_cursor()
-            self._refresh_output()
-        else:
-            # Full rebuild: cross-line merge or brackets on line
-            if self.cur_col > 0:
-                self.cur_col -= 1
-                del self.buffer[self.cur_line][self.cur_col]
-                del self.cell_info[self.cur_line][self.cur_col]
-            elif self.cur_line > 0:
-                prev = self.buffer[self.cur_line - 1]
-                prev_info = self.cell_info[self.cur_line - 1]
-                self.cur_col = len(prev)
-                prev.extend(self.buffer[self.cur_line])
-                prev_info.extend(self.cell_info[self.cur_line])
-                del self.buffer[self.cur_line]
-                del self.cell_info[self.cur_line]
-                self.cur_line -= 1
-            self._rebuild_display()
-            self._refresh_output()
+        elif self.cur_line > 0:
+            prev = self.buffer[self.cur_line - 1]
+            prev_info = self.cell_info[self.cur_line - 1]
+            self.cur_col = len(prev)
+            prev.extend(self.buffer[self.cur_line])
+            prev_info.extend(self.cell_info[self.cur_line])
+            del self.buffer[self.cur_line]
+            del self.cell_info[self.cur_line]
+            self.cur_line -= 1
+        self._rebuild_display()
 
     def _delete_char(self):
         line = self.buffer[self.cur_line]
         if self.cur_col >= len(line) and self.cur_line >= len(self.buffer) - 1:
             return
         self._save_undo()
-        if self.cur_col < len(line) and not self._line_has_brackets(line):
-            # Incremental: same-line delete, no brackets
+        if self.cur_col < len(line):
             del line[self.cur_col]
             del self.cell_info[self.cur_line][self.cur_col]
-            self._incremental_delete(self.cur_line, self.cur_col)
-            self._update_cursor()
-            self._refresh_output()
-        else:
-            # Full rebuild: cross-line merge or brackets on line
-            if self.cur_col < len(line):
-                del line[self.cur_col]
-                del self.cell_info[self.cur_line][self.cur_col]
-            elif self.cur_line < len(self.buffer) - 1:
-                line.extend(self.buffer[self.cur_line + 1])
-                self.cell_info[self.cur_line].extend(self.cell_info[self.cur_line + 1])
-                del self.buffer[self.cur_line + 1]
-                del self.cell_info[self.cur_line + 1]
-            self._rebuild_display()
-            self._refresh_output()
+        elif self.cur_line < len(self.buffer) - 1:
+            line.extend(self.buffer[self.cur_line + 1])
+            self.cell_info[self.cur_line].extend(self.cell_info[self.cur_line + 1])
+            del self.buffer[self.cur_line + 1]
+            del self.cell_info[self.cur_line + 1]
+        self._rebuild_display()
 
     def _handle_nav(self, ks):
         if ks == 'Left':
@@ -509,9 +405,34 @@ class App(tk.Tk):
         self._update_cursor()
 
     def _update_cursor(self):
-        cursor_idx = f'{self.cur_line + 1}.{self.cur_col}'
-        self.edit_text.mark_set(tk.INSERT, cursor_idx)
-        self.edit_text.see(cursor_idx)
+        if self._cursor_id:
+            self.canvas.delete(self._cursor_id)
+            self._cursor_id = None
+        li, ci = self.cur_line, self.cur_col
+        rects = self._cell_rects[li] if li < len(self._cell_rects) else []
+        if ci < len(rects):
+            x, y1, y2 = rects[ci][0], rects[ci][1], rects[ci][3]
+        elif rects:
+            x, y1, y2 = rects[-1][2] + 1, rects[-1][1], rects[-1][3]
+        else:
+            ly = self._line_y[li] if li < len(self._line_y) else _CANVAS_MARGIN
+            x, y1, y2 = _CANVAS_MARGIN, ly, ly + self._cell_h
+        self._cursor_id = self.canvas.create_line(
+            x, y1, x, y2, width=3, fill='#5C6BC0')
+        # Scroll to keep cursor visible
+        sr = self.canvas.cget('scrollregion')
+        if sr:
+            parts = sr.split()
+            if len(parts) == 4:
+                total_h = float(parts[3])
+                canvas_h = self.canvas.winfo_height()
+                if total_h > canvas_h > 0:
+                    vis = self.canvas.yview()
+                    ft, fb = y1 / total_h, y2 / total_h
+                    if ft < vis[0]:
+                        self.canvas.yview_moveto(max(0, ft - 0.02))
+                    elif fb > vis[1]:
+                        self.canvas.yview_moveto(fb - (vis[1] - vis[0]) + 0.02)
 
     def _copy_raw(self):
         raw = '\n'.join(''.join(ln) for ln in self.buffer)
@@ -538,90 +459,66 @@ class App(tk.Tk):
 
     def _rebuild_display(self):
         self._close_popup()
+        self.canvas.delete('all')
+        self._cell_rects = []
+        self._line_y = []
+        self._cursor_id = None
+        canvas_w = max(self.canvas.winfo_width(), 200)
+        ch_font, ph_font = self._char_font, self._phon_font
+        ch_h, ph_h = self._char_h, self._phon_h
+        cell_h = self._cell_h
+        y = _CANVAS_MARGIN
 
-        old_frames = [f for line in self._line_widgets for f in line]
-
-        new_line_widgets: List[List[tk.Frame]] = []
         for li, (line_chars, line_info) in enumerate(
                 zip(self.buffer, self.cell_info)):
             br = self._find_bracket_ranges(line_chars)
-            line_frames: List[tk.Frame] = []
+            line_rects: list = []
+            x = _CANVAS_MARGIN
+            self._line_y.append(y)
+
             for ci, (ch, info) in enumerate(zip(line_chars, line_info)):
                 in_brk = self._in_bracket(ci, br)
+                phon = ch if in_brk else info['phonetic']
+                cw = max(ch_font.measure(ch), ph_font.measure(phon)) + _CELL_PAD * 2
+                if x + cw > canvas_w - _CANVAS_MARGIN and x > _CANVAS_MARGIN:
+                    x = _CANVAS_MARGIN
+                    y += cell_h + _CELL_GAP
+
                 if in_brk:
-                    frame = self._make_cell_widget(ch, ch, False, None, li, ci)
+                    fg_ch, fg_ph, bg, outline = '#9E9E9E', '#9E9E9E', '', ''
+                elif info['is_poly']:
+                    sel = info.get('selected', 'none')
+                    if sel == 'manual':
+                        bg, fg_ch = '#E8F5E9', '#2E7D32'
+                    elif sel == 'global':
+                        bg, fg_ch = '#E3F2FD', '#1565C0'
+                    else:
+                        bg, fg_ch = '#FFF8E1', '#F57F17'
+                    fg_ph, outline = '#5C6BC0', '#DDD'
                 else:
-                    frame = self._make_cell_widget(
-                        ch, info['phonetic'], info['is_poly'],
-                        info['options'], li, ci,
-                        info.get('selected', 'none'))
-                line_frames.append(frame)
-            new_line_widgets.append(line_frames)
+                    fg_ch, fg_ph, bg, outline = '#37474F', '#B0BEC5', '', ''
 
-        self.edit_text.delete('1.0', tk.END)
-        for li, line_frames in enumerate(new_line_widgets):
-            for frame in line_frames:
-                self.edit_text.window_create(tk.END, window=frame)
-            if li < len(new_line_widgets) - 1:
-                self.edit_text.insert(tk.END, '\n')
+                if bg:
+                    self.canvas.create_rectangle(
+                        x, y, x + cw, y + cell_h,
+                        fill=bg, outline=outline, width=1)
+                mid = x + cw / 2
+                self.canvas.create_text(
+                    mid, y + _CELL_PAD, text=ch,
+                    font=ch_font, fill=fg_ch, anchor='n')
+                self.canvas.create_text(
+                    mid, y + _CELL_PAD + ch_h, text=phon,
+                    font=ph_font, fill=fg_ph, anchor='n')
 
-        cursor_idx = f'{self.cur_line + 1}.{self.cur_col}'
-        self.edit_text.mark_set(tk.INSERT, cursor_idx)
-        self.edit_text.see(cursor_idx)
+                line_rects.append((x, y, x + cw, y + cell_h))
+                x += cw + _CELL_GAP
 
-        self._line_widgets = new_line_widgets
-        for f in old_frames:
-            f.destroy()
+            self._cell_rects.append(line_rects)
+            y += cell_h + _LINE_GAP
 
-    def _make_cell_widget(self, char_disp, phonetic, is_poly, options, li, ci,
-                          selected='none'):
-        if is_poly:
-            if selected == 'manual':
-                bg, fg_ch = '#E8F5E9', '#2E7D32'
-            elif selected == 'global':
-                bg, fg_ch = '#E3F2FD', '#1565C0'
-            else:
-                bg, fg_ch = '#FFF8E1', '#F57F17'
-            fg_ph = '#5C6BC0'
-            relief = tk.RIDGE
-        else:
-            bg, fg_ch, fg_ph = '#FAFAFA', '#37474F', '#B0BEC5'
-            relief = tk.FLAT
-        frame = tk.Frame(self.edit_text, bg=bg, padx=1, pady=1,
-                         bd=1, relief=relief)
-
-        char_lbl = tk.Label(frame, text=char_disp,
-                            font=('Microsoft YaHei', 13),
-                            bg=bg, fg=fg_ch)
-        char_lbl.pack()
-
-        phon_lbl = tk.Label(frame, text=phonetic,
-                            font=('Consolas', 9),
-                            bg=bg, fg=fg_ph)
-        phon_lbl.pack()
-
-        frame._cell_li = li
-        frame._cell_ci = ci
-
-        if is_poly and options:
-            for w in (frame, char_lbl, phon_lbl):
-                w.configure(cursor='hand2')
-                w.bind('<Button-1>',
-                       lambda e, _f=frame: self._on_cell_click(
-                           _f._cell_li, _f._cell_ci))
-        else:
-            for w in (frame, char_lbl, phon_lbl):
-                w.bind('<Button-1>',
-                       lambda e, _f=frame: self._set_cursor(
-                           _f._cell_li, _f._cell_ci + 1))
-
-        return frame
-
-    def _set_cursor(self, line, col):
-        self.cur_line = line
-        self.cur_col = col
+        self.canvas.configure(
+            scrollregion=(0, 0, canvas_w, max(y + _CANVAS_MARGIN, 1)))
         self._update_cursor()
-        self.edit_text.focus_set()
 
     # ── 注释着色辅助 ─────────────────────────────
 
@@ -782,6 +679,8 @@ class App(tk.Tk):
         if self.popup and self.popup.winfo_exists():
             self.popup.destroy()
         self.popup = None
+        if hasattr(self, 'canvas'):
+            self.canvas.focus_set()
 
     def _apply_reading(self, li, ci, phonetic, global_apply):
         self._close_popup()
@@ -805,11 +704,10 @@ class App(tk.Tk):
             self.cell_info[li][ci]['phonetic'] = phonetic
             self.cell_info[li][ci]['selected'] = 'manual'
         self._rebuild_display()
-        self._refresh_output()
 
-    # ── 输出刷新 ──────────────────────────────────
+    # ── 辅助 ─────────────────────────────────────
 
-    def _refresh_output(self):
+    def _get_result(self):
         lines = []
         for line_chars, line_info in zip(self.buffer, self.cell_info):
             br = self._find_bracket_ranges(line_chars)
@@ -826,12 +724,7 @@ class App(tk.Tk):
             if bracket_buf:
                 parts.append(''.join(bracket_buf))
             lines.append(' '.join(parts))
-        self.output_text.configure(state=tk.NORMAL)
-        self.output_text.delete('1.0', tk.END)
-        self.output_text.insert(tk.END, '\n'.join(lines))
-        self.output_text.configure(state=tk.DISABLED)
-
-    # ── 辅助 ─────────────────────────────────────
+        return '\n'.join(lines).strip()
 
     def _on_clear(self):
         self._close_popup()
@@ -842,12 +735,9 @@ class App(tk.Tk):
         self.cur_line = 0
         self.cur_col = 0
         self._rebuild_display()
-        self.output_text.configure(state=tk.NORMAL)
-        self.output_text.delete('1.0', tk.END)
-        self.output_text.configure(state=tk.DISABLED)
 
     def _on_copy(self):
-        text = self.output_text.get('1.0', tk.END).strip()
+        text = self._get_result()
         if text:
             self.clipboard_clear()
             self.clipboard_append(text)
