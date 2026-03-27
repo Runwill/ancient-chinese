@@ -1,0 +1,103 @@
+"""侧边栏：多音字读音选择面板。"""
+
+import tkinter as tk
+
+from constants import COLORS, format_note
+from widgets import ScrollableFrame, bind_hover, bind_mousewheel
+
+
+def build_placeholder(sidebar):
+    """构建占位内容（无多音字被选中时显示）"""
+    for w in sidebar.winfo_children():
+        w.destroy()
+    box = tk.Frame(sidebar, bg=COLORS['bg_sidebar'])
+    box.pack(fill=tk.BOTH, expand=True)
+    center = tk.Frame(box, bg=COLORS['bg_sidebar'])
+    center.place(relx=0.5, rely=0.5, anchor='center')
+    tk.Label(center, text='📝', font=('Segoe UI Emoji', 32),
+             bg=COLORS['bg_sidebar']).pack()
+    tk.Label(center, text='点击多音字\n选择读音',
+             font=('Microsoft YaHei', 11),
+             bg=COLORS['bg_sidebar'], fg=COLORS['text_muted'],
+             justify='center').pack(pady=(12, 0))
+
+
+def build_options(sidebar, li, ci, char, info, buffer, on_apply):
+    """构建读音选项面板。on_apply(li, ci, phonetic, global_apply)"""
+    for w in sidebar.winfo_children():
+        w.destroy()
+    opts = info['options']
+    if not opts:
+        build_placeholder(sidebar)
+        return
+
+    # 头部
+    hdr = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16, pady=16)
+    hdr.pack(fill=tk.X)
+    row = tk.Frame(hdr, bg=COLORS['bg_sidebar'])
+    row.pack(fill=tk.X)
+    tk.Label(row, text=char, font=('Microsoft YaHei', 28, 'bold'),
+             bg=COLORS['bg_sidebar'], fg=COLORS['poly_orange']).pack(side=tk.LEFT)
+    tk.Label(row, text='选择读音', font=('Microsoft YaHei', 11),
+             bg=COLORS['bg_sidebar'], fg=COLORS['text_secondary']
+             ).pack(side=tk.LEFT, padx=(12, 0), pady=(10, 0))
+
+    tk.Frame(sidebar, bg=COLORS['border'], height=1).pack(fill=tk.X, padx=16)
+
+    total = sum(ln.count(char) for ln in buffer)
+
+    sf = ScrollableFrame(sidebar, bg=COLORS['bg_sidebar'])
+    sf.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+    for o in opts:
+        _build_card(sf.inner, o, info, li, ci, total, on_apply)
+    bind_mousewheel(sf.inner, sf.on_mousewheel)
+    sf.canvas.bind('<MouseWheel>', sf.on_mousewheel)
+
+
+def _build_card(parent, opt, info, li, ci, total, on_apply):
+    """构建单个读音选项卡片"""
+    phon = opt.get('phonetic') if isinstance(opt, dict) else str(opt)
+    note_raw = opt.get('note') if isinstance(opt, dict) else None
+    note_txt = format_note(str(note_raw).strip()) if note_raw else ''
+    is_cur = info['phonetic'] == phon
+
+    bg = COLORS['accent_light'] if is_cur else COLORS['bg_card']
+    border = COLORS['accent'] if is_cur else COLORS['border']
+
+    card = tk.Frame(parent, bg=bg, highlightbackground=border,
+                    highlightthickness=1, padx=12, pady=10)
+    card.pack(fill=tk.X, pady=4, padx=4)
+
+    row = tk.Frame(card, bg=bg)
+    row.pack(fill=tk.X)
+
+    lbl = tk.Label(row, text=phon, font=('Consolas', 14, 'bold'),
+                   bg=bg, fg=COLORS['accent'], cursor='hand2')
+    lbl.pack(side=tk.LEFT)
+
+    if is_cur:
+        tk.Label(row, text='✓ 当前', font=('Microsoft YaHei', 8),
+                 bg=bg, fg=COLORS['poly_green']).pack(side=tk.LEFT, padx=(8, 0))
+
+    if total > 1:
+        gb = tk.Label(row, text='全局应用', font=('Microsoft YaHei', 8),
+                      bg=COLORS['poly_orange_bg'], fg=COLORS['poly_orange'],
+                      padx=6, pady=2, cursor='hand2')
+        gb.pack(side=tk.RIGHT)
+        gb.bind('<Button-1>', lambda e, p=phon: on_apply(li, ci, p, True))
+        gb.bind('<Enter>', lambda e: gb.configure(bg='#FEF3C7'))
+        gb.bind('<Leave>', lambda e: gb.configure(bg=COLORS['poly_orange_bg']))
+
+    if note_txt:
+        nl = tk.Label(card, text=note_txt, font=('Microsoft YaHei', 9),
+                      bg=bg, fg=COLORS['text_muted'],
+                      wraplength=220, justify='left', anchor='w')
+        nl.pack(fill=tk.X, pady=(6, 0))
+        nl.bind('<Button-1>', lambda e, p=phon: on_apply(li, ci, p, False))
+
+    click = lambda e, p=phon: on_apply(li, ci, p, False)
+    card.bind('<Button-1>', click)
+    lbl.bind('<Button-1>', click)
+
+    if not is_cur:
+        bind_hover(card, bg)

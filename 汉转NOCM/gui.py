@@ -1,26 +1,16 @@
-"""GUI 模块：汉字转 NOCM 音标的可视化编辑器。"""
+"""GUI 模块：汉字转 NOCM 音标的可视化编辑器（现代化 UI）。"""
 
-import re
 import tkinter as tk
 import tkinter.font as tkFont
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 from typing import List, Optional, Tuple
 
-
-def format_note(note_txt):
-    if not note_txt:
-        return note_txt
-    s = note_txt.strip()
-    s = re.sub(r'(?<!^)(?<!\n)(\d+)(?=[\u4e00-\u9fff])', r'\n\1', s)
-    return s
-
-
-_CELL_PAD = 4
-_CELL_GAP = 2
-_LINE_GAP = 10
-_CANVAS_MARGIN = 4
-
-MAX_UNDO = 200
+from constants import (COLORS, _CELL_PAD, _CELL_GAP,
+                       _LINE_GAP, _CANVAS_MARGIN, MAX_UNDO)
+from widgets import ModernButton
+import draft_manager
+import sidebar_drafts
+import sidebar_options
 
 
 class App(tk.Tk):
@@ -28,53 +18,106 @@ class App(tk.Tk):
         super().__init__()
         self.mapping = mapping
         self.title('汉字转 NOCM 音标')
-        self.geometry('960x680')
-        self.minsize(720, 480)
+        self.geometry('1200x720')
+        self.minsize(900, 600)
+        self.configure(bg=COLORS['bg_main'])
 
         self.buffer: List[List[str]] = [[]]
         self.cell_info: List[List[dict]] = [[]]
         self.cur_line = 0
         self.cur_col = 0
-        self.popup: Optional[tk.Toplevel] = None
-        self._overlay: Optional[tk.Toplevel] = None
         self._cell_rects: List[List[Tuple[int, int, int, int]]] = [[]]
         self._line_y: List[int] = [_CANVAS_MARGIN]
         self._cursor_id = None
         self._last_canvas_w = 0
         self.undo_stack: list = []
         self.redo_stack: list = []
+        
+        # 当前选中的多音字信息（用于右侧边栏）
+        self._selected_poly = None  # (line_idx, col_idx)
+        # 当前文稿文件名（None表示新文稿）
+        self._current_draft: Optional[str] = None
+        # 未保存标记
+        self._dirty = False
 
         self._build_ui()
 
     # ── 构建界面 ──────────────────────────────────
 
     def _build_ui(self):
-        main = ttk.Frame(self, padding=10)
+        # 主容器
+        main = tk.Frame(self, bg=COLORS['bg_main'], padx=20, pady=16)
         main.pack(fill=tk.BOTH, expand=True)
+        
+        # ── 顶部标题栏 ──
+        header = tk.Frame(main, bg=COLORS['bg_main'])
+        header.pack(fill=tk.X, pady=(0, 16))
+        
+        # 标题
+        title_frame = tk.Frame(header, bg=COLORS['bg_main'])
+        title_frame.pack(side=tk.LEFT)
+        tk.Label(title_frame, text='汉字转 NOCM 音标',
+                font=('Microsoft YaHei', 18, 'bold'),
+                bg=COLORS['bg_main'], fg=COLORS['text_primary']).pack(side=tk.LEFT)
+        self._subtitle_lbl = tk.Label(title_frame, text='  输入即注音 · 点击彩色字修改读音',
+                font=('Microsoft YaHei', 10),
+                bg=COLORS['bg_main'], fg=COLORS['text_muted'])
+        self._subtitle_lbl.pack(side=tk.LEFT, pady=(6, 0))
+        
+        # 按钮组
+        btn_frame = tk.Frame(header, bg=COLORS['bg_main'])
+        btn_frame.pack(side=tk.RIGHT)
+        
+        for text, cmd, pri in [('帮助', self._on_help, False),
+                               ('清空', self._on_clear, False),
+                               ('保存', self._on_save, False),
+                               ('复制', self._on_copy, True)]:
+            ModernButton(btn_frame, text, command=cmd,
+                        primary=pri, width=64).pack(
+                side=tk.LEFT, padx=(0, 0 if pri else 8))
 
-        btn = ttk.Frame(main)
-        btn.pack(fill=tk.X, pady=(0, 4))
-        ttk.Button(btn, text='清空', command=self._on_clear).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(btn, text='帮助', command=self._on_help).pack(side=tk.LEFT)
-        ttk.Button(btn, text='复制结果', command=self._on_copy).pack(side=tk.RIGHT)
+        # ── 主内容区（左侧文稿栏 + 编辑区 + 右侧读音栏） ──
+        content = tk.Frame(main, bg=COLORS['bg_main'])
+        content.pack(fill=tk.BOTH, expand=True)
 
-        edit_lf = ttk.LabelFrame(
-            main, text='编辑区（输入即注音 · 点击彩色字修改读音）', padding=5)
-        edit_lf.pack(fill=tk.BOTH, expand=True, pady=4)
-        edit_inner = ttk.Frame(edit_lf)
+        # ── 左侧边栏（文稿管理面板） ──
+        self.left_sidebar = tk.Frame(content, bg=COLORS['bg_sidebar'], width=260,
+                                    highlightbackground=COLORS['border'],
+                                    highlightthickness=1)
+        self.left_sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 16))
+        self.left_sidebar.pack_propagate(False)
+
+        # 编辑区卡片
+        edit_card = tk.Frame(content, bg=COLORS['bg_card'], 
+                            highlightbackground=COLORS['border'],
+                            highlightcolor=COLORS['border'],
+                            highlightthickness=1)
+        edit_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 16))
+        
+        # 编辑区内部
+        edit_inner = tk.Frame(edit_card, bg=COLORS['bg_card'], padx=4, pady=4)
         edit_inner.pack(fill=tk.BOTH, expand=True)
 
-        self.canvas = tk.Canvas(edit_inner, bg='#FAFAFA',
+        self.canvas = tk.Canvas(edit_inner, bg=COLORS['bg_canvas'],
                                 highlightthickness=0,
                                 yscrollincrement=20)
-        edit_scroll = ttk.Scrollbar(edit_inner, orient=tk.VERTICAL,
-                                     command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=edit_scroll.set)
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        edit_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.canvas.pack(fill=tk.BOTH, expand=True)
 
-        self._char_font = tkFont.Font(family='Microsoft YaHei', size=13)
-        self._phon_font = tkFont.Font(family='Consolas', size=9)
+        # ── 右侧边栏（音标选择面板） ──
+        self.sidebar = tk.Frame(content, bg=COLORS['bg_sidebar'], width=280,
+                               highlightbackground=COLORS['border'],
+                               highlightthickness=1)
+        self.sidebar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.sidebar.pack_propagate(False)
+        
+        sidebar_options.build_placeholder(self.sidebar)
+
+        # 初始构建文稿列表
+        self._build_sidebar_drafts()
+
+        # 字体设置
+        self._char_font = tkFont.Font(family='Microsoft YaHei', size=14)
+        self._phon_font = tkFont.Font(family='Consolas', size=10)
         self._char_h = self._char_font.metrics('linespace')
         self._phon_h = self._phon_font.metrics('linespace')
         self._cell_h = self._char_h + self._phon_h + _CELL_PAD * 2
@@ -84,7 +127,7 @@ class App(tk.Tk):
         self.canvas.bind('<MouseWheel>', self._on_mousewheel)
         self.canvas.bind('<Configure>', self._on_configure)
         self.canvas.focus_set()
-
+    
     # ── 撤回 / 重做 ──────────────────────────────
 
     def _snapshot(self):
@@ -104,6 +147,9 @@ class App(tk.Tk):
         if len(self.undo_stack) > MAX_UNDO:
             self.undo_stack.pop(0)
         self.redo_stack.clear()
+        if not self._dirty:
+            self._dirty = True
+            self._update_title()
 
     def _undo(self):
         self._do_undo_redo(self.undo_stack, self.redo_stack)
@@ -123,24 +169,13 @@ class App(tk.Tk):
     def _on_key(self, event):
         ctrl = bool(event.state & 0x4)
         if ctrl:
+            _acts = {'v': self._on_paste, 'c': self._copy_raw,
+                     'y': self._redo, 's': self._on_save}
             k = event.keysym.lower()
-            if k == 'v':
-                self._on_paste()
-                return 'break'
-            if k == 'c':
-                self._copy_raw()
-                return 'break'
             if k == 'z':
-                if event.state & 0x1:
-                    self._redo()
-                else:
-                    self._undo()
-                return 'break'
-            if k == 'y':
-                self._redo()
-                return 'break'
-            if k == 'a':
-                return 'break'
+                (self._redo if event.state & 0x1 else self._undo)()
+            elif k in _acts:
+                _acts[k]()
             return 'break'
 
         ks = event.keysym
@@ -201,7 +236,7 @@ class App(tk.Tk):
     def _on_mousewheel(self, event):
         if event.delta > 0 and self.canvas.yview()[0] <= 0:
             return
-        self.canvas.yview_scroll(-event.delta // 120, 'units')
+        self.canvas.yview_scroll(-event.delta // 40, 'units')
 
     def _on_configure(self, event):
         if event.width != self._last_canvas_w:
@@ -334,7 +369,7 @@ class App(tk.Tk):
             ly = self._line_y[li] if li < len(self._line_y) else _CANVAS_MARGIN
             x, y1, y2 = _CANVAS_MARGIN, ly, ly + self._cell_h
         self._cursor_id = self.canvas.create_line(
-            x, y1, x, y2, width=3, fill='#5C6BC0')
+            x, y1, x, y2, width=3, fill=COLORS['cursor'])
         sr = self.canvas.cget('scrollregion')
         if sr:
             parts = sr.split()
@@ -373,7 +408,6 @@ class App(tk.Tk):
         return any(s <= pos <= e for s, e in ranges)
 
     def _rebuild_display(self):
-        self._close_popup()
         self.canvas.delete('all')
         self._cell_rects = []
         self._line_y = []
@@ -399,19 +433,20 @@ class App(tk.Tk):
                     x = _CANVAS_MARGIN
                     y += cell_h + _CELL_GAP
 
+                # 使用新的现代化配色
                 if in_brk:
-                    fg_ch, fg_ph, bg, outline = '#9E9E9E', '#9E9E9E', '', ''
+                    fg_ch, fg_ph, bg, outline = COLORS['text_muted'], COLORS['text_muted'], '', ''
                 elif info['is_poly']:
                     sel = info.get('selected', 'none')
                     if sel == 'manual':
-                        bg, fg_ch = '#E8F5E9', '#2E7D32'
+                        bg, fg_ch = COLORS['poly_green_bg'], COLORS['poly_green']
                     elif sel == 'global':
-                        bg, fg_ch = '#E3F2FD', '#1565C0'
+                        bg, fg_ch = COLORS['poly_blue_bg'], COLORS['poly_blue']
                     else:
-                        bg, fg_ch = '#FFF8E1', '#F57F17'
-                    fg_ph, outline = '#5C6BC0', '#DDD'
+                        bg, fg_ch = COLORS['poly_orange_bg'], COLORS['poly_orange']
+                    fg_ph, outline = COLORS['accent'], COLORS['border']
                 else:
-                    fg_ch, fg_ph, bg, outline = '#37474F', '#B0BEC5', '', ''
+                    fg_ch, fg_ph, bg, outline = COLORS['text_primary'], COLORS['text_muted'], '', ''
 
                 if bg:
                     self.canvas.create_rectangle(
@@ -435,159 +470,25 @@ class App(tk.Tk):
             scrollregion=(0, 0, canvas_w, max(y + _CANVAS_MARGIN, 1)))
         self._update_cursor()
 
-    # ── 注释着色辅助 ─────────────────────────────
-
-    def _create_note_widget(self, parent, note_txt, bg):
-        text_lines = note_txt.split('\n')
-        est_h = sum(max(1, (len(ln) + 44) // 45) for ln in text_lines)
-        tw = tk.Text(parent, wrap=tk.WORD, bg=bg, fg='#9E9E9E',
-                     font=('Microsoft YaHei', 8),
-                     borderwidth=0, highlightthickness=0,
-                     cursor='hand2', height=est_h,
-                     padx=0, pady=0, spacing1=0, spacing3=0)
-        tw.tag_configure('book', foreground='#00897B')
-        for part in re.split(r'(《[^》]*》)', note_txt):
-            if part.startswith('《') and part.endswith('》'):
-                tw.insert(tk.END, part, 'book')
-            else:
-                tw.insert(tk.END, part)
-        tw.configure(state=tk.DISABLED)
-        return tw
-
-    # ── 点击多音字弹出选择 ────────────────────────
+    # ── 点击多音字显示侧边栏选项 ────────────────────────
 
     def _on_cell_click(self, li, ci):
-        self._close_popup()
+        """点击多音字时，在侧边栏显示选项"""
         info = self.cell_info[li][ci]
-        ch = self.buffer[li][ci]
         opts = info['options']
         if not opts:
             return
 
         self.cur_line = li
         self.cur_col = ci + 1
-
-        overlay = tk.Toplevel(self)
-        overlay.overrideredirect(True)
-        overlay.attributes('-alpha', 0.01)
-        overlay.geometry(f'{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0')
-        overlay.bind('<Button-1>', lambda e: self._close_popup())
-        overlay.lift()
-
-        popup = tk.Toplevel(self)
-        popup.overrideredirect(True)
-        popup.configure(bg='white', bd=0)
-        popup.attributes('-topmost', True)
-        self.popup = popup
-        self._overlay = overlay
-
-        shadow = tk.Frame(popup, bg='#D5D5D5')
-        shadow.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
-        card = tk.Frame(shadow, bg='white', padx=14, pady=10)
-        card.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
-
-        title_f = tk.Frame(card, bg='white')
-        title_f.pack(fill=tk.X, pady=(0, 8))
-        tk.Label(title_f, text=ch,
-                 font=('Microsoft YaHei', 18, 'bold'),
-                 bg='white', fg='#F57F17').pack(side=tk.LEFT)
-        tk.Label(title_f, text='  选择读音',
-                 font=('Microsoft YaHei', 10),
-                 bg='white', fg='#9E9E9E').pack(side=tk.LEFT, padx=(4, 0))
-
-        sep = tk.Frame(card, bg='#EEEEEE', height=1)
-        sep.pack(fill=tk.X, pady=(0, 8))
-
-        total = sum(ln.count(ch) for ln in self.buffer)
-
-        for oi, o in enumerate(opts):
-            phon = o.get('phonetic') if isinstance(o, dict) else str(o)
-            note_raw = o.get('note') if isinstance(o, dict) else None
-            note_txt = format_note(str(note_raw).strip()) if note_raw else ''
-            is_current = (info['phonetic'] == phon)
-
-            row_bg = '#F5F5F5' if is_current else 'white'
-            row = tk.Frame(card, bg=row_bg, padx=8, pady=6,
-                           bd=0, relief=tk.FLAT)
-            row.pack(fill=tk.X, pady=1)
-
-            def _enter(e, r=row):
-                r.configure(bg='#EEEEEE')
-                for w in r.winfo_children():
-                    try: w.configure(bg='#EEEEEE')
-                    except tk.TclError: pass
-            def _leave(e, r=row, bg=row_bg):
-                r.configure(bg=bg)
-                for w in r.winfo_children():
-                    try: w.configure(bg=bg)
-                    except tk.TclError: pass
-            row.bind('<Enter>', _enter)
-            row.bind('<Leave>', _leave)
-
-            phon_lbl = tk.Label(row, text=phon,
-                                font=('Consolas', 12, 'bold'),
-                                bg=row_bg, fg='#5C6BC0',
-                                cursor='hand2')
-            phon_lbl.pack(side=tk.LEFT, padx=(0, 6))
-
-            if total > 1:
-                ga = tk.Label(row, text='全局',
-                              font=('Microsoft YaHei', 8),
-                              bg='#FFF8E1', fg='#F57F17',
-                              padx=4, pady=1, cursor='hand2',
-                              relief=tk.FLAT, bd=1)
-                ga.pack(side=tk.LEFT, padx=(0, 8))
-                ga.bind('<Button-1>',
-                        lambda e, p=phon: (self._apply_reading(li, ci, p, True), 'break')[-1])
-                ga.bind('<Enter>', lambda e, w=ga: w.configure(bg='#FFE082'))
-                ga.bind('<Leave>', lambda e, w=ga: w.configure(bg='#FFF8E1'))
-
-            if note_txt:
-                note_w = self._create_note_widget(row, note_txt, row_bg)
-                note_w.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-            def _bind_click(widget, p=phon):
-                widget.bind('<Button-1>',
-                            lambda e: (self._apply_reading(li, ci, p, False), 'break')[-1])
-            _bind_click(row)
-            _bind_click(phon_lbl)
-
-            for child in row.winfo_children():
-                child.bind('<Enter>', _enter)
-                child.bind('<Leave>', _leave)
-
-        popup.update_idletasks()
-        x = self.winfo_pointerx() - 20
-        y = self.winfo_pointery() + 16
-        pw = popup.winfo_reqwidth()
-        ph = popup.winfo_reqheight()
-        sw = self.winfo_screenwidth()
-        sh = self.winfo_screenheight()
-        if x + pw > sw:
-            x = max(0, sw - pw - 8)
-        if x < 0:
-            x = 4
-        if y + ph > sh:
-            y = max(0, self.winfo_pointery() - ph - 8)
-        popup.geometry(f'+{x}+{y}')
-
-        popup.bind('<Escape>', lambda e: self._close_popup())
-        popup.focus_set()
-
-    def _close_popup(self):
-        if self._overlay:
-            try:
-                self._overlay.destroy()
-            except tk.TclError:
-                pass
-            self._overlay = None
-        if self.popup and self.popup.winfo_exists():
-            self.popup.destroy()
-        self.popup = None
-        self.canvas.focus_set()
+        self._selected_poly = (li, ci)
+        sidebar_options.build_options(
+            self.sidebar, li, ci, self.buffer[li][ci], info,
+            self.buffer, on_apply=self._apply_reading)
+        self._update_cursor()
 
     def _apply_reading(self, li, ci, phonetic, global_apply):
-        self._close_popup()
+        """应用选中的读音"""
         self.after(20, lambda: self._do_apply(li, ci, phonetic, global_apply))
 
     def _do_apply(self, li, ci, phonetic, global_apply):
@@ -606,6 +507,12 @@ class App(tk.Tk):
             self.cell_info[li][ci]['phonetic'] = phonetic
             self.cell_info[li][ci]['selected'] = 'manual'
         self._rebuild_display()
+        if self._selected_poly:
+            sli, sci = self._selected_poly
+            sidebar_options.build_options(
+                self.sidebar, sli, sci,
+                self.buffer[sli][sci], self.cell_info[sli][sci],
+                self.buffer, on_apply=self._apply_reading)
 
     # ── 辅助 ─────────────────────────────────────
 
@@ -628,14 +535,22 @@ class App(tk.Tk):
             lines.append(' '.join(parts))
         return '\n'.join(lines).strip()
 
-    def _on_clear(self):
-        self._close_popup()
-        if any(self.buffer[0]) or len(self.buffer) > 1:
-            self._save_undo()
+    def _reset_editor(self):
+        """重置编辑器到空白状态。"""
         self.buffer = [[]]
         self.cell_info = [[]]
         self.cur_line = 0
         self.cur_col = 0
+        self._selected_poly = None
+        self._current_draft = None
+        self._dirty = False
+        self._update_title()
+
+    def _on_clear(self):
+        if any(self.buffer[0]) or len(self.buffer) > 1:
+            self._save_undo()
+        self._reset_editor()
+        sidebar_options.build_placeholder(self.sidebar)
         self._rebuild_display()
 
     def _on_copy(self):
@@ -655,11 +570,104 @@ class App(tk.Tk):
             '3. 多音字颜色含义：\n'
             '   · 橙色 = 未手动选择读音\n'
             '   · 绿色 = 已手动选择读音\n'
-            '   · 蓝色 = 通过「全局」间接选择\n'
-            '4. 点击多音字可弹出面板修改读音\n'
-            '   · 点击「全局」将读音应用到所有同字\n'
-            '5. 点击「复制结果」复制输出到剪贴板\n\n'
+            '   · 蓝色 = 通过「全局应用」间接选择\n'
+            '4. 点击多音字在右侧面板选择读音\n'
+            '   · 点击「全局应用」将读音应用到所有同字\n'
+            '5. 点击「复制结果」复制输出到剪贴板\n'
+            '6. 点击「保存」保存当前文稿\n'
+            '7. 左侧文稿面板可加载/删除文稿，双击名称可重命名\n\n'
             '方括号 [] 内的内容原样保留，不做转换。\n'
             'Ctrl+Z 撤回，Ctrl+Y / Ctrl+Shift+Z 重做\n'
+            'Ctrl+S 保存文稿\n'
             'Ctrl+C 复制原文，Ctrl+V 粘贴'
         ))
+
+    # ── 文稿管理 ─────────────────────────
+
+    def _update_title(self):
+        """更新标题栏和副标题以反映保存状态。"""
+        base = '汉字转 NOCM 音标'
+        if self._current_draft:
+            draft_name = draft_manager.get_draft_name(self._current_draft)
+            base = f'{base} — {draft_name}'
+        if self._dirty:
+            self.title(f'● {base}')
+            self._subtitle_lbl.configure(text='  ⚠ 未保存的更改', fg='#F59E0B')
+        else:
+            self.title(base)
+            self._subtitle_lbl.configure(text='  输入即注音 · 点击彩色字修改读音', fg=COLORS['text_muted'])
+
+
+
+    def _save_draft(self, filename=None, name=None):
+        self._current_draft = draft_manager.save_draft(
+            filename, name, self.buffer, self.cell_info)
+        self._dirty = False
+        self._update_title()
+
+    def _load_draft(self, filename):
+        """从文件加载文稿。"""
+        self.buffer, self.cell_info = draft_manager.load_draft(filename, self.mapping)
+        self.cur_line = 0
+        self.cur_col = 0
+        self.undo_stack.clear()
+        self.redo_stack.clear()
+        self._selected_poly = None
+        self._current_draft = filename
+        self._dirty = False
+        self._update_title()
+        self._rebuild_display()
+
+    def _delete_draft(self, filename):
+        """删除文稿文件。"""
+        draft_manager.delete_draft(filename)
+        if self._current_draft == filename:
+            self._current_draft = None
+            self._dirty = True
+            self._update_title()
+
+    def _rename_draft(self, filename, new_name):
+        """重命名文稿。"""
+        draft_manager.rename_draft(filename, new_name)
+
+    def _on_save(self):
+        """保存按钮回调。"""
+        raw = ''.join(self.buffer[0]) if self.buffer[0] else ''
+        if not raw.strip() and len(self.buffer) <= 1:
+            messagebox.showinfo('提示', '没有可保存的内容。')
+            return
+        self._save_draft(filename=self._current_draft)
+        self._build_sidebar_drafts()
+
+    # ── 文稿侧边栏委托 ──────────────────────────
+
+    def _build_sidebar_drafts(self):
+        sidebar_drafts.build(
+            self.left_sidebar,
+            current_draft=self._current_draft,
+            on_load=self._handle_load_draft,
+            on_new=self._on_new_draft,
+            on_delete=self._handle_delete_draft,
+            on_rename=self._handle_rename_draft,
+            on_rebuild=lambda: self.after(1, self._build_sidebar_drafts),
+        )
+
+    def _handle_load_draft(self, fn):
+        self._load_draft(fn)
+        self.after(1, self._build_sidebar_drafts)
+
+    def _handle_delete_draft(self, fn, name):
+        if messagebox.askyesno('确认删除', f'确定要删除文稿「{name}」吗？'):
+            self._delete_draft(fn)
+            self.after(1, self._build_sidebar_drafts)
+
+    def _handle_rename_draft(self, fn, old_name):
+        sidebar_drafts.show_rename_dialog(
+            self, fn, old_name, on_done=self._build_sidebar_drafts)
+
+    def _on_new_draft(self):
+        self._reset_editor()
+        self.undo_stack.clear()
+        self.redo_stack.clear()
+        self._rebuild_display()
+        self._build_sidebar_drafts()
