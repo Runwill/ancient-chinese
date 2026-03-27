@@ -341,6 +341,37 @@ def get_grouped_filenames(groups=None):
     return result
 
 
+def reorder_group(group_id, parent_id, before_group_id):
+    """在同一父级内重排文件夹顺序：将 group_id 移到 before_group_id 之前。
+    before_group_id=None 则放到末尾。parent_id=None 操作顶层列表。"""
+    groups = get_groups()
+    if parent_id is None:
+        siblings = groups
+    else:
+        parent, _ = _find_group(groups, parent_id)
+        if not parent:
+            return
+        siblings = parent['children']
+    found = None
+    for g in siblings:
+        if g['id'] == group_id:
+            found = g
+            break
+    if not found:
+        return
+    siblings.remove(found)
+    if before_group_id:
+        for i, g in enumerate(siblings):
+            if g['id'] == before_group_id:
+                siblings.insert(i, found)
+                break
+        else:
+            siblings.append(found)
+    else:
+        siblings.append(found)
+    save_groups(groups)
+
+
 def reorder_file_in_group(filename, group_id, before_filename):
     """在文件夹内重排文稿顺序：将 filename 移到 before_filename 之前。
     before_filename=None 则放到末尾。group_id=None 操作未分组全局排序。"""

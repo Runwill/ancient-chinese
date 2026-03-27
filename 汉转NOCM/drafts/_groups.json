@@ -1,19 +1,18 @@
 [
  {
-  "id": "g_20260327_153234",
+  "id": "g_20260327_153107",
   "name": "新建文件夹",
   "expanded": true,
   "files": [],
-  "children": [
-   {
-    "id": "g_20260327_153107",
-    "name": "新建文件夹",
-    "expanded": true,
-    "files": [
-     "20260327_154345.json"
-    ],
-    "children": []
-   }
-  ]
+  "children": []
+ },
+ {
+  "id": "g_20260327_153234",
+  "name": "新建文件夹",
+  "expanded": true,
+  "files": [
+   "20260327_154345.json"
+  ],
+  "children": []
  }
 ]

@@ -26,6 +26,7 @@ _drag = {
     'insert_line': None,       # 插入位置指示线 widget
     'insert_target': None,     # (group_id, before_filename) 或 None
     'card_widgets': [],        # [(widget, filename, group_id), ...]
+    'folder_widgets': [],      # [(zone_widget, group_id, parent_gid), ...]
     'sidebar': None,
     'on_rebuild': None,
     'current_draft': None,
@@ -45,7 +46,7 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
         'active': False, 'folder_hdrs': {}, 'folder_zones': {},
         'root_zone': None, 'hl_id': None, 'hl_bar': None,
         'insert_line': None, 'insert_target': None,
-        'card_widgets': [],
+        'card_widgets': [], 'folder_widgets': [],
         'sidebar': sidebar, 'on_rebuild': on_rebuild,
         'current_draft': current_draft,
     })
@@ -221,6 +222,7 @@ def _build_folder(parent, group, drafts_map, current_draft,
     zone = tk.Frame(parent, bg=COLORS['bg_sidebar'])
     zone.pack(fill=tk.X)
     _drag['folder_zones'][gid] = zone
+    _drag['folder_widgets'].append((zone, gid, parent_gid))
 
     # ── 文件夹头部 ──
     hdr = tk.Frame(zone, bg=COLORS['bg_sidebar'], padx=left_pad, pady=6)
@@ -462,8 +464,7 @@ def _start_drag(dtype, src_id, src_group, widget, y_root):
     _drag['hl_bar'] = None
     try:
         if dtype == 'draft':
-            widget.configure(highlightbackground=COLORS['accent'],
-                             highlightthickness=2)
+            widget.configure(highlightbackground=COLORS['accent'])
             # 半透明效果：降低子控件前景色
             for ch in widget.winfo_children():
                 _dim_widget(ch, True)
@@ -481,21 +482,25 @@ def _on_drag_move(event):
         return
     y = event.y_root
 
-    # ── 1. 对于文稿拖拽，优先检测卡片间插入位置 ──
+    # ── 1. 优先检测同级插入位置 ──
     if _drag['type'] == 'draft':
         best_insert = _find_insert_position(y)
-        if best_insert is not None:
-            _show_insert_at(best_insert)
-            # 清除文件夹高亮
-            if _drag['hl_id'] is not None:
-                _clear_folder_highlight()
-            return
+    elif _drag['type'] == 'folder':
+        best_insert = _find_folder_insert_position(y)
+    else:
+        best_insert = None
+
+    if best_insert is not None:
+        _show_insert_at(best_insert)
+        if _drag['hl_id'] is not None:
+            _clear_folder_highlight()
+        return
 
     # 清除插入线
     _remove_insert_line()
     _drag['insert_target'] = None
 
-    # ── 2. 检测文件夹目标 ──
+    # ── 2. 检测文件夹目标（仅限拖入文件夹） ──
     target = None
     best_h = float('inf')
     for gid, zone in _drag['folder_zones'].items():
@@ -570,7 +575,7 @@ def _on_drag_end(event):
             if src_type == 'draft':
                 bdr = (COLORS['accent'] if src_id == _drag['current_draft']
                        else COLORS['border'])
-                src_w.configure(highlightbackground=bdr, highlightthickness=1)
+                src_w.configure(highlightbackground=bdr)
                 for ch in src_w.winfo_children():
                     _dim_widget(ch, False)
             else:
@@ -586,18 +591,25 @@ def _on_drag_end(event):
 
     # 优先检查插入位置排序
     insert = _drag.get('insert_target')
-    if insert is not None and src_type == 'draft':
+    if insert is not None:
         ins_gid, ins_before = insert
-        # 同组内排序
-        if ins_gid == src_group:
-            draft_manager.reorder_file_in_group(src_id, ins_gid, ins_before)
-        else:
-            # 跨组移动 + 插入到指定位置
-            if ins_gid is None:
-                draft_manager.remove_from_group(src_id)
+        if src_type == 'draft':
+            # 文稿排序
+            if ins_gid == src_group:
+                draft_manager.reorder_file_in_group(src_id, ins_gid, ins_before)
             else:
-                draft_manager.move_to_group(src_id, ins_gid)
-            draft_manager.reorder_file_in_group(src_id, ins_gid, ins_before)
+                if ins_gid is None:
+                    draft_manager.remove_from_group(src_id)
+                else:
+                    draft_manager.move_to_group(src_id, ins_gid)
+                draft_manager.reorder_file_in_group(src_id, ins_gid, ins_before)
+        elif src_type == 'folder':
+            # 文件夹排序 — ins_gid 是父级, ins_before 是 before_group_id
+            if ins_gid == src_group:
+                draft_manager.reorder_group(src_id, ins_gid, ins_before)
+            else:
+                draft_manager.move_group_into(src_id, ins_gid)
+                draft_manager.reorder_group(src_id, ins_gid, ins_before)
         if rebuild:
             try:
                 _drag['sidebar'].after(1, rebuild)
@@ -738,12 +750,52 @@ def _find_insert_position(y):
     return best
 
 
+def _find_folder_insert_position(y):
+    """查找光标y位置最近的文件夹间插入点。
+    返回 (zone_widget, parent_gid, before_group_id) 或 None。"""
+    folders = _drag['folder_widgets']
+    src_id = _drag['src_id']
+    if not folders:
+        return None
+
+    best = None
+    best_dist = 20
+
+    for i, (zone, gid, pgid) in enumerate(folders):
+        if gid == src_id:
+            continue
+        try:
+            zy = zone.winfo_rooty()
+            zh = zone.winfo_height()
+        except tk.TclError:
+            continue
+
+        # 文件夹上边缘（插入到此文件夹之前）
+        dist_top = abs(y - zy)
+        if dist_top < best_dist:
+            best_dist = dist_top
+            best = (zone, pgid, gid)
+
+        # 文件夹下边缘（插入到此文件夹之后）
+        dist_bot = abs(y - (zy + zh))
+        if dist_bot < best_dist:
+            best_dist = dist_bot
+            next_gid = None
+            for j in range(i + 1, len(folders)):
+                _, ngid, npgid = folders[j]
+                if ngid != src_id and npgid == pgid:
+                    next_gid = ngid
+                    break
+            best = (zone, pgid, next_gid)
+
+    return best
+
+
 def _show_insert_at(insert_info):
     """显示插入位置指示线。"""
-    card_w, gid, before_fn = insert_info
-    new_target = (gid, before_fn)
+    ref_w, gid, before_id = insert_info
+    new_target = (gid, before_id)
 
-    # 相同位置无需更新
     if _drag['insert_target'] == new_target:
         return
 
@@ -751,19 +803,43 @@ def _show_insert_at(insert_info):
     _drag['insert_target'] = new_target
 
     try:
-        parent = card_w.master
-        # 确定线的位置：before_fn 的卡片之前，或当前卡片之后
-        line = tk.Frame(parent, bg=COLORS['accent'], height=3)
-        if before_fn:
-            # 找到 before_fn 的卡片并在其前插入
-            for cw, cfn, cgid in _drag['card_widgets']:
-                if cfn == before_fn and cgid == gid:
-                    line.pack(fill=tk.X, padx=12, before=cw)
-                    break
+        # 找到目标 widget 以计算线的屏幕位置
+        target_w = None
+        anchor_top = True  # True=放在目标上方, False=放在 ref_w 下方
+        if _drag['type'] == 'draft':
+            if before_id:
+                for cw, cfn, cgid in _drag['card_widgets']:
+                    if cfn == before_id and cgid == gid:
+                        target_w = cw
+                        break
             else:
-                line.pack(fill=tk.X, padx=12)
+                target_w = ref_w
+                anchor_top = False
         else:
-            line.pack(fill=tk.X, padx=12)
+            if before_id:
+                for zw, zgid, zpgid in _drag['folder_widgets']:
+                    if zgid == before_id and zpgid == gid:
+                        target_w = zw
+                        break
+            else:
+                target_w = ref_w
+                anchor_top = False
+
+        if target_w is None:
+            target_w = ref_w
+            anchor_top = False
+
+        # 用 place 在 sidebar 上绝对定位，不影响布局
+        sidebar = _drag['sidebar']
+        sy = sidebar.winfo_rooty()
+        tw_y = target_w.winfo_rooty()
+        if anchor_top:
+            line_y = tw_y - sy - 2
+        else:
+            line_y = tw_y + target_w.winfo_height() - sy
+        line = tk.Frame(sidebar, bg=COLORS['accent'], height=3)
+        line.place(x=12, y=line_y, relwidth=1.0, width=-24)
+        line.lift()
         _drag['insert_line'] = line
     except tk.TclError:
         pass

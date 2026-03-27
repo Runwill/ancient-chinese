@@ -127,6 +127,7 @@ class App(tk.Tk):
         self.canvas.bind('<MouseWheel>', self._on_mousewheel)
         self.canvas.bind('<Configure>', self._on_configure)
         self.canvas.focus_set()
+        self.protocol('WM_DELETE_WINDOW', self._on_close)
     
     # ── 撤回 / 重做 ──────────────────────────────
 
@@ -547,6 +548,8 @@ class App(tk.Tk):
         self._update_title()
 
     def _on_clear(self):
+        if not self._check_unsaved():
+            return
         if any(self.buffer[0]) or len(self.buffer) > 1:
             self._save_undo()
         self._reset_editor()
@@ -598,6 +601,24 @@ class App(tk.Tk):
             self._subtitle_lbl.configure(text='  输入即注音 · 点击彩色字修改读音', fg=COLORS['text_muted'])
 
 
+
+    def _check_unsaved(self):
+        """检查未保存的更改，返回 True 表示可以继续。"""
+        if not self._dirty:
+            return True
+        result = messagebox.askyesnocancel(
+            '未保存的更改', '当前文稿有未保存的更改，是否保存？')
+        if result is None:
+            return False
+        if result:
+            self._save_draft(filename=self._current_draft)
+            self._build_sidebar_drafts()
+        return True
+
+    def _on_close(self):
+        if not self._check_unsaved():
+            return
+        self.destroy()
 
     def _save_draft(self, filename=None, name=None):
         self._current_draft = draft_manager.save_draft(
@@ -653,6 +674,8 @@ class App(tk.Tk):
         )
 
     def _handle_load_draft(self, fn):
+        if not self._check_unsaved():
+            return
         self._load_draft(fn)
         self.after(1, self._build_sidebar_drafts)
 
@@ -666,8 +689,11 @@ class App(tk.Tk):
             self, fn, old_name, on_done=self._build_sidebar_drafts)
 
     def _on_new_draft(self):
+        if not self._check_unsaved():
+            return
         self._reset_editor()
         self.undo_stack.clear()
         self.redo_stack.clear()
+        self._save_draft(filename=None, name='未命名文稿')
         self._rebuild_display()
         self._build_sidebar_drafts()
