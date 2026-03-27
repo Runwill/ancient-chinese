@@ -1,14 +1,24 @@
 """常量定义：配色方案、布局参数及通用工具函数。"""
 
-import re
+
+# ── 括号范围（共用逻辑）──────────────────────────────
 
 
-def format_note(note_txt):
-    if not note_txt:
-        return note_txt
-    s = note_txt.strip()
-    s = re.sub(r'(?<!^)(?<!\n)(\d+)(?=[\u4e00-\u9fff])', r'\n\1', s)
-    return s
+def find_bracket_ranges(line_chars):
+    """查找行中 [] 括号的范围列表：[(start, end), ...]。"""
+    ranges = []
+    stk = []
+    for i, ch in enumerate(line_chars):
+        if ch == '[':
+            stk.append(i)
+        elif ch == ']' and stk:
+            ranges.append((stk.pop(), i))
+    return ranges
+
+
+def in_bracket(pos, ranges):
+    """判断 pos 是否在任何括号范围内。"""
+    return any(s <= pos <= e for s, e in ranges)
 
 
 # ── 现代化配色方案 ──────────────────────────────────

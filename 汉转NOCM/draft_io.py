@@ -75,23 +75,13 @@ def save_draft(filename, name, buffer, cell_info):
             r"[^\s，。！？；：、「」『』【】（）\u201c\u201d\u2018\u2019',\.!\?;:\(\)\[\]\"'…—―．]+", raw)
         name = m.group()[:20] if m else '未命名文稿'
 
-    serialized_info = []
-    for row in cell_info:
-        row_info = []
-        for info in row:
-            row_info.append({
-                'phonetic': info['phonetic'],
-                'is_poly': info['is_poly'],
-                'selected': info.get('selected', 'none'),
-            })
-        serialized_info.append(row_info)
+    serialized_info = [
+        [{'phonetic': i['phonetic'], 'is_poly': i['is_poly'],
+          'selected': i.get('selected', 'none')} for i in row]
+        for row in cell_info
+    ]
 
-    preview_chars = []
-    for line in buffer:
-        preview_chars.extend(line)
-        if len(preview_chars) >= 30:
-            break
-    preview = ''.join(preview_chars[:30])
+    preview = ''.join(ch for line in buffer for ch in line)[:30]
 
     data = {
         'name': name,

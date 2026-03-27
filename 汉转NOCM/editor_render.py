@@ -1,6 +1,7 @@
 """编辑器渲染：Canvas 显示重建与光标绘制。"""
 
-from constants import COLORS, _CELL_PAD, _CELL_GAP, _LINE_GAP, _CANVAS_MARGIN
+from constants import (COLORS, _CELL_PAD, _CELL_GAP, _LINE_GAP, _CANVAS_MARGIN,
+                       find_bracket_ranges, in_bracket)
 
 
 class EditorRenderer:
@@ -17,6 +18,8 @@ class EditorRenderer:
         self._line_y = [_CANVAS_MARGIN]
         self._cursor_id = None
         self._last_canvas_w = 0
+        self._width_cache = {}  # (ch, phon) -> cell_width
+        self._configure_timer = None  # debounce on_configure
 
     @property
     def cell_h(self):
@@ -30,24 +33,17 @@ class EditorRenderer:
     def line_y(self):
         return self._line_y
 
-    # ── 括号范围 ──────────────────────────────────
-
-    @staticmethod
-    def find_bracket_ranges(line_chars):
-        ranges = []
-        stk = []
-        for i, ch in enumerate(line_chars):
-            if ch == '[':
-                stk.append(i)
-            elif ch == ']' and stk:
-                ranges.append((stk.pop(), i))
-        return ranges
-
-    @staticmethod
-    def in_bracket(pos, ranges):
-        return any(s <= pos <= e for s, e in ranges)
-
     # ── 显示重建 ──────────────────────────────────
+
+    def _measure_cell(self, ch, phon):
+        """带缓存的单元格宽度测量。"""
+        key = (ch, phon)
+        cw = self._width_cache.get(key)
+        if cw is None:
+            cw = (max(self._char_font.measure(ch),
+                      self._phon_font.measure(phon)) + _CELL_PAD * 2)
+            self._width_cache[key] = cw
+        return cw
 
     def rebuild(self, buffer, cell_info):
         """完整重建 Canvas 显示。"""
@@ -64,16 +60,15 @@ class EditorRenderer:
 
         for li, (line_chars, line_info) in enumerate(
                 zip(buffer, cell_info)):
-            br = self.find_bracket_ranges(line_chars)
+            br = find_bracket_ranges(line_chars)
             line_rects = []
             x = _CANVAS_MARGIN
             self._line_y.append(y)
 
             for ci, (ch, info) in enumerate(zip(line_chars, line_info)):
-                in_brk = self.in_bracket(ci, br)
+                in_brk = in_bracket(ci, br)
                 phon = ch if in_brk else info['phonetic']
-                cw = max(ch_font.measure(ch),
-                         ph_font.measure(phon)) + _CELL_PAD * 2
+                cw = self._measure_cell(ch, phon)
                 if x + cw > canvas_w - _CANVAS_MARGIN and x > _CANVAS_MARGIN:
                     x = _CANVAS_MARGIN
                     y += cell_h + _CELL_GAP
@@ -150,8 +145,17 @@ class EditorRenderer:
                             fb - (vis[1] - vis[0]) + 0.02)
 
     def on_configure(self, event, buffer, cell_info, cur_line, cur_col):
-        """Canvas 大小变化时重绘。"""
-        if event.width != self._last_canvas_w:
-            self._last_canvas_w = event.width
-            self.rebuild(buffer, cell_info)
-            self.update_cursor(cur_line, cur_col)
+        """Canvas 大小变化时重绘（带 debounce 减少拖拽窗口时的调用）。"""
+        if event.width == self._last_canvas_w:
+            return
+        self._last_canvas_w = event.width
+        if self._configure_timer is not None:
+            self.canvas.after_cancel(self._configure_timer)
+        self._configure_timer = self.canvas.after(
+            60, lambda: self._do_configure(buffer, cell_info,
+                                           cur_line, cur_col))
+
+    def _do_configure(self, buffer, cell_info, cur_line, cur_col):
+        self._configure_timer = None
+        self.rebuild(buffer, cell_info)
+        self.update_cursor(cur_line, cur_col)

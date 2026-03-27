@@ -99,8 +99,19 @@ def _dim_widget(widget, dim):
         _dim_widget(ch, dim)
 
 
+def _safe_destroy(attr):
+    """销毁 state 上的临时控件并置 None。"""
+    w = getattr(state, attr, None)
+    if w:
+        try:
+            w.destroy()
+        except tk.TclError:
+            pass
+        setattr(state, attr, None)
+
+
 def _show_hl_bar(target_widget):
-    _remove_hl_bar()
+    _safe_destroy('hl_bar')
     try:
         bar = tk.Frame(target_widget, bg=COLORS['accent'], width=4)
         bar.place(x=0, y=0, relheight=1.0)
@@ -109,17 +120,8 @@ def _show_hl_bar(target_widget):
         pass
 
 
-def _remove_hl_bar():
-    if state.hl_bar:
-        try:
-            state.hl_bar.destroy()
-        except tk.TclError:
-            pass
-        state.hl_bar = None
-
-
 def _show_insert_line(target_w, anchor_top):
-    _remove_insert_line()
+    _safe_destroy('insert_line')
     try:
         sidebar = state.sidebar
         sy = sidebar.winfo_rooty()
@@ -133,19 +135,10 @@ def _show_insert_line(target_w, anchor_top):
         pass
 
 
-def _remove_insert_line():
-    if state.insert_line:
-        try:
-            state.insert_line.destroy()
-        except tk.TclError:
-            pass
-        state.insert_line = None
-
-
 def _clear_visuals():
     """清除所有拖拽视觉效果，不触碰逻辑目标状态。"""
-    _remove_hl_bar()
-    _remove_insert_line()
+    _safe_destroy('hl_bar')
+    _safe_destroy('insert_line')
     for hdr in state.folder_hdrs.values():
         set_widget_bg(hdr, COLORS['bg_sidebar'])
     if state.root_zone:
@@ -161,7 +154,7 @@ def _set_folder_highlight(new_gid):
         set_widget_bg(state.folder_hdrs[old], COLORS['bg_sidebar'])
     elif old == '__root__' and state.root_zone:
         set_widget_bg(state.root_zone, COLORS['bg_sidebar'])
-    _remove_hl_bar()
+    _safe_destroy('hl_bar')
 
     if new_gid and new_gid != '__root__' and new_gid in state.folder_hdrs:
         hdr = state.folder_hdrs[new_gid]
@@ -356,7 +349,7 @@ def _handle_card_drag(y):
         _set_folder_highlight(None)
         return
 
-    _remove_insert_line()
+    _safe_destroy('insert_line')
     state.insert_target = None
 
     target = _find_card_folder_target(y)
@@ -369,7 +362,7 @@ def _handle_folder_drag(y):
     action = _detect_folder_action(y)
 
     if action is None:
-        _remove_insert_line()
+        _safe_destroy('insert_line')
         state.insert_target = None
         _set_folder_highlight(None)
         return
@@ -390,12 +383,12 @@ def _handle_folder_drag(y):
         _set_folder_highlight(None)
 
     elif atype == 'move_into':
-        _remove_insert_line()
+        _safe_destroy('insert_line')
         state.insert_target = None
         _set_folder_highlight(action[1])
 
     elif atype == 'root':
-        _remove_insert_line()
+        _safe_destroy('insert_line')
         state.insert_target = None
         _set_folder_highlight('__root__')
 

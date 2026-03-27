@@ -43,38 +43,28 @@ class ScrollableFrame(tk.Frame):
             self.canvas.yview_scroll(-e.delta // 120, 'units')
 
 
-# ── 通用 hover / 滚轮工具 ──────────────────────────
+# ── 通用 hover / 滚轮 / 点击工具 ──────────────────────
 
 
-def _set_bg(widget, bg, depth=2):
-    """递归设置控件及子控件背景色"""
+def set_widget_bg(widget, bg, depth=1):
+    """递归设置控件及子控件背景色。
+
+    depth 控制递归层数（1=直接子控件，2=孙控件，0=仅自身）。
+    """
     try:
         widget.configure(bg=bg)
     except tk.TclError:
         pass
     if depth > 0:
         for ch in widget.winfo_children():
-            _set_bg(ch, bg, depth - 1)
-
-
-def set_widget_bg(widget, bg):
-    """设置控件及其所有子控件的背景色（全层遍历）。"""
-    try:
-        widget.configure(bg=bg)
-        for ch in widget.winfo_children():
-            try:
-                ch.configure(bg=bg)
-            except tk.TclError:
-                pass
-    except tk.TclError:
-        pass
+            set_widget_bg(ch, bg, depth - 1)
 
 
 def bind_hover(card, normal_bg, hover_bg=None, depth=2):
     """为卡片及所有子控件绑定悬停变色效果"""
     hbg = hover_bg or COLORS['border_light']
-    enter = lambda e: _set_bg(card, hbg, depth)
-    leave = lambda e: _set_bg(card, normal_bg, depth)
+    enter = lambda e: set_widget_bg(card, hbg, depth)
+    leave = lambda e: set_widget_bg(card, normal_bg, depth)
     card.bind('<Enter>', enter)
     card.bind('<Leave>', leave)
     for child in card.winfo_children():
@@ -84,6 +74,25 @@ def bind_hover(card, normal_bg, hover_bg=None, depth=2):
             for gc in child.winfo_children():
                 gc.bind('<Enter>', enter)
                 gc.bind('<Leave>', leave)
+
+
+def bind_single_double(widget, on_single, on_double, delay=250):
+    """为控件绑定单击 / 双击事件，自动区分。"""
+    _timer = [None]
+
+    def _single(e):
+        if _timer[0]:
+            e.widget.after_cancel(_timer[0])
+        _timer[0] = e.widget.after(delay, on_single)
+
+    def _double(e):
+        if _timer[0]:
+            e.widget.after_cancel(_timer[0])
+            _timer[0] = None
+        on_double()
+
+    widget.bind('<Button-1>', _single)
+    widget.bind('<Double-Button-1>', _double)
 
 
 def bind_mousewheel(widget, handler):

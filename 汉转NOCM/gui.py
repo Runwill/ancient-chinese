@@ -5,7 +5,7 @@ import tkinter.font as tkFont
 from tkinter import messagebox
 from typing import Optional
 
-from constants import COLORS, _CANVAS_MARGIN
+from constants import COLORS, _CANVAS_MARGIN, find_bracket_ranges, in_bracket
 from widgets import ModernButton
 from editor_buffer import EditorBuffer
 from editor_render import EditorRenderer
@@ -123,6 +123,15 @@ class App(tk.Tk):
     def _rebuild_display(self):
         self.renderer.rebuild(self.buf.buffer, self.buf.cell_info)
         self.renderer.update_cursor(self.buf.cur_line, self.buf.cur_col)
+        # 撤回/重做后复位多音字选中
+        if self._selected_poly:
+            sli, sci = self._selected_poly
+            if (sli >= len(self.buf.buffer)
+                    or sci >= len(self.buf.buffer[sli])
+                    or sci >= len(self.buf.cell_info[sli])
+                    or not self.buf.cell_info[sli][sci].get('is_poly')):
+                self._selected_poly = None
+                sidebar_options.build_placeholder(self.sidebar)
 
     def _update_cursor(self):
         self.renderer.update_cursor(self.buf.cur_line, self.buf.cur_col)
@@ -142,31 +151,23 @@ class App(tk.Tk):
                     self._rebuild_display()
             elif k in _acts:
                 _acts[k]()
-            return 'break'
-
-        ks = event.keysym
-        if ks == 'BackSpace':
-            if self.buf.backspace():
+        else:
+            ks = event.keysym
+            if ks == 'BackSpace':
+                if self.buf.backspace():
+                    self._rebuild_display()
+            elif ks == 'Delete':
+                if self.buf.delete_char():
+                    self._rebuild_display()
+            elif ks == 'Return':
+                self.buf.insert_newline()
                 self._rebuild_display()
-            return 'break'
-        if ks == 'Delete':
-            if self.buf.delete_char():
+            elif ks in ('Left', 'Right', 'Up', 'Down', 'Home', 'End'):
+                self.buf.handle_nav(ks)
+                self._update_cursor()
+            elif event.char and len(event.char) == 1 and event.char.isprintable():
+                self.buf.insert_char(event.char)
                 self._rebuild_display()
-            return 'break'
-        if ks == 'Return':
-            self.buf.insert_newline()
-            self._rebuild_display()
-            return 'break'
-        if ks in ('Left', 'Right', 'Up', 'Down', 'Home', 'End'):
-            self.buf.handle_nav(ks)
-            self._update_cursor()
-            return 'break'
-
-        if event.char and len(event.char) == 1 and event.char.isprintable():
-            self.buf.insert_char(event.char)
-            self._rebuild_display()
-            return 'break'
-
         return 'break'
 
     def _on_paste(self, event=None):
@@ -188,8 +189,8 @@ class App(tk.Tk):
             for ci, (x1, y1, x2, y2) in enumerate(line_rects):
                 if x1 <= cx <= x2 and y1 <= cy <= y2:
                     info = self.buf.cell_info[li][ci]
-                    br = EditorRenderer.find_bracket_ranges(self.buf.buffer[li])
-                    if info['is_poly'] and info['options'] and not EditorRenderer.in_bracket(ci, br):
+                    br = find_bracket_ranges(self.buf.buffer[li])
+                    if info['is_poly'] and info['options'] and not in_bracket(ci, br):
                         self._on_cell_click(li, ci)
                         return
                     self.buf.cur_line = li
@@ -269,11 +270,11 @@ class App(tk.Tk):
     def _get_result(self):
         lines = []
         for line_chars, line_info in zip(self.buf.buffer, self.buf.cell_info):
-            br = EditorRenderer.find_bracket_ranges(line_chars)
+            br = find_bracket_ranges(line_chars)
             parts = []
             bracket_buf = []
             for ci, (ch, info) in enumerate(zip(line_chars, line_info)):
-                if EditorRenderer.in_bracket(ci, br):
+                if in_bracket(ci, br):
                     bracket_buf.append(ch)
                 else:
                     if bracket_buf:

@@ -3,7 +3,7 @@
 import sys
 import threading
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 
 from data_loader import download_and_update, load_map_from_json_gz
 from gui import App, COLORS
@@ -76,11 +76,17 @@ class SplashScreen(tk.Tk):
         self._indeterminate_pos = (self._indeterminate_pos + 5) % 340
         width = 80
         x1 = self._indeterminate_pos
-        x2 = min(x1 + width, 340)
-        self.progress_bg.coords(self._progress_fill, x1, 0, x2, 8)
-        if x1 + width > 340:
-            # 绘制环绕部分
-            pass
+        x2 = x1 + width
+        self.progress_bg.delete('ind')
+        # 主段
+        self.progress_bg.create_rectangle(
+            x1, 0, min(x2, 340), 8,
+            fill=COLORS['accent'], outline='', tags='ind')
+        # 环绕段（超出右侧后从左侧继续）
+        if x2 > 340:
+            self.progress_bg.create_rectangle(
+                0, 0, x2 - 340, 8,
+                fill=COLORS['accent'], outline='', tags='ind')
         self.after(30, self._animate_indeterminate)
 
     def on_status(self, msg):

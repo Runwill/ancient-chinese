@@ -5,7 +5,8 @@ from datetime import datetime
 
 from constants import COLORS
 from widgets import (ModernButton, ScrollableFrame,
-                     bind_hover, bind_mousewheel, set_widget_bg)
+                     bind_hover, bind_mousewheel, bind_single_double,
+                     set_widget_bg)
 from draft_io import list_drafts, rename_draft
 from folder_manager import (get_groups, get_grouped_filenames, create_group,
                             rename_group, delete_group, toggle_group)
@@ -18,8 +19,24 @@ import drag_drop
 def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
           on_rebuild=None):
     """构建左侧文稿列表。"""
+    # 记录滚动位置以便重建后恢复
+    scroll_pos = None
     for w in sidebar.winfo_children():
-        w.destroy()
+        if isinstance(w, ScrollableFrame):
+            try:
+                scroll_pos = w.canvas.yview()[0]
+            except tk.TclError:
+                pass
+            break
+
+    # 用遮盖层覆盖侧边栏，隐藏重建过程中的中间态
+    sidebar.update_idletasks()
+    overlay = tk.Frame(sidebar, bg=COLORS['bg_sidebar'])
+    overlay.place(x=0, y=0, relwidth=1, relheight=1)
+
+    for w in sidebar.winfo_children():
+        if w is not overlay:
+            w.destroy()
 
     drag_drop.init(sidebar, current_draft, on_rebuild)
 
@@ -27,21 +44,17 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
     btn_row = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16)
     btn_row.pack(fill=tk.X, pady=(10, 10))
 
-    nb = tk.Label(btn_row, text='📄＋', font=('Microsoft YaHei', 9),
-                  bg=COLORS['accent_light'], fg=COLORS['accent'],
-                  padx=6, pady=3, cursor='hand2')
-    nb.pack(side=tk.LEFT)
-    nb.bind('<Button-1>', lambda e: on_new())
-    nb.bind('<Enter>', lambda e: nb.configure(bg=COLORS['border']))
-    nb.bind('<Leave>', lambda e: nb.configure(bg=COLORS['accent_light']))
-
-    fb = tk.Label(btn_row, text='📁＋', font=('Microsoft YaHei', 9),
-                  bg=COLORS['accent_light'], fg=COLORS['accent'],
-                  padx=6, pady=3, cursor='hand2')
-    fb.pack(side=tk.LEFT, padx=(6, 0))
-    fb.bind('<Button-1>', lambda e: _do_create_folder(on_rebuild))
-    fb.bind('<Enter>', lambda e: fb.configure(bg=COLORS['border']))
-    fb.bind('<Leave>', lambda e: fb.configure(bg=COLORS['accent_light']))
+    for i, (text, cmd) in enumerate([
+        ('📄＋', lambda: on_new()),
+        ('📁＋', lambda: _do_create_folder(on_rebuild)),
+    ]):
+        b = tk.Label(btn_row, text=text, font=('Microsoft YaHei', 9),
+                     bg=COLORS['accent_light'], fg=COLORS['accent'],
+                     padx=6, pady=3, cursor='hand2')
+        b.pack(side=tk.LEFT, padx=(6 if i else 0, 0))
+        b.bind('<Button-1>', lambda e, c=cmd: c())
+        b.bind('<Enter>', lambda e, w=b: w.configure(bg=COLORS['border']))
+        b.bind('<Leave>', lambda e, w=b: w.configure(bg=COLORS['accent_light']))
 
     tk.Frame(sidebar, bg=COLORS['border'], height=1).pack(fill=tk.X, padx=16)
 
@@ -82,6 +95,14 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
                         sf.on_mousewheel, on_rebuild, depth=0)
 
     sf.canvas.bind('<MouseWheel>', sf.on_mousewheel)
+
+    # 恢复滚动位置并移除遮盖层
+    def _unfreeze():
+        sidebar.update_idletasks()
+        if scroll_pos is not None:
+            sf.canvas.yview_moveto(scroll_pos)
+        overlay.destroy()
+    sidebar.after_idle(_unfreeze)
 
 
 def show_rename_dialog(parent_win, filename, old_name, on_done):
@@ -210,7 +231,7 @@ def _build_folder(parent, group, drafts_map, current_draft,
     arrow = '▼' if expanded else '▶'
     arrow_lbl = tk.Label(hdr, text=arrow, font=('Microsoft YaHei', 8),
                          bg=COLORS['bg_sidebar'], fg=COLORS['text_muted'],
-                         cursor='hand2')
+                         cursor='hand2', width=2, anchor='center')
     arrow_lbl.pack(side=tk.LEFT, padx=(0, 2))
 
     icon_lbl = tk.Label(hdr, text='📁', font=('Segoe UI Emoji', 11),
@@ -247,29 +268,26 @@ def _build_folder(parent, group, drafts_map, current_draft,
     # 箭头/图标：单击立即切换；名称：单击切换，双击重命名
     def _toggle(e=None):
         toggle_group(gid)
-        if on_rebuild:
-            on_rebuild()
+        # 就地展开/收起，不触发全量重建
+        currently_visible = container.winfo_manager() != ''
+        if currently_visible:
+            container.pack_forget()
+            arrow_lbl.configure(text='▶')
+        else:
+            container.pack(fill=tk.X)
+            arrow_lbl.configure(text='▼')
 
     for w in (arrow_lbl, icon_lbl):
         w.bind('<Button-1>', _toggle)
 
-    _timer = [None]
-
-    def _name_single(e):
-        if _timer[0]:
-            e.widget.after_cancel(_timer[0])
-        _timer[0] = e.widget.after(250, _toggle)
-
-    def _name_double(e):
-        if _timer[0]:
-            e.widget.after_cancel(_timer[0])
-            _timer[0] = None
-        top = hdr.winfo_toplevel()
-        show_rename_folder_dialog(top, gid, group['name'],
-                                  on_rebuild or (lambda: None))
-
-    name_lbl.bind('<Button-1>', _name_single)
-    name_lbl.bind('<Double-Button-1>', _name_double)
+    bind_single_double(
+        name_lbl,
+        on_single=_toggle,
+        on_double=lambda: show_rename_folder_dialog(
+            hdr.winfo_toplevel(), gid, group['name'],
+            on_rebuild or (lambda: None)),
+        delay=250,
+    )
 
     # Hover（非拖拽时）
     def _hdr_enter(e):
@@ -288,12 +306,8 @@ def _build_folder(parent, group, drafts_map, current_draft,
 
     tk.Frame(zone, bg=COLORS['border'], height=1).pack(fill=tk.X, padx=16)
 
-    if not expanded:
-        return
-
-    # ── 文件夹内容 ──
+    # ── 文件夹内容（始终创建，通过 pack/pack_forget 控制可见性）──
     container = tk.Frame(zone, bg=COLORS['bg_sidebar'])
-    container.pack(fill=tk.X)
 
     # 子文件夹（递归）
     _render_tree(container, group.get('children', []), drafts_map,
@@ -315,6 +329,9 @@ def _build_folder(parent, group, drafts_map, current_draft,
                        bg=COLORS['bg_sidebar'], fg=COLORS['text_muted'])
         tip.pack(pady=6, padx=(6 + (depth + 1) * 16, 6))
         tip.bind('<MouseWheel>', mw_handler)
+
+    if expanded:
+        container.pack(fill=tk.X)
 
 
 def _build_card(parent, draft, current_draft, group_id,
@@ -367,21 +384,12 @@ def _build_card(parent, draft, current_draft, group_id,
     db.bind('<Leave>', lambda e: db.configure(fg='#EF4444'))
 
     # 单击加载 / 双击重命名
-    _timer = [None]
-
-    def _single(e):
-        if _timer[0]:
-            e.widget.after_cancel(_timer[0])
-        _timer[0] = e.widget.after(300, lambda: on_load(fn))
-
-    def _double(e):
-        if _timer[0]:
-            e.widget.after_cancel(_timer[0])
-            _timer[0] = None
-        on_rename(fn, draft['name'])
-
-    name_lbl.bind('<Button-1>', _single)
-    name_lbl.bind('<Double-Button-1>', _double)
+    bind_single_double(
+        name_lbl,
+        on_single=lambda: on_load(fn),
+        on_double=lambda: on_rename(fn, draft['name']),
+        delay=300,
+    )
 
     lh = lambda e: on_load(fn)
     card.bind('<Button-1>', lh)

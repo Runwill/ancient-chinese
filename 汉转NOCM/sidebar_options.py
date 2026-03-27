@@ -1,9 +1,19 @@
 """侧边栏：多音字读音选择面板。"""
 
+import re
 import tkinter as tk
 
-from constants import COLORS, format_note
+from constants import COLORS
 from widgets import ScrollableFrame, bind_hover, bind_mousewheel
+
+
+def _format_note(note_txt):
+    """格式化注释文本：在数字+汉字前插入换行。"""
+    if not note_txt:
+        return note_txt
+    s = note_txt.strip()
+    s = re.sub(r'(?<!^)(?<!\n)(\d+)(?=[\u4e00-\u9fff])', r'\n\1', s)
+    return s
 
 
 def build_placeholder(sidebar):
@@ -58,7 +68,7 @@ def _build_card(parent, opt, info, li, ci, total, on_apply):
     """构建单个读音选项卡片"""
     phon = opt.get('phonetic') if isinstance(opt, dict) else str(opt)
     note_raw = opt.get('note') if isinstance(opt, dict) else None
-    note_txt = format_note(str(note_raw).strip()) if note_raw else ''
+    note_txt = _format_note(str(note_raw).strip()) if note_raw else ''
     is_cur = info['phonetic'] == phon
 
     bg = COLORS['accent_light'] if is_cur else COLORS['bg_card']
