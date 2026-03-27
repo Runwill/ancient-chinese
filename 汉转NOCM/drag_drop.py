@@ -11,7 +11,10 @@
 import tkinter as tk
 
 from constants import COLORS
-import draft_manager
+from widgets import set_widget_bg
+from folder_manager import (move_to_group, remove_from_group,
+                            move_group_into, reorder_group,
+                            reorder_file_in_group)
 
 
 # ── 拖拽状态 ─────────────────────────────────────────
@@ -86,18 +89,6 @@ def bind_drag_handle(handle, dtype, src_id, src_group, src_widget):
 
 # ── 内部：视觉工具 ──────────────────────────────────
 
-def _set_hdr_bg(widget, bg):
-    try:
-        widget.configure(bg=bg)
-        for ch in widget.winfo_children():
-            try:
-                ch.configure(bg=bg)
-            except tk.TclError:
-                pass
-    except tk.TclError:
-        pass
-
-
 def _dim_widget(widget, dim):
     try:
         widget.configure(fg=COLORS['text_muted'] if dim
@@ -156,9 +147,9 @@ def _clear_visuals():
     _remove_hl_bar()
     _remove_insert_line()
     for hdr in state.folder_hdrs.values():
-        _set_hdr_bg(hdr, COLORS['bg_sidebar'])
+        set_widget_bg(hdr, COLORS['bg_sidebar'])
     if state.root_zone:
-        _set_hdr_bg(state.root_zone, COLORS['bg_sidebar'])
+        set_widget_bg(state.root_zone, COLORS['bg_sidebar'])
 
 
 def _set_folder_highlight(new_gid):
@@ -167,17 +158,17 @@ def _set_folder_highlight(new_gid):
     if old == new_gid:
         return
     if old and old != '__root__' and old in state.folder_hdrs:
-        _set_hdr_bg(state.folder_hdrs[old], COLORS['bg_sidebar'])
+        set_widget_bg(state.folder_hdrs[old], COLORS['bg_sidebar'])
     elif old == '__root__' and state.root_zone:
-        _set_hdr_bg(state.root_zone, COLORS['bg_sidebar'])
+        set_widget_bg(state.root_zone, COLORS['bg_sidebar'])
     _remove_hl_bar()
 
     if new_gid and new_gid != '__root__' and new_gid in state.folder_hdrs:
         hdr = state.folder_hdrs[new_gid]
-        _set_hdr_bg(hdr, COLORS['accent_light'])
+        set_widget_bg(hdr, COLORS['accent_light'])
         _show_hl_bar(hdr)
     elif new_gid == '__root__' and state.root_zone:
-        _set_hdr_bg(state.root_zone, COLORS['accent_light'])
+        set_widget_bg(state.root_zone, COLORS['accent_light'])
         _show_hl_bar(state.root_zone)
 
     state.hl_id = new_gid
@@ -331,7 +322,7 @@ def _start_drag(dtype, src_id, src_group, widget, y_root):
         if dtype == 'draft':
             widget.configure(highlightbackground=COLORS['accent'])
         else:
-            _set_hdr_bg(widget, COLORS['accent_light'])
+            set_widget_bg(widget, COLORS['accent_light'])
         for ch in widget.winfo_children():
             _dim_widget(ch, True)
     except tk.TclError:
@@ -433,7 +424,7 @@ def _on_drag_end(event):
                        else COLORS['border'])
                 src_w.configure(highlightbackground=bdr)
             else:
-                _set_hdr_bg(src_w, COLORS['bg_sidebar'])
+                set_widget_bg(src_w, COLORS['bg_sidebar'])
             for ch in src_w.winfo_children():
                 _dim_widget(ch, False)
         except tk.TclError:
@@ -460,14 +451,14 @@ def _exec_insert(src_type, src_id, src_group, ins_parent, ins_before):
     if src_type == 'draft':
         if ins_parent != src_group:
             if ins_parent is None:
-                draft_manager.remove_from_group(src_id)
+                remove_from_group(src_id)
             else:
-                draft_manager.move_to_group(src_id, ins_parent)
-        draft_manager.reorder_file_in_group(src_id, ins_parent, ins_before)
+                move_to_group(src_id, ins_parent)
+        reorder_file_in_group(src_id, ins_parent, ins_before)
     elif src_type == 'folder':
         if ins_parent != src_group:
-            draft_manager.move_group_into(src_id, ins_parent)
-        draft_manager.reorder_group(src_id, ins_parent, ins_before)
+            move_group_into(src_id, ins_parent)
+        reorder_group(src_id, ins_parent, ins_before)
     return True
 
 
@@ -477,14 +468,14 @@ def _exec_move_into(src_type, src_id, src_group, target):
         if src_group is None:
             return False
         if src_type == 'draft':
-            draft_manager.remove_from_group(src_id)
+            remove_from_group(src_id)
         else:
-            draft_manager.move_group_into(src_id, None)
+            move_group_into(src_id, None)
     else:
         if target == src_group:
             return False
         if src_type == 'draft':
-            draft_manager.move_to_group(src_id, target)
+            move_to_group(src_id, target)
         else:
-            draft_manager.move_group_into(src_id, target)
+            move_group_into(src_id, target)
     return True

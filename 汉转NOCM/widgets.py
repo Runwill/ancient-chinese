@@ -57,6 +57,19 @@ def _set_bg(widget, bg, depth=2):
             _set_bg(ch, bg, depth - 1)
 
 
+def set_widget_bg(widget, bg):
+    """设置控件及其所有子控件的背景色（全层遍历）。"""
+    try:
+        widget.configure(bg=bg)
+        for ch in widget.winfo_children():
+            try:
+                ch.configure(bg=bg)
+            except tk.TclError:
+                pass
+    except tk.TclError:
+        pass
+
+
 def bind_hover(card, normal_bg, hover_bg=None, depth=2):
     """为卡片及所有子控件绑定悬停变色效果"""
     hbg = hover_bg or COLORS['border_light']

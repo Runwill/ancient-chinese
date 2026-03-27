@@ -9,7 +9,7 @@ from constants import COLORS, _CANVAS_MARGIN
 from widgets import ModernButton
 from editor_buffer import EditorBuffer
 from editor_render import EditorRenderer
-import draft_manager
+from draft_io import save_draft, load_draft, delete_draft, rename_draft, get_draft_name
 import sidebar_drafts
 import sidebar_options
 
@@ -336,7 +336,7 @@ class App(tk.Tk):
         """更新标题栏和副标题以反映保存状态。"""
         base = '汉字转 NOCM 音标'
         if self._current_draft:
-            draft_name = draft_manager.get_draft_name(self._current_draft)
+            draft_name = get_draft_name(self._current_draft)
             base = f'{base} — {draft_name}'
         if self.buf.dirty:
             self.title(f'● {base}')
@@ -366,13 +366,13 @@ class App(tk.Tk):
         self.destroy()
 
     def _save_draft(self, filename=None, name=None):
-        self._current_draft = draft_manager.save_draft(
+        self._current_draft = save_draft(
             filename, name, self.buf.buffer, self.buf.cell_info)
         self.buf.dirty = False
 
     def _load_draft(self, filename):
         """从文件加载文稿。"""
-        self.buf.buffer, self.buf.cell_info = draft_manager.load_draft(filename, self.mapping)
+        self.buf.buffer, self.buf.cell_info = load_draft(filename, self.mapping)
         self.buf.cur_line = 0
         self.buf.cur_col = 0
         self.buf.undo_stack.clear()
@@ -384,14 +384,14 @@ class App(tk.Tk):
 
     def _delete_draft(self, filename):
         """删除文稿文件。"""
-        draft_manager.delete_draft(filename)
+        delete_draft(filename)
         if self._current_draft == filename:
             self._current_draft = None
             self.buf.dirty = True
 
     def _rename_draft(self, filename, new_name):
         """重命名文稿。"""
-        draft_manager.rename_draft(filename, new_name)
+        rename_draft(filename, new_name)
 
     def _on_save(self):
         """保存按钮回调。"""

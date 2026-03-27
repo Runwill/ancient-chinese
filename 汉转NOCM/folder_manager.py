@@ -1,14 +1,12 @@
 """文件夹（分组）管理：文件夹树的增删改查与嵌套操作。"""
 
-import json
 import os
 from datetime import datetime
 
-from draft_io import (ensure_drafts_dir, get_drafts_order, save_drafts_order,
-                      list_drafts)
+from draft_io import (DRAFTS_DIR, ensure_drafts_dir, load_json, save_json,
+                      get_drafts_order, save_drafts_order, list_drafts)
 
-_DRAFTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'drafts')
-_GROUPS_FILE = os.path.join(_DRAFTS_DIR, '_groups.json')
+_GROUPS_FILE = os.path.join(DRAFTS_DIR, '_groups.json')
 
 
 def _ensure_children(group):
@@ -22,28 +20,21 @@ def _ensure_children(group):
 def get_groups():
     """获取文件夹树，返回 [{id, name, expanded, files, children}, ...]。"""
     ensure_drafts_dir()
-    if os.path.exists(_GROUPS_FILE):
-        try:
-            with open(_GROUPS_FILE, 'r', encoding='utf-8') as f:
-                groups = json.load(f)
-            seen = set()
-            deduped = []
-            for g in groups:
-                if g['id'] not in seen:
-                    seen.add(g['id'])
-                    _ensure_children(g)
-                    deduped.append(g)
-            return deduped
-        except (json.JSONDecodeError, OSError):
-            pass
-    return []
+    groups = load_json(_GROUPS_FILE, [])
+    seen = set()
+    deduped = []
+    for g in groups:
+        if g['id'] not in seen:
+            seen.add(g['id'])
+            _ensure_children(g)
+            deduped.append(g)
+    return deduped
 
 
 def save_groups(groups):
     """保存文件夹列表。"""
     ensure_drafts_dir()
-    with open(_GROUPS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(groups, f, ensure_ascii=False, indent=1)
+    save_json(_GROUPS_FILE, groups)
 
 
 def _find_group(groups, group_id):

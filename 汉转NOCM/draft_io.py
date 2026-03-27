@@ -5,53 +5,57 @@ import os
 import re
 from datetime import datetime
 
-_DRAFTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'drafts')
-_DRAFTS_ORDER_FILE = os.path.join(_DRAFTS_DIR, '_order.json')
+DRAFTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'drafts')
+_DRAFTS_ORDER_FILE = os.path.join(DRAFTS_DIR, '_order.json')
 
 
 def ensure_drafts_dir():
-    os.makedirs(_DRAFTS_DIR, exist_ok=True)
+    os.makedirs(DRAFTS_DIR, exist_ok=True)
+
+
+def load_json(path, default=None):
+    """安全读取 JSON 文件，失败时返回 default。"""
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError, FileNotFoundError):
+        return default
+
+
+def save_json(path, data):
+    """写入 JSON 文件。"""
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
 
 
 def get_drafts_order():
     """获取文稿排序列表。"""
     ensure_drafts_dir()
-    if os.path.exists(_DRAFTS_ORDER_FILE):
-        try:
-            with open(_DRAFTS_ORDER_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            pass
-    return []
+    return load_json(_DRAFTS_ORDER_FILE, [])
 
 
 def save_drafts_order(order):
     """保存文稿排序列表。"""
     ensure_drafts_dir()
-    with open(_DRAFTS_ORDER_FILE, 'w', encoding='utf-8') as f:
-        json.dump(order, f, ensure_ascii=False)
+    save_json(_DRAFTS_ORDER_FILE, order)
 
 
 def list_drafts():
     """列出所有已保存的文稿，按自定义顺序排列（新文稿在前）。"""
     ensure_drafts_dir()
     drafts = []
-    for fn in os.listdir(_DRAFTS_DIR):
+    for fn in os.listdir(DRAFTS_DIR):
         if not fn.endswith('.json') or fn.startswith('_'):
             continue
-        fp = os.path.join(_DRAFTS_DIR, fn)
-        try:
-            with open(fp, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            drafts.append({
-                'filename': fn,
-                'name': data.get('name', fn[:-5]),
-                'modified': data.get('modified', ''),
-                'preview': data.get('preview', ''),
-            })
-        except (json.JSONDecodeError, OSError):
+        data = load_json(os.path.join(DRAFTS_DIR, fn))
+        if data is None:
             continue
-    # 按自定义顺序排列，新文稿放最前
+        drafts.append({
+            'filename': fn,
+            'name': data.get('name', fn[:-5]),
+            'modified': data.get('modified', ''),
+            'preview': data.get('preview', ''),
+        })
     order = get_drafts_order()
     new_drafts = [d for d in drafts if d['filename'] not in order]
     ordered_drafts = [d for d in drafts if d['filename'] in order]
@@ -97,25 +101,22 @@ def save_draft(filename, name, buffer, cell_info):
         'buffer': buffer,
         'cell_info': serialized_info,
     }
-    fp = os.path.join(_DRAFTS_DIR, filename)
-    with open(fp, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=1)
-
+    save_json(os.path.join(DRAFTS_DIR, filename), data)
     return filename
 
 
 def load_draft(filename, mapping):
     """从文件加载文稿，返回 (buffer, cell_info) 元组。"""
-    fp = os.path.join(_DRAFTS_DIR, filename)
+    fp = os.path.join(DRAFTS_DIR, filename)
     with open(fp, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     buffer = data['buffer']
     loaded_info = data['cell_info']
     cell_info = []
-    for li, (row_chars, row_info) in enumerate(zip(buffer, loaded_info)):
+    for row_chars, row_info in zip(buffer, loaded_info):
         rebuilt = []
-        for ci, (ch, info) in enumerate(zip(row_chars, row_info)):
+        for ch, info in zip(row_chars, row_info):
             opts = mapping.get(ch)
             is_poly = info.get('is_poly', False)
             rebuilt.append({
@@ -131,33 +132,24 @@ def load_draft(filename, mapping):
 
 def delete_draft(filename):
     """删除文稿文件。"""
-    fp = os.path.join(_DRAFTS_DIR, filename)
     try:
-        os.remove(fp)
+        os.remove(os.path.join(DRAFTS_DIR, filename))
     except OSError:
         pass
 
 
 def rename_draft(filename, new_name):
     """重命名文稿。"""
-    fp = os.path.join(_DRAFTS_DIR, filename)
-    try:
-        with open(fp, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        data['name'] = new_name
-        data['modified'] = datetime.now().isoformat()
-        with open(fp, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=1)
-    except (json.JSONDecodeError, OSError):
-        pass
+    fp = os.path.join(DRAFTS_DIR, filename)
+    data = load_json(fp)
+    if data is None:
+        return
+    data['name'] = new_name
+    data['modified'] = datetime.now().isoformat()
+    save_json(fp, data)
 
 
 def get_draft_name(filename):
     """读取文稿显示名称。"""
-    fp = os.path.join(_DRAFTS_DIR, filename)
-    try:
-        with open(fp, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return data.get('name', filename)
-    except (json.JSONDecodeError, OSError):
-        return filename
+    data = load_json(os.path.join(DRAFTS_DIR, filename))
+    return data.get('name', filename) if data else filename

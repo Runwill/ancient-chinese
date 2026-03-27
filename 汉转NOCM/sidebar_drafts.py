@@ -5,8 +5,10 @@ from datetime import datetime
 
 from constants import COLORS
 from widgets import (ModernButton, ScrollableFrame,
-                     bind_hover, bind_mousewheel)
-import draft_manager
+                     bind_hover, bind_mousewheel, set_widget_bg)
+from draft_io import list_drafts, rename_draft
+from folder_manager import (get_groups, get_grouped_filenames, create_group,
+                            rename_group, delete_group, toggle_group)
 import drag_drop
 
 
@@ -47,10 +49,10 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
     sf = ScrollableFrame(sidebar, bg=COLORS['bg_sidebar'])
     sf.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
 
-    groups = draft_manager.get_groups()
-    all_drafts = draft_manager.list_drafts()
+    groups = get_groups()
+    all_drafts = list_drafts()
     drafts_map = {d['filename']: d for d in all_drafts}
-    grouped_fns = draft_manager.get_grouped_filenames(groups)
+    grouped_fns = get_grouped_filenames(groups)
     ungrouped = [d for d in all_drafts if d['filename'] not in grouped_fns]
 
     # 递归渲染文件夹树
@@ -85,13 +87,13 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
 def show_rename_dialog(parent_win, filename, old_name, on_done):
     """显示重命名文稿对话框。"""
     _show_name_dialog(parent_win, '重命名文稿', '文稿名称：', old_name,
-                      lambda n: draft_manager.rename_draft(filename, n), on_done)
+                      lambda n: rename_draft(filename, n), on_done)
 
 
 def show_rename_folder_dialog(parent_win, group_id, old_name, on_done):
     """显示重命名文件夹对话框。"""
     _show_name_dialog(parent_win, '重命名文件夹', '文件夹名称：', old_name,
-                      lambda n: draft_manager.rename_group(group_id, n), on_done)
+                      lambda n: rename_group(group_id, n), on_done)
 
 
 # ── 对话框 ────────────────────────────────────────────
@@ -145,7 +147,7 @@ def _show_name_dialog(parent_win, title, label, old_name, do_rename, on_done):
 
 
 def _do_create_folder(on_rebuild):
-    draft_manager.create_group()
+    create_group()
     if on_rebuild:
         on_rebuild()
 
@@ -165,7 +167,7 @@ def _do_delete_folder(gid, name, parent_widget, on_rebuild):
     from tkinter import messagebox
     if messagebox.askyesno('确认删除', f'确定要删除文件夹「{name}」吗？\n'
                            '（文稿和子文件夹不会被删除）'):
-        draft_manager.delete_group(gid)
+        delete_group(gid)
         if on_rebuild:
             parent_widget.after(1, on_rebuild)
 
@@ -244,7 +246,7 @@ def _build_folder(parent, group, drafts_map, current_draft,
 
     # 箭头/图标：单击立即切换；名称：单击切换，双击重命名
     def _toggle(e=None):
-        draft_manager.toggle_group(gid)
+        toggle_group(gid)
         if on_rebuild:
             on_rebuild()
 
@@ -272,11 +274,11 @@ def _build_folder(parent, group, drafts_map, current_draft,
     # Hover（非拖拽时）
     def _hdr_enter(e):
         if not drag_drop.state.active:
-            _set_hdr_bg(hdr, COLORS['border_light'])
+            set_widget_bg(hdr, COLORS['border_light'])
 
     def _hdr_leave(e):
         if not drag_drop.state.active or drag_drop.state.hl_id != gid:
-            _set_hdr_bg(hdr, COLORS['bg_sidebar'])
+            set_widget_bg(hdr, COLORS['bg_sidebar'])
 
     hdr.bind('<Enter>', _hdr_enter)
     hdr.bind('<Leave>', _hdr_leave)
@@ -400,14 +402,4 @@ def _build_card(parent, draft, current_draft, group_id,
 # ── UI 工具 ──────────────────────────────────────────
 
 
-def _set_hdr_bg(widget, bg):
-    """设置文件夹头部及其子控件的背景色。"""
-    try:
-        widget.configure(bg=bg)
-        for ch in widget.winfo_children():
-            try:
-                ch.configure(bg=bg)
-            except tk.TclError:
-                pass
-    except tk.TclError:
-        pass
+
