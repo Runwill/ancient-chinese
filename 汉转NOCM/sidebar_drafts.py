@@ -19,8 +19,13 @@ _drag = {
     'src_widget': None,
     'start_y': 0,
     'folder_hdrs': {},         # {group_id: hdr_widget}
+    'folder_zones': {},        # {group_id: wrapper_frame}  整块区域
     'root_zone': None,         # "未分组"区域 widget
     'hl_id': None,             # 当前高亮目标 group_id 或 '__root__'
+    'hl_bar': None,            # 当前高亮指示条 widget
+    'insert_line': None,       # 插入位置指示线 widget
+    'insert_target': None,     # (group_id, before_filename) 或 None
+    'card_widgets': [],        # [(widget, filename, group_id), ...]
     'sidebar': None,
     'on_rebuild': None,
     'current_draft': None,
@@ -37,35 +42,33 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
         w.destroy()
 
     _drag.update({
-        'active': False, 'folder_hdrs': {}, 'root_zone': None,
-        'hl_id': None, 'sidebar': sidebar, 'on_rebuild': on_rebuild,
+        'active': False, 'folder_hdrs': {}, 'folder_zones': {},
+        'root_zone': None, 'hl_id': None, 'hl_bar': None,
+        'insert_line': None, 'insert_target': None,
+        'card_widgets': [],
+        'sidebar': sidebar, 'on_rebuild': on_rebuild,
         'current_draft': current_draft,
     })
 
-    # 头部
-    hdr = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16, pady=14)
-    hdr.pack(fill=tk.X)
-    tk.Label(hdr, text='📄', font=('Segoe UI Emoji', 16),
-             bg=COLORS['bg_sidebar']).pack(side=tk.LEFT)
-    tk.Label(hdr, text='文稿管理', font=('Microsoft YaHei', 14, 'bold'),
-             bg=COLORS['bg_sidebar'], fg=COLORS['text_primary']
-             ).pack(side=tk.LEFT, padx=(8, 0))
+    # 按钮行
+    btn_row = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16)
+    btn_row.pack(fill=tk.X, pady=(10, 10))
 
-    fb = tk.Label(hdr, text='📁＋', font=('Microsoft YaHei', 9),
+    nb = tk.Label(btn_row, text='📄＋', font=('Microsoft YaHei', 9),
                   bg=COLORS['accent_light'], fg=COLORS['accent'],
                   padx=6, pady=3, cursor='hand2')
-    fb.pack(side=tk.RIGHT)
-    fb.bind('<Button-1>', lambda e: _do_create_folder(on_rebuild))
-    fb.bind('<Enter>', lambda e: fb.configure(bg=COLORS['border']))
-    fb.bind('<Leave>', lambda e: fb.configure(bg=COLORS['accent_light']))
-
-    nb = tk.Label(hdr, text='＋新建', font=('Microsoft YaHei', 9),
-                  bg=COLORS['accent_light'], fg=COLORS['accent'],
-                  padx=8, pady=3, cursor='hand2')
-    nb.pack(side=tk.RIGHT, padx=(0, 6))
+    nb.pack(side=tk.LEFT)
     nb.bind('<Button-1>', lambda e: on_new())
     nb.bind('<Enter>', lambda e: nb.configure(bg=COLORS['border']))
     nb.bind('<Leave>', lambda e: nb.configure(bg=COLORS['accent_light']))
+
+    fb = tk.Label(btn_row, text='📁＋', font=('Microsoft YaHei', 9),
+                  bg=COLORS['accent_light'], fg=COLORS['accent'],
+                  padx=6, pady=3, cursor='hand2')
+    fb.pack(side=tk.LEFT, padx=(6, 0))
+    fb.bind('<Button-1>', lambda e: _do_create_folder(on_rebuild))
+    fb.bind('<Enter>', lambda e: fb.configure(bg=COLORS['border']))
+    fb.bind('<Leave>', lambda e: fb.configure(bg=COLORS['accent_light']))
 
     tk.Frame(sidebar, bg=COLORS['border'], height=1).pack(fill=tk.X, padx=16)
 
@@ -214,8 +217,13 @@ def _build_folder(parent, group, drafts_map, current_draft,
     expanded = group.get('expanded', True)
     left_pad = 6 + depth * 16
 
+    # 整块文件夹区域（用于拖放命中检测）
+    zone = tk.Frame(parent, bg=COLORS['bg_sidebar'])
+    zone.pack(fill=tk.X)
+    _drag['folder_zones'][gid] = zone
+
     # ── 文件夹头部 ──
-    hdr = tk.Frame(parent, bg=COLORS['bg_sidebar'], padx=left_pad, pady=6)
+    hdr = tk.Frame(zone, bg=COLORS['bg_sidebar'], padx=left_pad, pady=6)
     hdr.pack(fill=tk.X, pady=(4, 0), padx=6)
     _drag['folder_hdrs'][gid] = hdr
 
@@ -267,20 +275,23 @@ def _build_folder(parent, group, drafts_map, current_draft,
     del_lbl.bind('<Leave>', lambda e: del_lbl.configure(
         fg=COLORS['text_muted']))
 
-    # 单击折叠/展开，双击重命名
-    def _toggle(e):
+    # 箭头/图标：单击立即切换；名称：单击切换，双击重命名
+    def _toggle(e=None):
         draft_manager.toggle_group(gid)
         if on_rebuild:
             on_rebuild()
 
+    for w in (arrow_lbl, icon_lbl):
+        w.bind('<Button-1>', _toggle)
+
     _timer = [None]
 
-    def _single(e):
+    def _name_single(e):
         if _timer[0]:
             e.widget.after_cancel(_timer[0])
-        _timer[0] = e.widget.after(300, _toggle, e)
+        _timer[0] = e.widget.after(250, _toggle)
 
-    def _double(e):
+    def _name_double(e):
         if _timer[0]:
             e.widget.after_cancel(_timer[0])
             _timer[0] = None
@@ -288,9 +299,8 @@ def _build_folder(parent, group, drafts_map, current_draft,
         show_rename_folder_dialog(top, gid, group['name'],
                                   on_rebuild or (lambda: None))
 
-    for w in (arrow_lbl, icon_lbl, name_lbl):
-        w.bind('<Button-1>', _single)
-        w.bind('<Double-Button-1>', _double)
+    name_lbl.bind('<Button-1>', _name_single)
+    name_lbl.bind('<Double-Button-1>', _name_double)
 
     # Hover（非拖拽时）
     def _hdr_enter(e):
@@ -307,13 +317,13 @@ def _build_folder(parent, group, drafts_map, current_draft,
     for ch in hdr.winfo_children():
         ch.bind('<MouseWheel>', mw_handler)
 
-    tk.Frame(parent, bg=COLORS['border'], height=1).pack(fill=tk.X, padx=16)
+    tk.Frame(zone, bg=COLORS['border'], height=1).pack(fill=tk.X, padx=16)
 
     if not expanded:
         return
 
     # ── 文件夹内容 ──
-    container = tk.Frame(parent, bg=COLORS['bg_sidebar'])
+    container = tk.Frame(zone, bg=COLORS['bg_sidebar'])
     container.pack(fill=tk.X)
 
     # 子文件夹（递归）
@@ -420,6 +430,9 @@ def _build_card(parent, draft, current_draft, group_id,
         bind_hover(card, bg)
     bind_mousewheel(card, mw_handler)
 
+    # 注册卡片供拖拽排序使用
+    _drag['card_widgets'].append((card, fn, group_id))
+
 
 # ── 拖拽系统 ─────────────────────────────────────────
 
@@ -446,53 +459,76 @@ def _start_drag(dtype, src_id, src_group, widget, y_root):
     _drag['src_widget'] = widget
     _drag['start_y'] = y_root
     _drag['hl_id'] = None
+    _drag['hl_bar'] = None
     try:
         if dtype == 'draft':
-            widget.configure(highlightbackground=COLORS['accent'])
+            widget.configure(highlightbackground=COLORS['accent'],
+                             highlightthickness=2)
+            # 半透明效果：降低子控件前景色
+            for ch in widget.winfo_children():
+                _dim_widget(ch, True)
         else:
             _set_hdr_bg(widget, COLORS['accent_light'])
+            for ch in widget.winfo_children():
+                _dim_widget(ch, True)
     except tk.TclError:
         pass
 
 
 def _on_drag_move(event):
-    """拖拽移动 — 检测文件夹目标并高亮。"""
+    """拖拽移动 — 检测卡片插入位置或文件夹目标。"""
     if not _drag['active']:
         return
     y = event.y_root
-    target = None
 
-    # 检查各文件夹头部
-    for gid, hdr in _drag['folder_hdrs'].items():
+    # ── 1. 对于文稿拖拽，优先检测卡片间插入位置 ──
+    if _drag['type'] == 'draft':
+        best_insert = _find_insert_position(y)
+        if best_insert is not None:
+            _show_insert_at(best_insert)
+            # 清除文件夹高亮
+            if _drag['hl_id'] is not None:
+                _clear_folder_highlight()
+            return
+
+    # 清除插入线
+    _remove_insert_line()
+    _drag['insert_target'] = None
+
+    # ── 2. 检测文件夹目标 ──
+    target = None
+    best_h = float('inf')
+    for gid, zone in _drag['folder_zones'].items():
         if _drag['type'] == 'folder' and gid == _drag['src_id']:
             continue
         try:
-            hy = hdr.winfo_rooty()
-            hh = hdr.winfo_height()
-            if hy <= y <= hy + hh:
+            zy = zone.winfo_rooty()
+            zh = zone.winfo_height()
+            if zy <= y <= zy + zh and zh < best_h:
                 target = gid
-                break
+                best_h = zh
         except tk.TclError:
             continue
 
-    # 检查"未分组"区域（仅当源不在顶层时有意义）
+    # 检查"未分组"区域
     if target is None and _drag['src_group'] is not None:
         rz = _drag.get('root_zone')
         if rz:
             try:
                 ry = rz.winfo_rooty()
                 rh = rz.winfo_height()
-                if ry - 6 <= y <= ry + rh + 6:
+                if ry - 10 <= y <= ry + rh + 10:
                     target = '__root__'
             except tk.TclError:
                 pass
 
-    # 更新高亮
+    # 更新文件夹高亮
     old = _drag['hl_id']
     if target == old:
         return
 
     # 清除旧高亮
+    _remove_hl_bar()
     if old and old != '__root__' and old in _drag['folder_hdrs']:
         _set_hdr_bg(_drag['folder_hdrs'][old], COLORS['bg_sidebar'])
     elif old == '__root__':
@@ -502,11 +538,14 @@ def _on_drag_move(event):
 
     # 设置新高亮
     if target and target != '__root__' and target in _drag['folder_hdrs']:
-        _set_hdr_bg(_drag['folder_hdrs'][target], COLORS['accent_light'])
+        hdr = _drag['folder_hdrs'][target]
+        _set_hdr_bg(hdr, COLORS['accent_light'])
+        _show_hl_bar(hdr)
     elif target == '__root__':
         rz = _drag.get('root_zone')
         if rz:
             _set_hdr_bg(rz, COLORS['accent_light'])
+            _show_hl_bar(rz)
 
     _drag['hl_id'] = target
 
@@ -531,14 +570,39 @@ def _on_drag_end(event):
             if src_type == 'draft':
                 bdr = (COLORS['accent'] if src_id == _drag['current_draft']
                        else COLORS['border'])
-                src_w.configure(highlightbackground=bdr)
+                src_w.configure(highlightbackground=bdr, highlightthickness=1)
+                for ch in src_w.winfo_children():
+                    _dim_widget(ch, False)
             else:
                 _set_hdr_bg(src_w, COLORS['bg_sidebar'])
+                for ch in src_w.winfo_children():
+                    _dim_widget(ch, False)
         except tk.TclError:
             pass
 
     # 最小拖拽距离检查（防止误触）
     if abs(event.y_root - _drag.get('start_y', event.y_root)) < 8:
+        return
+
+    # 优先检查插入位置排序
+    insert = _drag.get('insert_target')
+    if insert is not None and src_type == 'draft':
+        ins_gid, ins_before = insert
+        # 同组内排序
+        if ins_gid == src_group:
+            draft_manager.reorder_file_in_group(src_id, ins_gid, ins_before)
+        else:
+            # 跨组移动 + 插入到指定位置
+            if ins_gid is None:
+                draft_manager.remove_from_group(src_id)
+            else:
+                draft_manager.move_to_group(src_id, ins_gid)
+            draft_manager.reorder_file_in_group(src_id, ins_gid, ins_before)
+        if rebuild:
+            try:
+                _drag['sidebar'].after(1, rebuild)
+            except (tk.TclError, AttributeError):
+                rebuild()
         return
 
     if target is None:
@@ -570,11 +634,147 @@ def _on_drag_end(event):
             rebuild()
 
 
+def _dim_widget(widget, dim):
+    """降低/恢复控件前景色以模拟半透明。"""
+    try:
+        if dim:
+            widget.configure(fg=COLORS['text_muted'])
+        else:
+            # 恢复时重建整个侧边栏，这里只做最佳努力
+            widget.configure(fg=COLORS['text_primary'])
+    except tk.TclError:
+        pass
+    for ch in widget.winfo_children():
+        _dim_widget(ch, dim)
+
+
+def _show_hl_bar(target_widget):
+    """在目标 widget 左侧放置一条醒目的彩色指示条。"""
+    _remove_hl_bar()
+    try:
+        bar = tk.Frame(target_widget, bg=COLORS['accent'], width=4)
+        bar.place(x=0, y=0, relheight=1.0)
+        _drag['hl_bar'] = bar
+    except tk.TclError:
+        pass
+
+
+def _remove_hl_bar():
+    """移除指示条。"""
+    bar = _drag.get('hl_bar')
+    if bar:
+        try:
+            bar.destroy()
+        except tk.TclError:
+            pass
+        _drag['hl_bar'] = None
+
+
 def _clear_all_highlights():
     """清除所有拖拽高亮。"""
+    _remove_hl_bar()
+    _remove_insert_line()
+    _drag['insert_target'] = None
     for gid, hdr in _drag['folder_hdrs'].items():
         _set_hdr_bg(hdr, COLORS['bg_sidebar'])
     rz = _drag.get('root_zone')
     if rz:
         _set_hdr_bg(rz, COLORS['bg_sidebar'])
     _drag['hl_id'] = None
+
+
+def _clear_folder_highlight():
+    """仅清除文件夹高亮（保留插入线）。"""
+    _remove_hl_bar()
+    old = _drag['hl_id']
+    if old and old != '__root__' and old in _drag['folder_hdrs']:
+        _set_hdr_bg(_drag['folder_hdrs'][old], COLORS['bg_sidebar'])
+    elif old == '__root__':
+        rz = _drag.get('root_zone')
+        if rz:
+            _set_hdr_bg(rz, COLORS['bg_sidebar'])
+    _drag['hl_id'] = None
+
+
+def _find_insert_position(y):
+    """查找光标y位置最近的卡片间插入点。
+    返回 (card_widget, group_id, before_filename) 或 None。"""
+    cards = _drag['card_widgets']
+    src_fn = _drag['src_id']
+    if not cards:
+        return None
+
+    best = None
+    best_dist = 20  # 最大吹入距离（20px）
+
+    for i, (w, fn, gid) in enumerate(cards):
+        if fn == src_fn:
+            continue
+        try:
+            wy = w.winfo_rooty()
+            wh = w.winfo_height()
+        except tk.TclError:
+            continue
+
+        # 检查卡片上边缘（插入到此卡片之前）
+        dist_top = abs(y - wy)
+        if dist_top < best_dist:
+            best_dist = dist_top
+            best = (w, gid, fn)  # 插入到 fn 之前
+
+        # 检查卡片下边缘（插入到此卡片之后）
+        dist_bot = abs(y - (wy + wh))
+        if dist_bot < best_dist:
+            best_dist = dist_bot
+            # 下一张同组卡片的 filename，或 None 表示末尾
+            next_fn = None
+            for j in range(i + 1, len(cards)):
+                nw, nfn, ngid = cards[j]
+                if nfn != src_fn and ngid == gid:
+                    next_fn = nfn
+                    break
+            best = (w, gid, next_fn)
+
+    return best
+
+
+def _show_insert_at(insert_info):
+    """显示插入位置指示线。"""
+    card_w, gid, before_fn = insert_info
+    new_target = (gid, before_fn)
+
+    # 相同位置无需更新
+    if _drag['insert_target'] == new_target:
+        return
+
+    _remove_insert_line()
+    _drag['insert_target'] = new_target
+
+    try:
+        parent = card_w.master
+        # 确定线的位置：before_fn 的卡片之前，或当前卡片之后
+        line = tk.Frame(parent, bg=COLORS['accent'], height=3)
+        if before_fn:
+            # 找到 before_fn 的卡片并在其前插入
+            for cw, cfn, cgid in _drag['card_widgets']:
+                if cfn == before_fn and cgid == gid:
+                    line.pack(fill=tk.X, padx=12, before=cw)
+                    break
+            else:
+                line.pack(fill=tk.X, padx=12)
+        else:
+            line.pack(fill=tk.X, padx=12)
+        _drag['insert_line'] = line
+    except tk.TclError:
+        pass
+
+
+def _remove_insert_line():
+    """移除插入位置指示线。"""
+    line = _drag.get('insert_line')
+    if line:
+        try:
+            line.destroy()
+        except tk.TclError:
+            pass
+        _drag['insert_line'] = None

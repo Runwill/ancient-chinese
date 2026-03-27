@@ -1,0 +1,26 @@
+{
+ "name": "12",
+ "created": "2026-03-27T15:43:56.602239",
+ "modified": "2026-03-27T15:43:56.602245",
+ "preview": "12",
+ "buffer": [
+  [
+   "1",
+   "2"
+  ]
+ ],
+ "cell_info": [
+  [
+   {
+    "phonetic": "1",
+    "is_poly": false,
+    "selected": "none"
+   },
+   {
+    "phonetic": "2",
+    "is_poly": false,
+    "selected": "none"
+   }
+  ]
+ ]
+}

@@ -339,3 +339,40 @@ def get_grouped_filenames(groups=None):
         result.update(g['files'])
         result.update(get_grouped_filenames(g.get('children', [])))
     return result
+
+
+def reorder_file_in_group(filename, group_id, before_filename):
+    """在文件夹内重排文稿顺序：将 filename 移到 before_filename 之前。
+    before_filename=None 则放到末尾。group_id=None 操作未分组全局排序。"""
+    if group_id is None:
+        # 未分组：操作 _order.json
+        order = get_drafts_order()
+        all_drafts = [d['filename'] for d in list_drafts()]
+        # 确保 order 包含所有未分组文件
+        grouped = get_grouped_filenames()
+        ungrouped = [fn for fn in all_drafts if fn not in grouped]
+        # 建立有序列表
+        existing = [fn for fn in order if fn in ungrouped]
+        new_fns = [fn for fn in ungrouped if fn not in existing]
+        full = new_fns + existing
+        if filename not in full:
+            return
+        full.remove(filename)
+        if before_filename and before_filename in full:
+            idx = full.index(before_filename)
+            full.insert(idx, filename)
+        else:
+            full.append(filename)
+        save_drafts_order(full)
+    else:
+        groups = get_groups()
+        found, _ = _find_group(groups, group_id)
+        if not found or filename not in found['files']:
+            return
+        found['files'].remove(filename)
+        if before_filename and before_filename in found['files']:
+            idx = found['files'].index(before_filename)
+            found['files'].insert(idx, filename)
+        else:
+            found['files'].append(filename)
+        save_groups(groups)
