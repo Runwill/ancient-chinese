@@ -1,7 +1,7 @@
 {
  "name": "閟宫有侐",
- "created": "2026-03-30T15:28:21.907049",
- "modified": "2026-03-30T15:28:21.907057",
+ "created": "2026-03-31T19:16:15.465010",
+ "modified": "2026-03-31T19:16:15.465018",
  "preview": "閟宫有侐，實實枚枚。赫赫姜嫄，其德不回。上帝是依，無災無害。",
  "buffer": [
   [
@@ -679,7 +679,7 @@
    {
     "phonetic": "dik",
     "is_poly": true,
-    "selected": "global"
+    "selected": "global_recent"
    },
    {
     "phonetic": "mˤəj",
@@ -1106,7 +1106,7 @@
    {
     "phonetic": "dik",
     "is_poly": true,
-    "selected": "global"
+    "selected": "global_recent"
    },
    {
     "phonetic": "wi",
@@ -1156,7 +1156,7 @@
    {
     "phonetic": "dik",
     "is_poly": true,
-    "selected": "global"
+    "selected": "global_recent"
    },
    {
     "phonetic": "l̥əʔ",

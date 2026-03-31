@@ -6,7 +6,7 @@ from datetime import datetime
 from constants import COLORS
 from widgets import (ModernButton, ScrollableFrame,
                      bind_hover, bind_mousewheel, bind_single_double,
-                     set_widget_bg)
+                     set_widget_bg, freeze_redraw, thaw_redraw)
 from draft_io import list_drafts, rename_draft
 from folder_manager import (get_groups, get_grouped_filenames, create_group,
                             rename_group, delete_group, toggle_group)
@@ -18,12 +18,8 @@ import drag_drop
 
 def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
           on_rebuild=None):
-    """构建左侧文稿列表。
-
-    为防止闪烁，先在尚未 pack 的 wrapper 内构建全部新控件，
-    再一次性 pack(wrapper) 显示、然后销毁旧内容。
-    """
-    # 记录滚动位置以便重建后恢复
+    """构建左侧文稿列表。使用 WM_SETREDRAW 冻结窗口重绘以消除闪烁。"""
+    # 记录滚动位置（在冻结之前捕获）
     scroll_pos = None
     old_sf = _find_scrollable(sidebar)
     if old_sf:
@@ -32,76 +28,79 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
         except tk.TclError:
             pass
 
-    # 新内容全部放入 wrapper（此时 wrapper 尚未 pack，不可见）
-    wrapper = tk.Frame(sidebar, bg=COLORS['bg_sidebar'])
-
-    drag_drop.init(sidebar, current_draft, on_rebuild)
-
-    # 按钮行
-    btn_row = tk.Frame(wrapper, bg=COLORS['bg_sidebar'], padx=16)
-    btn_row.pack(fill=tk.X, pady=(10, 10))
-
-    for i, (text, cmd) in enumerate([
-        ('📄＋', lambda: on_new()),
-        ('📁＋', lambda: _do_create_folder(on_rebuild)),
-    ]):
-        b = tk.Label(btn_row, text=text, font=('Microsoft YaHei', 9),
-                     bg=COLORS['accent_light'], fg=COLORS['accent'],
-                     padx=6, pady=3, cursor='hand2')
-        b.pack(side=tk.LEFT, padx=(6 if i else 0, 0))
-        b.bind('<Button-1>', lambda e, c=cmd: c())
-        b.bind('<Enter>', lambda e, w=b: w.configure(bg=COLORS['border']))
-        b.bind('<Leave>', lambda e, w=b: w.configure(bg=COLORS['accent_light']))
-
-    tk.Frame(wrapper, bg=COLORS['border'], height=1).pack(fill=tk.X, padx=16)
-
-    # 滚动列表
-    sf = ScrollableFrame(wrapper, bg=COLORS['bg_sidebar'])
-    sf.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
-
-    groups = get_groups()
-    all_drafts = list_drafts()
-    drafts_map = {d['filename']: d for d in all_drafts}
-    grouped_fns = get_grouped_filenames(groups)
-    ungrouped = [d for d in all_drafts if d['filename'] not in grouped_fns]
-
-    # 递归渲染文件夹树
-    _render_tree(sf.inner, groups, drafts_map, current_draft,
-                 on_load, on_delete, on_rename, on_rebuild,
-                 sf.on_mousewheel, depth=0, parent_gid=None)
-
-    if not groups and not ungrouped:
-        _build_empty(sf.inner)
-    else:
-        # "未分组" 拖放区域
-        if groups:
-            rz = tk.Frame(sf.inner, bg=COLORS['bg_sidebar'], pady=4)
-            rz.pack(fill=tk.X, padx=8)
-            tk.Label(rz, text='─  未分组  ─',
-                     font=('Microsoft YaHei', 8),
-                     bg=COLORS['bg_sidebar'], fg=COLORS['text_muted']
-                     ).pack()
-            drag_drop.set_root_zone(rz)
-            rz.bind('<MouseWheel>', sf.on_mousewheel)
-            for ch in rz.winfo_children():
-                ch.bind('<MouseWheel>', sf.on_mousewheel)
-
-        for d in ungrouped:
-            _build_card(sf.inner, d, current_draft, None,
-                        on_load, on_delete, on_rename,
-                        sf.on_mousewheel, on_rebuild, depth=0)
-
-    sf.canvas.bind('<MouseWheel>', sf.on_mousewheel)
-
-    # 滚动位置将在 ScrollableFrame._sync() 中与 scrollregion 一同恢复
-    if scroll_pos is not None:
-        sf.set_pending_yview(scroll_pos)
-
-    # ★ 先显示新内容，再销毁旧内容 —— 屏幕上永远不会出现空白
-    wrapper.pack(fill=tk.BOTH, expand=True)
-    for w in sidebar.winfo_children():
-        if w is not wrapper:
+    freeze_redraw(sidebar)
+    try:
+        # 销毁旧内容
+        for w in sidebar.winfo_children():
             w.destroy()
+
+        drag_drop.init(sidebar, current_draft, on_rebuild)
+
+        # 按钮行
+        btn_row = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16)
+        btn_row.pack(fill=tk.X, pady=(10, 10))
+
+        for i, (text, cmd) in enumerate([
+            ('📄＋', lambda: on_new()),
+            ('📁＋', lambda: _do_create_folder(on_rebuild)),
+        ]):
+            b = tk.Label(btn_row, text=text, font=('Microsoft YaHei', 9),
+                         bg=COLORS['accent_light'], fg=COLORS['accent'],
+                         padx=6, pady=3, cursor='hand2')
+            b.pack(side=tk.LEFT, padx=(6 if i else 0, 0))
+            b.bind('<Button-1>', lambda e, c=cmd: c())
+            b.bind('<Enter>', lambda e, w=b: w.configure(bg=COLORS['border']))
+            b.bind('<Leave>',
+                   lambda e, w=b: w.configure(bg=COLORS['accent_light']))
+
+        tk.Frame(sidebar, bg=COLORS['border'], height=1).pack(fill=tk.X,
+                                                               padx=16)
+
+        # 滚动列表
+        sf = ScrollableFrame(sidebar, bg=COLORS['bg_sidebar'])
+        sf.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+
+        groups = get_groups()
+        all_drafts = list_drafts()
+        drafts_map = {d['filename']: d for d in all_drafts}
+        grouped_fns = get_grouped_filenames(groups)
+        ungrouped = [d for d in all_drafts
+                     if d['filename'] not in grouped_fns]
+
+        # 递归渲染文件夹树
+        _render_tree(sf.inner, groups, drafts_map, current_draft,
+                     on_load, on_delete, on_rename, on_rebuild,
+                     sf.on_mousewheel, depth=0, parent_gid=None)
+
+        if not groups and not ungrouped:
+            _build_empty(sf.inner)
+        else:
+            if groups:
+                rz = tk.Frame(sf.inner, bg=COLORS['bg_sidebar'], pady=4)
+                rz.pack(fill=tk.X, padx=8)
+                tk.Label(rz, text='─  未分组  ─',
+                         font=('Microsoft YaHei', 8),
+                         bg=COLORS['bg_sidebar'], fg=COLORS['text_muted']
+                         ).pack()
+                drag_drop.set_root_zone(rz)
+                rz.bind('<MouseWheel>', sf.on_mousewheel)
+                for ch in rz.winfo_children():
+                    ch.bind('<MouseWheel>', sf.on_mousewheel)
+
+            for d in ungrouped:
+                _build_card(sf.inner, d, current_draft, None,
+                            on_load, on_delete, on_rename,
+                            sf.on_mousewheel, on_rebuild, depth=0)
+
+        sf.canvas.bind('<MouseWheel>', sf.on_mousewheel)
+
+        if scroll_pos is not None:
+            sf.set_pending_yview(scroll_pos)
+
+        # 在冻结状态下完成全部布局计算
+        sidebar.update_idletasks()
+    finally:
+        thaw_redraw(sidebar)
 
 
 def _find_scrollable(widget):

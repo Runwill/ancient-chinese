@@ -1,8 +1,31 @@
 """自定义控件与通用 UI 工具函数。"""
 
+import ctypes
+import sys
 import tkinter as tk
 
 from constants import COLORS
+
+
+# ── Windows 窗口重绘冻结 ─────────────────────────────
+
+_WM_SETREDRAW = 0x000B
+
+
+def freeze_redraw(widget):
+    """冻结控件所在顶层窗口的重绘（Windows）。"""
+    if sys.platform == 'win32':
+        hwnd = widget.winfo_toplevel().winfo_id()
+        ctypes.windll.user32.SendMessageW(hwnd, _WM_SETREDRAW, 0, 0)
+
+
+def thaw_redraw(widget):
+    """恢复重绘并强制刷新（Windows）。"""
+    if sys.platform == 'win32':
+        hwnd = widget.winfo_toplevel().winfo_id()
+        ctypes.windll.user32.SendMessageW(hwnd, _WM_SETREDRAW, 1, 0)
+        # RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW
+        ctypes.windll.user32.RedrawWindow(hwnd, None, None, 0x0181)
 
 
 # ── 可滚动容器 ──────────────────────────────────────

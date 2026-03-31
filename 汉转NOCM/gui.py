@@ -1,5 +1,7 @@
 """GUI 模块：汉字转 NOCM 音标的可视化编辑器（现代化 UI）。"""
 
+import os
+import sys
 import tkinter as tk
 import tkinter.font as tkFont
 from tkinter import messagebox
@@ -60,6 +62,7 @@ class App(tk.Tk):
         btn_frame.pack(side=tk.RIGHT)
         
         for text, cmd, pri in [('帮助', self._on_help, False),
+                               ('重启', self._on_restart, False),
                                ('清空', self._on_clear, False),
                                ('保存', self._on_save, False),
                                ('复制', self._on_copy, True)]:
@@ -372,6 +375,14 @@ class App(tk.Tk):
             return
         self.destroy()
 
+    def _on_restart(self):
+        """重启应用程序。"""
+        if not self._check_unsaved():
+            return
+        self.destroy()
+        python = sys.executable
+        os.execv(python, [python] + sys.argv)
+
     def _save_draft(self, filename=None, name=None):
         self._current_draft = save_draft(
             filename, name, self.buf.buffer, self.buf.cell_info)
@@ -426,12 +437,12 @@ class App(tk.Tk):
         if not self._check_unsaved():
             return
         self._load_draft(fn)
-        self.after(1, self._build_sidebar_drafts)
+        self._build_sidebar_drafts()
 
     def _handle_delete_draft(self, fn, name):
         if messagebox.askyesno('确认删除', f'确定要删除文稿「{name}」吗？'):
             self._delete_draft(fn)
-            self.after(1, self._build_sidebar_drafts)
+            self._build_sidebar_drafts()
 
     def _handle_rename_draft(self, fn, old_name):
         sidebar_drafts.show_rename_dialog(
