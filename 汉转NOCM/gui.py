@@ -21,8 +21,8 @@ class App(tk.Tk):
         super().__init__()
         self.mapping = mapping
         self.title('汉字转 NOCM 音标')
-        self.geometry('1200x720')
-        self.minsize(900, 600)
+        self.geometry('1280x760')
+        self.minsize(960, 600)
         self.configure(bg=COLORS['bg_main'])
 
         self.buf = EditorBuffer(mapping)
@@ -38,71 +38,79 @@ class App(tk.Tk):
     # ── 构建界面 ──────────────────────────────────
 
     def _build_ui(self):
-        # 主容器
-        main = tk.Frame(self, bg=COLORS['bg_main'], padx=20, pady=16)
+        # 主容器 — 无额外 padding，贴边布局
+        main = tk.Frame(self, bg=COLORS['bg_main'])
         main.pack(fill=tk.BOTH, expand=True)
-        
-        # ── 顶部标题栏 ──
-        header = tk.Frame(main, bg=COLORS['bg_main'])
-        header.pack(fill=tk.X, pady=(0, 16))
-        
-        # 标题
-        title_frame = tk.Frame(header, bg=COLORS['bg_main'])
-        title_frame.pack(side=tk.LEFT)
-        tk.Label(title_frame, text='汉字转 NOCM 音标',
-                font=('Microsoft YaHei', 18, 'bold'),
-                bg=COLORS['bg_main'], fg=COLORS['text_primary']).pack(side=tk.LEFT)
-        self._subtitle_lbl = tk.Label(title_frame, text='  输入即注音 · 点击彩色字修改读音',
-                font=('Microsoft YaHei', 10),
-                bg=COLORS['bg_main'], fg=COLORS['text_muted'])
-        self._subtitle_lbl.pack(side=tk.LEFT, pady=(6, 0))
-        
-        # 按钮组
-        btn_frame = tk.Frame(header, bg=COLORS['bg_main'])
-        btn_frame.pack(side=tk.RIGHT)
-        
-        theme_label = '浅色' if get_theme() == 'dark' else '深色'
-        for text, cmd, pri in [('帮助', self._on_help, False),
+
+        # ── 顶部工具栏（紧凑型） ──
+        toolbar = tk.Frame(main, bg=COLORS['bg_card'], height=52)
+        toolbar.pack(fill=tk.X)
+        toolbar.pack_propagate(False)
+
+        toolbar_inner = tk.Frame(toolbar, bg=COLORS['bg_card'])
+        toolbar_inner.pack(fill=tk.BOTH, expand=True, padx=20)
+
+        # 左侧标题 + 副标题
+        title_area = tk.Frame(toolbar_inner, bg=COLORS['bg_card'])
+        title_area.pack(side=tk.LEFT, fill=tk.Y)
+
+        title_row = tk.Frame(title_area, bg=COLORS['bg_card'])
+        title_row.pack(expand=True)
+
+        tk.Label(title_row, text='汉字转 NOCM 音标',
+                font=('Microsoft YaHei', 13, 'bold'),
+                bg=COLORS['bg_card'], fg=COLORS['text_primary']).pack(side=tk.LEFT)
+        self._subtitle_lbl = tk.Label(title_row, text='  输入即注音 · 点击彩色字修改读音',
+                font=('Microsoft YaHei', 9),
+                bg=COLORS['bg_card'], fg=COLORS['text_muted'])
+        self._subtitle_lbl.pack(side=tk.LEFT, pady=(3, 0))
+
+        # 右侧按钮组
+        btn_area = tk.Frame(toolbar_inner, bg=COLORS['bg_card'])
+        btn_area.pack(side=tk.RIGHT, fill=tk.Y)
+        btn_row = tk.Frame(btn_area, bg=COLORS['bg_card'])
+        btn_row.pack(expand=True)
+
+        theme_label = '☀' if get_theme() == 'dark' else '☾'
+        for text, cmd, pri in [('?', self._on_help, False),
                                ('重启', self._on_restart, False),
                                (theme_label, self._on_toggle_theme, False),
                                ('清空', self._on_clear, False),
                                ('保存', self._on_save, False),
-                               ('复制', self._on_copy, True)]:
-            ModernButton(btn_frame, text, command=cmd,
-                        primary=pri, width=64).pack(
-                side=tk.LEFT, padx=(0, 0 if pri else 8))
+                               ('复制结果', self._on_copy, True)]:
+            w = 32 if len(text) <= 1 else 64 if len(text) <= 2 else 72
+            ModernButton(btn_row, text, command=cmd,
+                        primary=pri, width=w, height=30).pack(
+                side=tk.LEFT, padx=(0, 6))
 
-        # ── 主内容区（左侧文稿栏 + 编辑区 + 右侧读音栏） ──
+        # 工具栏底部分隔线
+        tk.Frame(main, bg=COLORS['divider'], height=1).pack(fill=tk.X)
+
+        # ── 主内容区（三栏布局） ──
         content = tk.Frame(main, bg=COLORS['bg_main'])
         content.pack(fill=tk.BOTH, expand=True)
 
         # ── 左侧边栏（文稿管理面板） ──
-        self.left_sidebar = tk.Frame(content, bg=COLORS['bg_sidebar'], width=260,
-                                    highlightbackground=COLORS['border'],
-                                    highlightthickness=1)
-        self.left_sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 16))
+        self.left_sidebar = tk.Frame(content, bg=COLORS['bg_sidebar'], width=240)
+        self.left_sidebar.pack(side=tk.LEFT, fill=tk.Y)
         self.left_sidebar.pack_propagate(False)
+        # 右边分割线
+        tk.Frame(content, bg=COLORS['divider'], width=1).pack(side=tk.LEFT, fill=tk.Y)
 
-        # 编辑区卡片
-        edit_card = tk.Frame(content, bg=COLORS['bg_card'], 
-                            highlightbackground=COLORS['border'],
-                            highlightcolor=COLORS['border'],
-                            highlightthickness=1)
-        edit_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 16))
-        
-        # 编辑区内部
-        edit_inner = tk.Frame(edit_card, bg=COLORS['bg_card'], padx=4, pady=4)
-        edit_inner.pack(fill=tk.BOTH, expand=True)
+        # 编辑区（无边框，直接铺满中间）
+        edit_area = tk.Frame(content, bg=COLORS['bg_canvas'])
+        edit_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.canvas = tk.Canvas(edit_inner, bg=COLORS['bg_canvas'],
+        self.canvas = tk.Canvas(edit_area, bg=COLORS['bg_canvas'],
                                 highlightthickness=0,
                                 yscrollincrement=20)
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
+        # 右侧分割线
+        tk.Frame(content, bg=COLORS['divider'], width=1).pack(side=tk.LEFT, fill=tk.Y)
+
         # ── 右侧边栏（音标选择面板） ──
-        self.sidebar = tk.Frame(content, bg=COLORS['bg_sidebar'], width=280,
-                               highlightbackground=COLORS['border'],
-                               highlightthickness=1)
+        self.sidebar = tk.Frame(content, bg=COLORS['bg_sidebar'], width=260)
         self.sidebar.pack(side=tk.RIGHT, fill=tk.Y)
         self.sidebar.pack_propagate(False)
         
@@ -352,7 +360,7 @@ class App(tk.Tk):
             base = f'{base} — {draft_name}'
         if self.buf.dirty:
             self.title(f'● {base}')
-            self._subtitle_lbl.configure(text='  ⚠ 未保存的更改', fg='#F59E0B')
+            self._subtitle_lbl.configure(text='  ⚠ 未保存的更改', fg=COLORS['warning'])
         else:
             self.title(base)
             self._subtitle_lbl.configure(text='  输入即注音 · 点击彩色字修改读音', fg=COLORS['text_muted'])
@@ -455,8 +463,12 @@ class App(tk.Tk):
     def _handle_load_draft(self, fn):
         if not self._check_unsaved():
             return
-        self._load_draft(fn)
-        self._build_sidebar_drafts()
+        freeze_redraw(self)
+        try:
+            self._load_draft(fn)
+            self._build_sidebar_drafts()
+        finally:
+            thaw_redraw(self)
 
     def _handle_delete_draft(self, fn, name):
         if messagebox.askyesno('确认删除', f'确定要删除文稿「{name}」吗？'):

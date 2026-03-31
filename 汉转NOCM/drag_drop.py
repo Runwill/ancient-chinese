@@ -312,10 +312,7 @@ def _start_drag(dtype, src_id, src_group, widget, y_root):
     state.hl_id = None
     state.insert_target = None
     try:
-        if dtype == 'draft':
-            widget.configure(highlightbackground=COLORS['accent'])
-        else:
-            set_widget_bg(widget, COLORS['accent_light'])
+        set_widget_bg(widget, COLORS['accent_light'])
         for ch in widget.winfo_children():
             _dim_widget(ch, True)
     except tk.TclError:
@@ -437,12 +434,7 @@ def _restore_src_widget(src_type, src_id, src_w):
     if not src_w:
         return
     try:
-        if src_type == 'draft':
-            bdr = (COLORS['accent'] if src_id == state.current_draft
-                   else COLORS['border'])
-            src_w.configure(highlightbackground=bdr)
-        else:
-            set_widget_bg(src_w, COLORS['bg_sidebar'])
+        set_widget_bg(src_w, COLORS['bg_sidebar'])
         for ch in src_w.winfo_children():
             _dim_widget(ch, False)
     except tk.TclError:

@@ -29,32 +29,32 @@ class SplashScreen(tk.Tk):
         self.configure(bg=COLORS['bg_card'])
 
         # 主容器
-        frame = tk.Frame(self, bg=COLORS['bg_card'], padx=40, pady=32)
+        frame = tk.Frame(self, bg=COLORS['bg_card'], padx=48, pady=36)
         frame.pack()
 
         # 标题
         tk.Label(frame, text='汉字转 NOCM 音标',
                 font=('Microsoft YaHei', 18, 'bold'),
-                bg=COLORS['bg_card'], fg=COLORS['text_primary']).pack(pady=(0, 20))
+                bg=COLORS['bg_card'], fg=COLORS['text_primary']).pack(pady=(0, 24))
 
         # 状态文本
         self.status_var = tk.StringVar(value='正在初始化...')
         tk.Label(frame, textvariable=self.status_var,
                 font=('Microsoft YaHei', 9),
-                bg=COLORS['bg_card'], fg=COLORS['text_secondary']).pack(pady=(0, 10))
+                bg=COLORS['bg_card'], fg=COLORS['text_muted']).pack(pady=(0, 12))
 
         # 进度条容器
         progress_frame = tk.Frame(frame, bg=COLORS['bg_card'])
         progress_frame.pack(fill=tk.X, pady=(0, 8))
         
         # 自定义进度条背景
-        self.progress_bg = tk.Canvas(progress_frame, width=340, height=8,
-                                     bg=COLORS['border_light'], highlightthickness=0)
+        self.progress_bg = tk.Canvas(progress_frame, width=340, height=4,
+                                     bg=COLORS['border'], highlightthickness=0)
         self.progress_bg.pack()
         
         # 进度条填充
         self._progress_fill = self.progress_bg.create_rectangle(
-            0, 0, 0, 8, fill=COLORS['accent'], outline='')
+            0, 0, 0, 4, fill=COLORS['accent'], outline='')
         
         self._progress_value = 0
         self._indeterminate = False
@@ -73,19 +73,17 @@ class SplashScreen(tk.Tk):
     def _animate_indeterminate(self):
         if not self._indeterminate:
             return
-        self._indeterminate_pos = (self._indeterminate_pos + 5) % 340
+        self._indeterminate_pos = (self._indeterminate_pos + 4) % 340
         width = 80
         x1 = self._indeterminate_pos
         x2 = x1 + width
         self.progress_bg.delete('ind')
-        # 主段
         self.progress_bg.create_rectangle(
-            x1, 0, min(x2, 340), 8,
+            x1, 0, min(x2, 340), 4,
             fill=COLORS['accent'], outline='', tags='ind')
-        # 环绕段（超出右侧后从左侧继续）
         if x2 > 340:
             self.progress_bg.create_rectangle(
-                0, 0, x2 - 340, 8,
+                0, 0, x2 - 340, 4,
                 fill=COLORS['accent'], outline='', tags='ind')
         self.after(30, self._animate_indeterminate)
 
@@ -102,7 +100,7 @@ class SplashScreen(tk.Tk):
             self._indeterminate = False
             self._progress_value = pct
             fill_width = int(340 * pct / 100)
-            self.progress_bg.coords(self._progress_fill, 0, 0, fill_width, 8)
+            self.progress_bg.coords(self._progress_fill, 0, 0, fill_width, 4)
         self.update_idletasks()
 
     def _worker(self):

@@ -57,7 +57,6 @@ class ScrollableFrame(tk.Frame):
             self.canvas.configure(scrollregion=bbox)
         else:
             self.canvas.configure(scrollregion=(0, 0, bbox[2], cvh))
-        # 滚动位置和 scrollregion 在同一帧设置，避免闪烁
         if self._pending_yview is not None:
             self.canvas.yview_moveto(self._pending_yview)
             self._pending_yview = None
@@ -79,10 +78,7 @@ class ScrollableFrame(tk.Frame):
 
 
 def set_widget_bg(widget, bg, depth=1):
-    """递归设置控件及子控件背景色。
-
-    depth 控制递归层数（1=直接子控件，2=孙控件，0=仅自身）。
-    """
+    """递归设置控件及子控件背景色。"""
     try:
         widget.configure(bg=bg)
     except tk.TclError:
@@ -94,7 +90,7 @@ def set_widget_bg(widget, bg, depth=1):
 
 def bind_hover(card, normal_bg, hover_bg=None, depth=2):
     """为卡片及所有子控件绑定悬停变色效果"""
-    hbg = hover_bg or COLORS['border_light']
+    hbg = hover_bg or COLORS['hover_overlay']
     enter = lambda e: set_widget_bg(card, hbg, depth)
     leave = lambda e: set_widget_bg(card, normal_bg, depth)
     card.bind('<Enter>', enter)
@@ -134,14 +130,14 @@ def bind_mousewheel(widget, handler):
         bind_mousewheel(ch, handler)
 
 
-# ── 现代化圆角按钮 ──────────────────────────────────
+# ── 现代化胶囊按钮 ──────────────────────────────────
 
 
 class ModernButton(tk.Canvas):
-    """圆角按钮控件"""
+    """圆角胶囊按钮控件"""
 
     def __init__(self, parent, text, command=None, primary=False,
-                 width=80, height=36, **kwargs):
+                 width=80, height=32, **kwargs):
         super().__init__(parent, width=width, height=height,
                          highlightthickness=0, bg=COLORS['bg_main'], **kwargs)
         self.text = text
@@ -162,13 +158,13 @@ class ModernButton(tk.Canvas):
             return (COLORS['btn_primary'], COLORS['btn_primary_hover'],
                     '#FFFFFF')
         return (COLORS['btn_secondary'], COLORS['btn_secondary_hover'],
-                COLORS['text_primary'])
+                COLORS.get('btn_text_secondary', COLORS['text_primary']))
 
     def _draw(self):
         self.delete('all')
         fn, fh, tc = self._colors()
         fill = fh if self._hover else fn
-        r = 8
+        r = self.height // 2  # 胶囊形，半径 = 高度的一半
         self._round_rect(1, 1, self.width - 1, self.height - 1, r,
                          fill=fill, outline='')
         self.create_text(self.width / 2, self.height / 2, text=self.text,

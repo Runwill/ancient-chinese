@@ -24,12 +24,12 @@ def build_placeholder(sidebar):
     box.pack(fill=tk.BOTH, expand=True)
     center = tk.Frame(box, bg=COLORS['bg_sidebar'])
     center.place(relx=0.5, rely=0.5, anchor='center')
-    tk.Label(center, text='📝', font=('Segoe UI Emoji', 32),
-             bg=COLORS['bg_sidebar']).pack()
+    tk.Label(center, text='✎', font=('Segoe UI Symbol', 28),
+             bg=COLORS['bg_sidebar'], fg=COLORS['text_muted']).pack()
     tk.Label(center, text='点击多音字\n选择读音',
-             font=('Microsoft YaHei', 11),
+             font=('Microsoft YaHei', 10),
              bg=COLORS['bg_sidebar'], fg=COLORS['text_muted'],
-             justify='center').pack(pady=(12, 0))
+             justify='center').pack(pady=(10, 0))
 
 
 def build_options(sidebar, li, ci, char, info, buffer, on_apply):
@@ -42,17 +42,19 @@ def build_options(sidebar, li, ci, char, info, buffer, on_apply):
         return
 
     # 头部
-    hdr = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16, pady=16)
+    hdr = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16, pady=14)
     hdr.pack(fill=tk.X)
     row = tk.Frame(hdr, bg=COLORS['bg_sidebar'])
     row.pack(fill=tk.X)
-    tk.Label(row, text=char, font=('Microsoft YaHei', 28, 'bold'),
-             bg=COLORS['bg_sidebar'], fg=COLORS['poly_orange']).pack(side=tk.LEFT)
-    tk.Label(row, text='选择读音', font=('Microsoft YaHei', 11),
+    tk.Label(row, text=char, font=('Microsoft YaHei', 24, 'bold'),
+             bg=COLORS['bg_sidebar'], fg=COLORS['accent']).pack(side=tk.LEFT)
+    detail_col = tk.Frame(row, bg=COLORS['bg_sidebar'])
+    detail_col.pack(side=tk.LEFT, padx=(12, 0), fill=tk.Y)
+    tk.Label(detail_col, text='选择读音', font=('Microsoft YaHei', 10),
              bg=COLORS['bg_sidebar'], fg=COLORS['text_secondary']
-             ).pack(side=tk.LEFT, padx=(12, 0), pady=(10, 0))
+             ).pack(anchor='w', pady=(4, 0))
 
-    tk.Frame(sidebar, bg=COLORS['border'], height=1).pack(fill=tk.X, padx=16)
+    tk.Frame(sidebar, bg=COLORS['divider'], height=1).pack(fill=tk.X, padx=16)
 
     total = sum(ln.count(char) for ln in buffer)
 
@@ -65,22 +67,11 @@ def build_options(sidebar, li, ci, char, info, buffer, on_apply):
 
 
 def _create_note_widget(parent, note_txt, bg):
-    """创建带《》书名号着色的注释文本控件。"""
-    lines = note_txt.split('\n')
-    est_h = sum(max(1, (len(ln) + 30) // 31) for ln in lines)
-    tw = tk.Text(parent, wrap=tk.WORD, bg=bg, fg=COLORS['text_muted'],
-                 font=('Microsoft YaHei', 9),
-                 borderwidth=0, highlightthickness=0,
-                 cursor='hand2', height=est_h,
-                 padx=0, pady=0, spacing1=0, spacing3=0)
-    tw.tag_configure('book', foreground='#00897B')
-    for part in re.split(r'(《[^》]*》)', note_txt):
-        if part.startswith('《') and part.endswith('》'):
-            tw.insert(tk.END, part, 'book')
-        else:
-            tw.insert(tk.END, part)
-    tw.configure(state=tk.DISABLED)
-    return tw
+    """创建注释文本控件（纯 Label，不可滚动）。"""
+    lbl = tk.Label(parent, text=note_txt, bg=bg, fg=COLORS['text_muted'],
+                   font=('Microsoft YaHei', 9), wraplength=220,
+                   justify='left', anchor='w', cursor='hand2')
+    return lbl
 
 
 def _build_card(parent, opt, info, li, ci, total, on_apply):
@@ -91,31 +82,31 @@ def _build_card(parent, opt, info, li, ci, total, on_apply):
     is_cur = info['phonetic'] == phon
 
     bg = COLORS['accent_light'] if is_cur else COLORS['bg_card']
-    border = COLORS['accent'] if is_cur else COLORS['border']
+    border = COLORS['accent'] if is_cur else COLORS['border_light']
 
     card = tk.Frame(parent, bg=bg, highlightbackground=border,
                     highlightthickness=1, padx=12, pady=10)
-    card.pack(fill=tk.X, pady=4, padx=4)
+    card.pack(fill=tk.X, pady=3, padx=6)
 
     row = tk.Frame(card, bg=bg)
     row.pack(fill=tk.X)
 
-    lbl = tk.Label(row, text=phon, font=('Consolas', 14, 'bold'),
+    lbl = tk.Label(row, text=phon, font=('Consolas', 13, 'bold'),
                    bg=bg, fg=COLORS['accent'], cursor='hand2')
     lbl.pack(side=tk.LEFT)
 
     if is_cur:
-        tk.Label(row, text='✓ 当前', font=('Microsoft YaHei', 8),
+        tk.Label(row, text='✓', font=('Microsoft YaHei', 9),
                  bg=bg, fg=COLORS['poly_green']).pack(side=tk.LEFT, padx=(8, 0))
 
     if total > 1:
-        gb = tk.Label(row, text='全局应用', font=('Microsoft YaHei', 8),
-                      bg=COLORS['poly_orange_bg'], fg=COLORS['poly_orange'],
-                      padx=6, pady=2, cursor='hand2')
+        gb = tk.Label(row, text='全局', font=('Microsoft YaHei', 8),
+                      bg=COLORS['tag_bg'], fg=COLORS['tag_fg'],
+                      padx=6, pady=1, cursor='hand2')
         gb.pack(side=tk.RIGHT)
         gb.bind('<Button-1>', lambda e, p=phon: on_apply(li, ci, p, True))
-        gb.bind('<Enter>', lambda e: gb.configure(bg=COLORS['poly_orange']))
-        gb.bind('<Leave>', lambda e: gb.configure(bg=COLORS['poly_orange_bg']))
+        gb.bind('<Enter>', lambda e: gb.configure(bg=COLORS['accent'], fg='#FFFFFF'))
+        gb.bind('<Leave>', lambda e: gb.configure(bg=COLORS['tag_bg'], fg=COLORS['tag_fg']))
 
     if note_txt:
         nl = _create_note_widget(card, note_txt, bg)

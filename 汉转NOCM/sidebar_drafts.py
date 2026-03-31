@@ -37,24 +37,28 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
         drag_drop.init(sidebar, current_draft, on_rebuild)
 
         # 按钮行
-        btn_row = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16)
-        btn_row.pack(fill=tk.X, pady=(10, 10))
+        btn_row = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=14)
+        btn_row.pack(fill=tk.X, pady=(12, 8))
+
+        # 标题
+        tk.Label(btn_row, text='文稿', font=('Microsoft YaHei', 11, 'bold'),
+                 bg=COLORS['bg_sidebar'], fg=COLORS['text_primary']).pack(side=tk.LEFT)
 
         for i, (text, cmd) in enumerate([
-            ('📄＋', lambda: on_new()),
-            ('📁＋', lambda: _do_create_folder(on_rebuild)),
+            ('＋📁', lambda: _do_create_folder(on_rebuild)),
+            ('＋ 新建', lambda: on_new()),
         ]):
             b = tk.Label(btn_row, text=text, font=('Microsoft YaHei', 9),
-                         bg=COLORS['accent_light'], fg=COLORS['accent'],
-                         padx=6, pady=3, cursor='hand2')
-            b.pack(side=tk.LEFT, padx=(6 if i else 0, 0))
+                         bg=COLORS['tag_bg'], fg=COLORS['tag_fg'],
+                         padx=8, pady=2, cursor='hand2')
+            b.pack(side=tk.RIGHT, padx=(4, 0))
             b.bind('<Button-1>', lambda e, c=cmd: c())
-            b.bind('<Enter>', lambda e, w=b: w.configure(bg=COLORS['border']))
+            b.bind('<Enter>', lambda e, w=b: w.configure(bg=COLORS['accent']))
             b.bind('<Leave>',
-                   lambda e, w=b: w.configure(bg=COLORS['accent_light']))
+                   lambda e, w=b: w.configure(bg=COLORS['tag_bg']))
 
-        tk.Frame(sidebar, bg=COLORS['border'], height=1).pack(fill=tk.X,
-                                                               padx=16)
+        tk.Frame(sidebar, bg=COLORS['divider'], height=1).pack(fill=tk.X,
+                                                                padx=14)
 
         # 滚动列表
         sf = ScrollableFrame(sidebar, bg=COLORS['bg_sidebar'])
@@ -76,12 +80,14 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
             _build_empty(sf.inner)
         else:
             if groups:
-                rz = tk.Frame(sf.inner, bg=COLORS['bg_sidebar'], pady=4)
-                rz.pack(fill=tk.X, padx=8)
-                tk.Label(rz, text='─  未分组  ─',
+                rz = tk.Frame(sf.inner, bg=COLORS['bg_sidebar'], pady=6)
+                rz.pack(fill=tk.X, padx=10)
+                tk.Label(rz, text='未分组',
                          font=('Microsoft YaHei', 8),
                          bg=COLORS['bg_sidebar'], fg=COLORS['text_muted']
-                         ).pack()
+                         ).pack(side=tk.LEFT)
+                tk.Frame(rz, bg=COLORS['divider'], height=1).pack(
+                    side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
                 drag_drop.set_root_zone(rz)
                 rz.bind('<MouseWheel>', sf.on_mousewheel)
                 for ch in rz.winfo_children():
@@ -136,15 +142,21 @@ def _show_name_dialog(parent_win, title, label, old_name, do_rename, on_done):
     dlg.configure(bg=COLORS['bg_card'])
     dlg.grab_set()
 
-    fr = tk.Frame(dlg, bg=COLORS['bg_card'], padx=24, pady=20)
+    fr = tk.Frame(dlg, bg=COLORS['bg_card'], padx=28, pady=24)
     fr.pack()
-    tk.Label(fr, text=label, font=('Microsoft YaHei', 10),
+    tk.Label(fr, text=title, font=('Microsoft YaHei', 12, 'bold'),
              bg=COLORS['bg_card'], fg=COLORS['text_primary']).pack(anchor='w')
+    tk.Label(fr, text=label, font=('Microsoft YaHei', 9),
+             bg=COLORS['bg_card'], fg=COLORS['text_secondary']).pack(anchor='w', pady=(8, 0))
     entry = tk.Entry(fr, font=('Microsoft YaHei', 11), width=28,
+                     bg=COLORS['bg_main'],
+                     fg=COLORS['text_primary'],
+                     insertbackground=COLORS['accent'],
                      highlightthickness=1,
                      highlightbackground=COLORS['border'],
-                     highlightcolor=COLORS['accent'])
-    entry.pack(pady=(6, 12), ipady=4)
+                     highlightcolor=COLORS['accent'],
+                     relief='flat')
+    entry.pack(pady=(6, 16), ipady=6)
     entry.insert(0, old_name)
     entry.select_range(0, tk.END)
     entry.focus_set()
@@ -184,13 +196,13 @@ def _do_create_folder(on_rebuild):
 
 def _build_empty(parent):
     box = tk.Frame(parent, bg=COLORS['bg_sidebar'])
-    box.pack(fill=tk.BOTH, expand=True, pady=40)
-    tk.Label(box, text='📭', font=('Segoe UI Emoji', 28),
+    box.pack(fill=tk.BOTH, expand=True, pady=48)
+    tk.Label(box, text='📭', font=('Segoe UI Emoji', 24),
              bg=COLORS['bg_sidebar']).pack()
-    tk.Label(box, text='暂无文稿\n点击「保存」保存当前内容',
+    tk.Label(box, text='暂无文稿',
              font=('Microsoft YaHei', 10),
              bg=COLORS['bg_sidebar'], fg=COLORS['text_muted'],
-             justify='center').pack(pady=(10, 0))
+             justify='center').pack(pady=(8, 0))
 
 
 def _do_delete_folder(gid, name, parent_widget, on_rebuild):
@@ -226,8 +238,8 @@ def _build_folder(parent, group, drafts_map, current_draft,
     drag_drop.register_folder(zone, gid, parent_gid)
 
     # ── 文件夹头部 ──
-    hdr = tk.Frame(zone, bg=COLORS['bg_sidebar'], padx=left_pad, pady=6)
-    hdr.pack(fill=tk.X, pady=(4, 0), padx=6)
+    hdr = tk.Frame(zone, bg=COLORS['bg_sidebar'], padx=left_pad, pady=5)
+    hdr.pack(fill=tk.X, pady=(2, 0), padx=6)
     drag_drop.register_folder_hdr(gid, hdr)
 
     # 拖拽手柄
@@ -270,7 +282,7 @@ def _build_folder(parent, group, drafts_map, current_draft,
     del_lbl.pack(side=tk.RIGHT, padx=(4, 0))
     del_lbl.bind('<Button-1>', lambda e: _do_delete_folder(
         gid, group['name'], hdr, on_rebuild))
-    del_lbl.bind('<Enter>', lambda e: del_lbl.configure(fg='#EF4444'))
+    del_lbl.bind('<Enter>', lambda e: del_lbl.configure(fg=COLORS['danger']))
     del_lbl.bind('<Leave>', lambda e: del_lbl.configure(
         fg=COLORS['text_muted']))
 
@@ -301,7 +313,7 @@ def _build_folder(parent, group, drafts_map, current_draft,
     # Hover（非拖拽时）
     def _hdr_enter(e):
         if not drag_drop.state.active:
-            set_widget_bg(hdr, COLORS['border_light'])
+            set_widget_bg(hdr, COLORS['hover_overlay'])
 
     def _hdr_leave(e):
         if not drag_drop.state.active or drag_drop.state.hl_id != gid:
@@ -313,7 +325,7 @@ def _build_folder(parent, group, drafts_map, current_draft,
     for ch in hdr.winfo_children():
         ch.bind('<MouseWheel>', mw_handler)
 
-    tk.Frame(zone, bg=COLORS['border'], height=1).pack(fill=tk.X, padx=16)
+    tk.Frame(zone, bg=COLORS['divider'], height=1).pack(fill=tk.X, padx=14)
 
     # ── 文件夹内容（始终创建，通过 pack/pack_forget 控制可见性）──
     container = tk.Frame(zone, bg=COLORS['bg_sidebar'])
@@ -349,31 +361,34 @@ def _build_card(parent, draft, current_draft, group_id,
     """构建单个文稿卡片。"""
     fn = draft['filename']
     active = fn == current_draft
-    bg = COLORS['accent_light'] if active else COLORS['bg_card']
-    bdr = COLORS['accent'] if active else COLORS['border']
-    left_pad = 6 + depth * 16
+    bg = COLORS['accent_light'] if active else COLORS['bg_sidebar']
+    left_pad = 8 + depth * 16
 
-    card = tk.Frame(parent, bg=bg, highlightbackground=bdr,
-                    highlightthickness=1, padx=8, pady=10)
-    card.pack(fill=tk.X, pady=3, padx=(left_pad, 6))
+    card = tk.Frame(parent, bg=bg, padx=10, pady=8)
+    card.pack(fill=tk.X, pady=1, padx=(left_pad, 6))
+
+    # 左侧竖条指示器（当前活跃时）
+    if active:
+        indicator = tk.Frame(card, bg=COLORS['accent'], width=3)
+        indicator.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 8))
 
     top = tk.Frame(card, bg=bg)
     top.pack(fill=tk.X)
 
     # 拖拽手柄
-    handle = tk.Label(top, text='⣿', font=('Segoe UI Symbol', 10),
+    handle = tk.Label(top, text='⣿', font=('Segoe UI Symbol', 9),
                       bg=bg, fg=COLORS['text_muted'], cursor='fleur')
     handle.pack(side=tk.LEFT, padx=(0, 6))
     drag_drop.bind_drag_handle(handle, 'draft', fn, group_id, card)
 
     name_lbl = tk.Label(top, text=draft['name'],
-                        font=('Microsoft YaHei', 11, 'bold'),
+                        font=('Microsoft YaHei', 10),
                         bg=bg, fg=COLORS['text_primary'],
                         anchor='w', cursor='hand2')
     name_lbl.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
     bot = tk.Frame(card, bg=bg)
-    bot.pack(fill=tk.X, pady=(4, 0))
+    bot.pack(fill=tk.X, pady=(3, 0))
 
     mod = ''
     if draft['modified']:
@@ -385,12 +400,12 @@ def _build_card(parent, draft, current_draft, group_id,
     tk.Label(bot, text=mod, font=('Microsoft YaHei', 8),
              bg=bg, fg=COLORS['text_muted']).pack(side=tk.LEFT)
 
-    db = tk.Label(bot, text='删除', font=('Microsoft YaHei', 8),
-                  bg=bg, fg='#EF4444', cursor='hand2')
+    db = tk.Label(bot, text='✕', font=('Microsoft YaHei', 8),
+                  bg=bg, fg=COLORS['text_muted'], cursor='hand2')
     db.pack(side=tk.RIGHT, padx=(6, 0))
     db.bind('<Button-1>', lambda e: on_delete(fn, draft['name']))
-    db.bind('<Enter>', lambda e: db.configure(fg='#DC2626'))
-    db.bind('<Leave>', lambda e: db.configure(fg='#EF4444'))
+    db.bind('<Enter>', lambda e: db.configure(fg=COLORS['danger']))
+    db.bind('<Leave>', lambda e: db.configure(fg=COLORS['text_muted']))
 
     # 单击加载 / 双击重命名
     bind_single_double(
