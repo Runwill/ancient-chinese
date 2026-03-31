@@ -12,7 +12,7 @@ def _format_note(note_txt):
     if not note_txt:
         return note_txt
     s = note_txt.strip()
-    s = re.sub(r'(?<!^)(?<!\n)(\d+)(?=[\u4e00-\u9fff])', r'\n\1', s)
+    s = re.sub(r'(?<!^)(?<![\n\d])(\d+)(?=[\u4e00-\u9fff])', r'\n\1', s)
     return s
 
 
@@ -93,9 +93,15 @@ def _create_note_widget(parent, note_txt, bg):
                  cursor='hand2', height=1,
                  padx=0, pady=0, spacing1=0, spacing3=0)
     tw.tag_configure('book', foreground='#00897B')
-    for part in re.split(r'(《[^》]*》)', note_txt):
+    tw.tag_configure('idx', foreground=COLORS['accent'])
+    # 同时匹配行首序号(数字+紧跟汉字)和《》书名号
+    for part in re.split(r'((?:^|\n)\d+(?=[\u4e00-\u9fff])|《[^》]*》)', note_txt):
+        if not part:
+            continue
         if part.startswith('《') and part.endswith('》'):
             tw.insert(tk.END, part, 'book')
+        elif re.match(r'^(?:\n)?\d+$', part):
+            tw.insert(tk.END, part, 'idx')
         else:
             tw.insert(tk.END, part)
     tw.configure(state=tk.DISABLED)
@@ -140,9 +146,9 @@ def _build_card(parent, opt, info, li, ci, total, on_apply):
     lbl.pack(side=tk.LEFT)
 
     if is_cur:
-        tk.Label(row, text='当前', font=('Microsoft YaHei', 8),
-                 bg=COLORS['poly_green_bg'], fg=COLORS['poly_green'],
-                 padx=5, pady=1).pack(side=tk.LEFT, padx=(8, 0))
+        tk.Label(row, text='√', font=('Microsoft YaHei', 7),
+                 bg=bg, fg=COLORS['accent'],
+                 padx=0, pady=0).pack(side=tk.LEFT, padx=(8, 0))
 
     if total > 1:
         gb = tk.Label(row, text='全局', font=('Microsoft YaHei', 8),
