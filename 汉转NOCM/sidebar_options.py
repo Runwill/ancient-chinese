@@ -34,6 +34,16 @@ def build_placeholder(sidebar):
 
 def build_options(sidebar, li, ci, char, info, buffer, on_apply):
     """构建读音选项面板。on_apply(li, ci, phonetic, global_apply)"""
+    # 保存滚动位置
+    scroll_pos = None
+    for w in sidebar.winfo_children():
+        if isinstance(w, ScrollableFrame):
+            try:
+                scroll_pos = w.canvas.yview()[0]
+            except tk.TclError:
+                pass
+            break
+
     freeze_redraw(sidebar)
     try:
         for w in sidebar.winfo_children():
@@ -66,6 +76,9 @@ def build_options(sidebar, li, ci, char, info, buffer, on_apply):
             _build_card(sf.inner, o, info, li, ci, total, on_apply)
         bind_mousewheel(sf.inner, sf.on_mousewheel)
         sf.canvas.bind('<MouseWheel>', sf.on_mousewheel)
+
+        if scroll_pos is not None:
+            sf.set_pending_yview(scroll_pos)
 
         sidebar.update_idletasks()
     finally:

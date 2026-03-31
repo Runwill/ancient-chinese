@@ -154,8 +154,15 @@ class ScrollableFrame(tk.Frame):
         self._pending_yview = None
 
     def set_pending_yview(self, pos):
-        """设置待恢复的滚动位置，将在下次 _sync 时应用。"""
+        """设置待恢复的滚动位置，在短时间窗口内持续生效以抵抗多次 _sync 重置。"""
         self._pending_yview = pos
+        # 延迟清除，确保窗口期内每次 _sync 都应用保存的位置
+        if hasattr(self, '_yview_clear_id'):
+            self.after_cancel(self._yview_clear_id)
+        self._yview_clear_id = self.after(120, self._clear_pending_yview)
+
+    def _clear_pending_yview(self):
+        self._pending_yview = None
 
     def _sync(self):
         bbox = self.canvas.bbox('all')
@@ -168,7 +175,6 @@ class ScrollableFrame(tk.Frame):
             self.canvas.configure(scrollregion=(0, 0, bbox[2], cvh))
         if self._pending_yview is not None:
             self.canvas.yview_moveto(self._pending_yview)
-            self._pending_yview = None
         elif ch <= cvh:
             self.canvas.yview_moveto(0)
 
