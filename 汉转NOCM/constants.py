@@ -21,37 +21,87 @@ def in_bracket(pos, ranges):
     return any(s <= pos <= e for s, e in ranges)
 
 
-# ── 现代化配色方案 ──────────────────────────────────
-COLORS = {
-    'bg_main': '#F0F4F8',        # 主背景 - 柔和蓝灰
-    'bg_card': '#FFFFFF',        # 卡片背景
-    'bg_sidebar': '#FFFFFF',     # 侧边栏背景
-    'bg_canvas': '#FAFCFE',      # 编辑区背景
-    'accent': '#6366F1',         # 主强调色 - 现代靛蓝
-    'accent_light': '#EEF2FF',   # 强调色浅色
-    'accent_hover': '#4F46E5',   # 强调色悬停
-    'text_primary': '#1E293B',   # 主文字
-    'text_secondary': '#64748B', # 次要文字
-    'text_muted': '#94A3B8',     # 淡化文字
-    'border': '#E2E8F0',         # 边框
-    'border_light': '#F1F5F9',   # 浅边框
-    'poly_orange': '#F59E0B',    # 多音字 - 橙色
+# ── 主题配色方案 ──────────────────────────────────
+
+_LIGHT_THEME = {
+    'bg_main': '#F0F4F8',
+    'bg_card': '#FFFFFF',
+    'bg_sidebar': '#FFFFFF',
+    'bg_canvas': '#FAFCFE',
+    'accent': '#6366F1',
+    'accent_light': '#EEF2FF',
+    'accent_hover': '#4F46E5',
+    'text_primary': '#1E293B',
+    'text_secondary': '#64748B',
+    'text_muted': '#94A3B8',
+    'border': '#E2E8F0',
+    'border_light': '#F1F5F9',
+    'poly_orange': '#F59E0B',
     'poly_orange_bg': '#FFFBEB',
-    'poly_green': '#10B981',     # 已选择 - 绿色
+    'poly_green': '#10B981',
     'poly_green_bg': '#ECFDF5',
-    'poly_blue': '#3B82F6',      # 全局选择 - 蓝色
+    'poly_blue': '#3B82F6',
     'poly_blue_bg': '#EFF6FF',
-    'poly_purple': '#8B5CF6',     # 上次全局选择 - 紫色
+    'poly_purple': '#8B5CF6',
     'poly_purple_bg': '#F5F3FF',
-    'unknown_char': '#EF4444',    # 未知字符 - 红色
+    'unknown_char': '#EF4444',
     'unknown_char_bg': '#FEF2F2',
-    'cursor': '#6366F1',         # 光标
+    'cursor': '#6366F1',
     'btn_primary': '#6366F1',
     'btn_primary_hover': '#4F46E5',
     'btn_secondary': '#E2E8F0',
     'btn_secondary_hover': '#CBD5E1',
-    'shadow': '#00000008',       # 阴影
+    'shadow': '#00000008',
 }
+
+_DARK_THEME = {
+    'bg_main': '#1E1E2E',
+    'bg_card': '#2A2A3C',
+    'bg_sidebar': '#252536',
+    'bg_canvas': '#1E1E2E',
+    'accent': '#6366F1',
+    'accent_light': '#2E2B5F',
+    'accent_hover': '#818CF8',
+    'text_primary': '#E2E8F0',
+    'text_secondary': '#94A3B8',
+    'text_muted': '#64748B',
+    'border': '#3F3F5C',
+    'border_light': '#333348',
+    'poly_orange': '#FBBF24',
+    'poly_orange_bg': '#422006',
+    'poly_green': '#34D399',
+    'poly_green_bg': '#064E3B',
+    'poly_blue': '#4B8BD4',
+    'poly_blue_bg': '#1A2F4A',
+    'poly_purple': '#A78BFA',
+    'poly_purple_bg': '#3B2670',
+    'unknown_char': '#F87171',
+    'unknown_char_bg': '#450A0A',
+    'cursor': '#6366F1',
+    'btn_primary': '#6366F1',
+    'btn_primary_hover': '#818CF8',
+    'btn_secondary': '#3F3F5C',
+    'btn_secondary_hover': '#4C4C6D',
+    'shadow': '#00000020',
+}
+
+# 当前主题名称
+_current_theme = 'dark'
+
+# 活动配色字典 —— 所有模块通过 from constants import COLORS 引用同一对象
+COLORS = dict(_DARK_THEME)
+
+
+def set_theme(name):
+    """切换主题（'light' 或 'dark'），就地更新 COLORS 字典。"""
+    global _current_theme
+    _current_theme = name
+    COLORS.update(_LIGHT_THEME if name == 'light' else _DARK_THEME)
+
+
+def get_theme():
+    """返回当前主题名称。"""
+    return _current_theme
 
 _CELL_PAD = 6
 _CELL_GAP = 3

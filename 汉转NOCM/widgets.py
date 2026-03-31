@@ -138,55 +138,57 @@ def bind_mousewheel(widget, handler):
 
 
 class ModernButton(tk.Canvas):
-    """现代化圆角按钮"""
-    def __init__(self, parent, text, command=None, primary=False, width=80, height=32, **kwargs):
-        super().__init__(parent, width=width, height=height, 
-                        highlightthickness=0, bg=COLORS['bg_main'], **kwargs)
+    """圆角按钮控件"""
+
+    def __init__(self, parent, text, command=None, primary=False,
+                 width=80, height=36, **kwargs):
+        super().__init__(parent, width=width, height=height,
+                         highlightthickness=0, bg=COLORS['bg_main'], **kwargs)
         self.text = text
         self.command = command
         self.primary = primary
         self.width = width
         self.height = height
-        self._hovered = False
-        
+        self._hover = False
+
         self._draw()
         self.bind('<Enter>', self._on_enter)
         self.bind('<Leave>', self._on_leave)
         self.bind('<Button-1>', self._on_click)
-    
+
+    def _colors(self):
+        """返回 (fill_normal, fill_hover, text_color)。"""
+        if self.primary:
+            return (COLORS['btn_primary'], COLORS['btn_primary_hover'],
+                    '#FFFFFF')
+        return (COLORS['btn_secondary'], COLORS['btn_secondary_hover'],
+                COLORS['text_primary'])
+
     def _draw(self):
         self.delete('all')
-        r = 6  # 圆角半径
-        if self.primary:
-            fill = COLORS['btn_primary_hover'] if self._hovered else COLORS['btn_primary']
-            text_color = '#FFFFFF'
-        else:
-            fill = COLORS['btn_secondary_hover'] if self._hovered else COLORS['btn_secondary']
-            text_color = COLORS['text_primary']
-        
-        # 绘制圆角矩形
-        self._round_rect(2, 2, self.width-2, self.height-2, r, fill=fill, outline='')
-        # 绘制文字
-        self.create_text(self.width/2, self.height/2, text=self.text,
-                        font=('Microsoft YaHei', 9), fill=text_color)
-    
+        fn, fh, tc = self._colors()
+        fill = fh if self._hover else fn
+        r = 8
+        self._round_rect(1, 1, self.width - 1, self.height - 1, r,
+                         fill=fill, outline='')
+        self.create_text(self.width / 2, self.height / 2, text=self.text,
+                         font=('Microsoft YaHei', 9), fill=tc)
+
     def _round_rect(self, x1, y1, x2, y2, r, **kwargs):
-        points = [
-            x1+r, y1, x2-r, y1, x2, y1, x2, y1+r,
-            x2, y2-r, x2, y2, x2-r, y2, x1+r, y2,
-            x1, y2, x1, y2-r, x1, y1+r, x1, y1
-        ]
-        return self.create_polygon(points, smooth=True, **kwargs)
-    
+        pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r,
+               x2, y2 - r, x2, y2, x2 - r, y2, x1 + r, y2,
+               x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
+        return self.create_polygon(pts, smooth=True, **kwargs)
+
     def _on_enter(self, e):
-        self._hovered = True
-        self._draw()
         self.config(cursor='hand2')
-    
-    def _on_leave(self, e):
-        self._hovered = False
+        self._hover = True
         self._draw()
-    
+
+    def _on_leave(self, e):
+        self._hover = False
+        self._draw()
+
     def _on_click(self, e):
         if self.command:
             self.command()

@@ -7,8 +7,8 @@ import tkinter.font as tkFont
 from tkinter import messagebox
 from typing import Optional
 
-from constants import COLORS, _CANVAS_MARGIN, find_bracket_ranges, in_bracket
-from widgets import ModernButton
+from constants import COLORS, _CANVAS_MARGIN, find_bracket_ranges, in_bracket, set_theme, get_theme
+from widgets import ModernButton, freeze_redraw, thaw_redraw
 from editor_buffer import EditorBuffer
 from editor_render import EditorRenderer
 from draft_io import save_draft, load_draft, delete_draft, rename_draft, get_draft_name
@@ -61,8 +61,10 @@ class App(tk.Tk):
         btn_frame = tk.Frame(header, bg=COLORS['bg_main'])
         btn_frame.pack(side=tk.RIGHT)
         
+        theme_label = '浅色' if get_theme() == 'dark' else '深色'
         for text, cmd, pri in [('帮助', self._on_help, False),
                                ('重启', self._on_restart, False),
+                               (theme_label, self._on_toggle_theme, False),
                                ('清空', self._on_clear, False),
                                ('保存', self._on_save, False),
                                ('复制', self._on_copy, True)]:
@@ -382,6 +384,23 @@ class App(tk.Tk):
         self.destroy()
         python = sys.executable
         os.execv(python, [python] + sys.argv)
+
+    def _on_toggle_theme(self):
+        """切换深色/浅色主题并重建整个界面。"""
+        new = 'light' if get_theme() == 'dark' else 'dark'
+        set_theme(new)
+        freeze_redraw(self)
+        try:
+            # 销毁旧 UI
+            for w in self.winfo_children():
+                w.destroy()
+            self.configure(bg=COLORS['bg_main'])
+            # 重建
+            self._build_ui()
+            self._rebuild_display()
+            self._update_title()
+        finally:
+            thaw_redraw(self)
 
     def _save_draft(self, filename=None, name=None):
         self._current_draft = save_draft(

@@ -114,7 +114,7 @@ def _build_card(parent, opt, info, li, ci, total, on_apply):
                       padx=6, pady=2, cursor='hand2')
         gb.pack(side=tk.RIGHT)
         gb.bind('<Button-1>', lambda e, p=phon: on_apply(li, ci, p, True))
-        gb.bind('<Enter>', lambda e: gb.configure(bg='#FEF3C7'))
+        gb.bind('<Enter>', lambda e: gb.configure(bg=COLORS['poly_orange']))
         gb.bind('<Leave>', lambda e: gb.configure(bg=COLORS['poly_orange_bg']))
 
     if note_txt:
