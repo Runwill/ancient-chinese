@@ -43,6 +43,8 @@ COLORS = {
     'poly_blue_bg': '#EFF6FF',
     'poly_purple': '#8B5CF6',     # 上次全局选择 - 紫色
     'poly_purple_bg': '#F5F3FF',
+    'unknown_char': '#EF4444',    # 未知字符 - 红色
+    'unknown_char_bg': '#FEF2F2',
     'cursor': '#6366F1',         # 光标
     'btn_primary': '#6366F1',
     'btn_primary_hover': '#4F46E5',

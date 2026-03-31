@@ -1,7 +1,20 @@
 """编辑器渲染：Canvas 显示重建与光标绘制。"""
 
+import re
+
 from constants import (COLORS, _CELL_PAD, _CELL_GAP, _LINE_GAP, _CANVAS_MARGIN,
                        find_bracket_ranges, in_bracket)
+
+# 正常字符：中英文标点、段落符号（圆圈菱形等）、空格、数字、字母
+_NORMAL_NON_HAN = re.compile(
+    r'[\s'
+    r'a-zA-Z0-9'
+    r'，。！？；：、「」『』【】（）《》〈〉〔〕\u201c\u201d\u2018\u2019'
+    r',\.!\?;:\(\)\[\]\{\}"\'`~@#\$%\^&\*\-_=\+\\|/<>'
+    r'…—―─·•◆◇○●◎■□▲△▼▽★☆※→←↑↓↔§¶†‡°℃'
+    r'\u3000-\u303F'  # CJK 符号和标点
+    r']'
+)
 
 
 class EditorRenderer:
@@ -88,8 +101,14 @@ class EditorRenderer:
                         bg, fg_ch = COLORS['poly_orange_bg'], COLORS['poly_orange']
                     fg_ph, outline = COLORS['accent'], COLORS['border']
                 else:
-                    fg_ch, fg_ph, bg, outline = (
-                        COLORS['text_primary'], COLORS['text_muted'], '', '')
+                    if info['phonetic'] == ch and not _NORMAL_NON_HAN.fullmatch(ch):
+                        # 不在字典中且非普通标点/符号/空格 → 红色标记
+                        fg_ch, fg_ph, bg, outline = (
+                            COLORS['unknown_char'], COLORS['unknown_char'],
+                            COLORS['unknown_char_bg'], COLORS['border'])
+                    else:
+                        fg_ch, fg_ph, bg, outline = (
+                            COLORS['text_primary'], COLORS['text_muted'], '', '')
 
                 if bg:
                     canvas.create_rectangle(
