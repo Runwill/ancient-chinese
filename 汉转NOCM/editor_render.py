@@ -4,6 +4,7 @@ import re
 
 from constants import (COLORS, _CELL_PAD, _CELL_GAP, _LINE_GAP, _CANVAS_MARGIN,
                        find_bracket_ranges, in_bracket)
+from widgets import freeze_redraw, thaw_redraw
 
 # 正常字符：中英文标点、段落符号（圆圈菱形等）、空格、数字、字母
 _NORMAL_NON_HAN = re.compile(
@@ -18,7 +19,11 @@ _NORMAL_NON_HAN = re.compile(
 
 
 class EditorRenderer:
-    """负责在 Canvas 上渲染缓冲区内容和光标。"""
+    """负责在 Canvas 上渲染缓冲区内容和光标。
+    
+    采用虚拟渲染：布局阶段计算所有单元格坐标（纯 Python，极快），
+    但只为当前可视区域内的行创建 Canvas items，滚动时增量补绘。
+    """
 
     def __init__(self, canvas, char_font, phon_font):
         self.canvas = canvas
@@ -31,8 +36,12 @@ class EditorRenderer:
         self._line_y = [_CANVAS_MARGIN]
         self._cursor_id = None
         self._last_canvas_w = 0
-        self._width_cache = {}  # (ch, phon) -> cell_width
-        self._configure_timer = None  # debounce on_configure
+        self._width_cache = {}   # (ch, phon) -> cell_width
+        self._configure_timer = None
+        # 虚拟渲染状态
+        self._layout_lines = []  # [(y_min, y_max, [(x,y,cw,ch,phon,fg_ch,fg_ph,bg,outline), ...])]
+        self._drawn_lines = set()
+        self._total_h = 1
 
     @property
     def cell_h(self):
@@ -59,77 +68,134 @@ class EditorRenderer:
         return cw
 
     def rebuild(self, buffer, cell_info):
-        """完整重建 Canvas 显示。"""
+        """布局全部单元格，仅绘制可见区域（冻结窗口重绘）。"""
         canvas = self.canvas
-        canvas.delete('all')
-        self._cell_rects = []
-        self._line_y = []
-        self._cursor_id = None
-        canvas_w = max(canvas.winfo_width(), 200)
-        ch_font, ph_font = self._char_font, self._phon_font
-        ch_h, ph_h = self._char_h, self._phon_h
+        freeze_redraw(canvas)
+        try:
+            canvas.delete('all')
+            self._cell_rects = []
+            self._line_y = []
+            self._cursor_id = None
+            self._drawn_lines = set()
+            self._layout_lines = []
+            self._layout(buffer, cell_info)
+            self._render_visible()
+        finally:
+            thaw_redraw(canvas)
+
+    # ── 布局（纯计算，不创建 Canvas item） ────────
+
+    def _layout(self, buffer, cell_info):
+        canvas_w = max(self.canvas.winfo_width(), 200)
         cell_h = self._cell_h
         y = _CANVAS_MARGIN
 
-        for li, (line_chars, line_info) in enumerate(
-                zip(buffer, cell_info)):
+        c_text_muted = COLORS['text_muted']
+        c_text_primary = COLORS['text_primary']
+        c_accent = COLORS['accent']
+        c_border = COLORS['border']
+        c_poly_green_bg = COLORS['poly_green_bg']
+        c_poly_green = COLORS['poly_green']
+        c_poly_purple_bg = COLORS['poly_purple_bg']
+        c_poly_purple = COLORS['poly_purple']
+        c_poly_blue_bg = COLORS['poly_blue_bg']
+        c_poly_blue = COLORS['poly_blue']
+        c_poly_orange_bg = COLORS['poly_orange_bg']
+        c_poly_orange = COLORS['poly_orange']
+        c_unknown = COLORS['unknown_char']
+        c_unknown_bg = COLORS['unknown_char_bg']
+        margin = _CANVAS_MARGIN
+        gap = _CELL_GAP
+        measure = self._measure_cell
+        fullmatch = _NORMAL_NON_HAN.fullmatch
+
+        for line_chars, line_info in zip(buffer, cell_info):
             br = find_bracket_ranges(line_chars)
             line_rects = []
-            x = _CANVAS_MARGIN
+            line_cells = []
+            x = margin
+            y_start = y
             self._line_y.append(y)
 
             for ci, (ch, info) in enumerate(zip(line_chars, line_info)):
                 in_brk = in_bracket(ci, br)
                 phon = ch if in_brk else info['phonetic']
-                cw = self._measure_cell(ch, phon)
-                if x + cw > canvas_w - _CANVAS_MARGIN and x > _CANVAS_MARGIN:
-                    x = _CANVAS_MARGIN
-                    y += cell_h + _CELL_GAP
+                cw = measure(ch, phon)
+                if x + cw > canvas_w - margin and x > margin:
+                    x = margin
+                    y += cell_h + gap
 
                 if in_brk:
-                    fg_ch, fg_ph, bg, outline = (
-                        COLORS['text_muted'], COLORS['text_muted'], '', '')
+                    fg_ch = fg_ph = c_text_muted
+                    bg = outline = ''
                 elif info['is_poly']:
                     sel = info.get('selected', 'none')
                     if sel == 'manual':
-                        bg, fg_ch = COLORS['poly_green_bg'], COLORS['poly_green']
+                        bg, fg_ch = c_poly_green_bg, c_poly_green
                     elif sel == 'global_recent':
-                        bg, fg_ch = COLORS['poly_purple_bg'], COLORS['poly_purple']
+                        bg, fg_ch = c_poly_purple_bg, c_poly_purple
                     elif sel == 'global':
-                        bg, fg_ch = COLORS['poly_blue_bg'], COLORS['poly_blue']
+                        bg, fg_ch = c_poly_blue_bg, c_poly_blue
                     else:
-                        bg, fg_ch = COLORS['poly_orange_bg'], COLORS['poly_orange']
-                    fg_ph, outline = COLORS['accent'], COLORS['border']
+                        bg, fg_ch = c_poly_orange_bg, c_poly_orange
+                    fg_ph, outline = c_accent, c_border
                 else:
-                    if info['phonetic'] == ch and not _NORMAL_NON_HAN.fullmatch(ch):
-                        # 不在字典中且非普通标点/符号/空格 → 红色标记
-                        fg_ch, fg_ph, bg, outline = (
-                            COLORS['unknown_char'], COLORS['unknown_char'],
-                            COLORS['unknown_char_bg'], COLORS['border'])
+                    if info['phonetic'] == ch and not fullmatch(ch):
+                        fg_ch = fg_ph = c_unknown
+                        bg, outline = c_unknown_bg, c_border
                     else:
-                        fg_ch, fg_ph, bg, outline = (
-                            COLORS['text_primary'], COLORS['text_muted'], '', '')
+                        fg_ch, fg_ph = c_text_primary, c_text_muted
+                        bg = outline = ''
 
-                if bg:
-                    canvas.create_rectangle(
-                        x, y, x + cw, y + cell_h,
-                        fill=bg, outline=outline, width=1)
-                mid = x + cw / 2
-                canvas.create_text(
-                    mid, y + _CELL_PAD, text=ch,
-                    font=ch_font, fill=fg_ch, anchor='n')
-                canvas.create_text(
-                    mid, y + _CELL_PAD + ch_h, text=phon,
-                    font=ph_font, fill=fg_ph, anchor='n')
-
+                line_cells.append((x, y, cw, ch, phon, fg_ch, fg_ph, bg, outline))
                 line_rects.append((x, y, x + cw, y + cell_h))
-                x += cw + _CELL_GAP
+                x += cw + gap
 
             self._cell_rects.append(line_rects)
+            self._layout_lines.append((y_start, y + cell_h, line_cells))
             y += cell_h + _LINE_GAP
 
-        canvas.configure(
-            scrollregion=(0, 0, canvas_w, max(y + _CANVAS_MARGIN, 1)))
+        self._total_h = max(y + margin, 1)
+        self.canvas.configure(scrollregion=(0, 0, canvas_w, self._total_h))
+
+    # ── 可见区域绘制 ──────────────────────────────
+
+    def _render_visible(self):
+        """只为可视范围内（含上下 400px 缓冲）的行创建 Canvas item。"""
+        canvas = self.canvas
+        total_h = self._total_h
+        vis = canvas.yview()
+        y_top = vis[0] * total_h - 400
+        y_bot = vis[1] * total_h + 400
+
+        create_rect = canvas.create_rectangle
+        create_text = canvas.create_text
+        ch_font = self._char_font
+        ph_font = self._phon_font
+        ch_h = self._char_h
+        pad = _CELL_PAD
+        cell_h = self._cell_h
+        drawn = self._drawn_lines
+
+        for li, (y_min, y_max, cells) in enumerate(self._layout_lines):
+            if li in drawn:
+                continue
+            if y_max < y_top or y_min > y_bot:
+                continue
+            for (x, y, cw, ch, phon, fg_ch, fg_ph, bg, outline) in cells:
+                if bg:
+                    create_rect(x, y, x + cw, y + cell_h,
+                                fill=bg, outline=outline, width=1)
+                mid = x + cw / 2
+                create_text(mid, y + pad, text=ch,
+                            font=ch_font, fill=fg_ch, anchor='n')
+                create_text(mid, y + pad + ch_h, text=phon,
+                            font=ph_font, fill=fg_ph, anchor='n')
+            drawn.add(li)
+
+    def render_on_scroll(self):
+        """滚动后调用，增量绘制新进入可视区域的行。"""
+        self._render_visible()
 
     # ── 光标 ─────────────────────────────────────
 
@@ -161,9 +227,11 @@ class EditorRenderer:
                     ft, fb = y1 / total_h, y2 / total_h
                     if ft < vis[0]:
                         canvas.yview_moveto(max(0, ft - 0.02))
+                        self._render_visible()
                     elif fb > vis[1]:
                         canvas.yview_moveto(
                             fb - (vis[1] - vis[0]) + 0.02)
+                        self._render_visible()
 
     def on_configure(self, event, buffer, cell_info, cur_line, cur_col):
         """Canvas 大小变化时重绘（带 debounce 减少拖拽窗口时的调用）。"""

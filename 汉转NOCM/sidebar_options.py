@@ -4,7 +4,7 @@ import re
 import tkinter as tk
 
 from constants import COLORS
-from widgets import ScrollableFrame, bind_hover, bind_mousewheel
+from widgets import ScrollableFrame, bind_hover, bind_color_hover, bind_mousewheel
 
 
 def _format_note(note_txt):
@@ -105,8 +105,8 @@ def _build_card(parent, opt, info, li, ci, total, on_apply):
                       padx=6, pady=1, cursor='hand2')
         gb.pack(side=tk.RIGHT)
         gb.bind('<Button-1>', lambda e, p=phon: on_apply(li, ci, p, True))
-        gb.bind('<Enter>', lambda e: gb.configure(bg=COLORS['accent'], fg='#FFFFFF'))
-        gb.bind('<Leave>', lambda e: gb.configure(bg=COLORS['tag_bg'], fg=COLORS['tag_fg']))
+        bind_color_hover(gb, {'bg': (COLORS['tag_bg'], COLORS['accent']),
+                              'fg': (COLORS['tag_fg'], '#FFFFFF')})
 
     if note_txt:
         nl = _create_note_widget(card, note_txt, bg)

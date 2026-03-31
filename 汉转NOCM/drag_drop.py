@@ -11,7 +11,7 @@
 import tkinter as tk
 
 from constants import COLORS
-from widgets import set_widget_bg
+from widgets import set_widget_bg, animate_widget_bg
 from folder_manager import (move_to_group, remove_from_group,
                             move_group_into, reorder_group,
                             reorder_file_in_group)
@@ -430,11 +430,11 @@ def _on_drag_end(event):
 
 
 def _restore_src_widget(src_type, src_id, src_w):
-    """恢复被拖拽控件的外观。"""
+    """恢复被拖拽控件的外观（带动画）。"""
     if not src_w:
         return
     try:
-        set_widget_bg(src_w, COLORS['bg_sidebar'])
+        animate_widget_bg(src_w, COLORS['bg_sidebar'])
         for ch in src_w.winfo_children():
             _dim_widget(ch, False)
     except tk.TclError:

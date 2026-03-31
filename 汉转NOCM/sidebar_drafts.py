@@ -5,8 +5,10 @@ from datetime import datetime
 
 from constants import COLORS
 from widgets import (ModernButton, ScrollableFrame,
-                     bind_hover, bind_mousewheel, bind_single_double,
-                     set_widget_bg, freeze_redraw, thaw_redraw)
+                     bind_hover, bind_color_hover, bind_mousewheel,
+                     bind_single_double,
+                     set_widget_bg, freeze_redraw, thaw_redraw,
+                     animate_widget_bg)
 from draft_io import list_drafts, rename_draft
 from folder_manager import (get_groups, get_grouped_filenames, create_group,
                             rename_group, delete_group, toggle_group)
@@ -53,9 +55,7 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
                          padx=8, pady=2, cursor='hand2')
             b.pack(side=tk.RIGHT, padx=(4, 0))
             b.bind('<Button-1>', lambda e, c=cmd: c())
-            b.bind('<Enter>', lambda e, w=b: w.configure(bg=COLORS['accent']))
-            b.bind('<Leave>',
-                   lambda e, w=b: w.configure(bg=COLORS['tag_bg']))
+            bind_color_hover(b, {'bg': (COLORS['tag_bg'], COLORS['accent'])})
 
         tk.Frame(sidebar, bg=COLORS['divider'], height=1).pack(fill=tk.X,
                                                                 padx=14)
@@ -282,9 +282,7 @@ def _build_folder(parent, group, drafts_map, current_draft,
     del_lbl.pack(side=tk.RIGHT, padx=(4, 0))
     del_lbl.bind('<Button-1>', lambda e: _do_delete_folder(
         gid, group['name'], hdr, on_rebuild))
-    del_lbl.bind('<Enter>', lambda e: del_lbl.configure(fg=COLORS['danger']))
-    del_lbl.bind('<Leave>', lambda e: del_lbl.configure(
-        fg=COLORS['text_muted']))
+    bind_color_hover(del_lbl, {'fg': (COLORS['text_muted'], COLORS['danger'])})
 
     # 箭头/图标：单击立即切换；名称：单击切换，双击重命名
     def _toggle(e=None):
@@ -313,11 +311,11 @@ def _build_folder(parent, group, drafts_map, current_draft,
     # Hover（非拖拽时）
     def _hdr_enter(e):
         if not drag_drop.state.active:
-            set_widget_bg(hdr, COLORS['hover_overlay'])
+            animate_widget_bg(hdr, COLORS['hover_overlay'])
 
     def _hdr_leave(e):
         if not drag_drop.state.active or drag_drop.state.hl_id != gid:
-            set_widget_bg(hdr, COLORS['bg_sidebar'])
+            animate_widget_bg(hdr, COLORS['bg_sidebar'])
 
     hdr.bind('<Enter>', _hdr_enter)
     hdr.bind('<Leave>', _hdr_leave)
@@ -404,15 +402,14 @@ def _build_card(parent, draft, current_draft, group_id,
                   bg=bg, fg=COLORS['text_muted'], cursor='hand2')
     db.pack(side=tk.RIGHT, padx=(6, 0))
     db.bind('<Button-1>', lambda e: on_delete(fn, draft['name']))
-    db.bind('<Enter>', lambda e: db.configure(fg=COLORS['danger']))
-    db.bind('<Leave>', lambda e: db.configure(fg=COLORS['text_muted']))
+    bind_color_hover(db, {'fg': (COLORS['text_muted'], COLORS['danger'])})
 
     # 单击加载 / 双击重命名
     bind_single_double(
         name_lbl,
         on_single=lambda: on_load(fn),
         on_double=lambda: on_rename(fn, draft['name']),
-        delay=300,
+        delay=200,
     )
 
     lh = lambda e: on_load(fn)

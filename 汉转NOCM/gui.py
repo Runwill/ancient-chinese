@@ -8,7 +8,7 @@ from tkinter import messagebox
 from typing import Optional
 
 from constants import COLORS, _CANVAS_MARGIN, find_bracket_ranges, in_bracket, set_theme, get_theme
-from widgets import ModernButton, freeze_redraw, thaw_redraw
+from widgets import ModernButton, freeze_redraw, thaw_redraw, style, apply_theme_transition
 from editor_buffer import EditorBuffer
 from editor_render import EditorRenderer
 from draft_io import save_draft, load_draft, delete_draft, rename_draft, get_draft_name
@@ -38,39 +38,55 @@ class App(tk.Tk):
     # ── 构建界面 ──────────────────────────────────
 
     def _build_ui(self):
+        style(self, bg='bg_main')
+
         # 主容器 — 无额外 padding，贴边布局
         main = tk.Frame(self, bg=COLORS['bg_main'])
         main.pack(fill=tk.BOTH, expand=True)
+        style(main, bg='bg_main')
 
         # ── 顶部工具栏（紧凑型） ──
         toolbar = tk.Frame(main, bg=COLORS['bg_card'], height=52)
         toolbar.pack(fill=tk.X)
         toolbar.pack_propagate(False)
+        style(toolbar, bg='bg_card')
 
         toolbar_inner = tk.Frame(toolbar, bg=COLORS['bg_card'])
         toolbar_inner.pack(fill=tk.BOTH, expand=True, padx=20)
+        style(toolbar_inner, bg='bg_card')
 
         # 左侧标题 + 副标题
         title_area = tk.Frame(toolbar_inner, bg=COLORS['bg_card'])
         title_area.pack(side=tk.LEFT, fill=tk.Y)
+        style(title_area, bg='bg_card')
 
         title_row = tk.Frame(title_area, bg=COLORS['bg_card'])
         title_row.pack(expand=True)
+        style(title_row, bg='bg_card')
 
-        tk.Label(title_row, text='汉字转 NOCM 音标',
+        title_lbl = tk.Label(title_row, text='汉字转 NOCM 音标',
                 font=('Microsoft YaHei', 13, 'bold'),
-                bg=COLORS['bg_card'], fg=COLORS['text_primary']).pack(side=tk.LEFT)
+                bg=COLORS['bg_card'], fg=COLORS['text_primary'])
+        title_lbl.pack(side=tk.LEFT)
+        style(title_lbl, bg='bg_card', fg='text_primary')
+
         self._subtitle_lbl = tk.Label(title_row, text='  输入即注音 · 点击彩色字修改读音',
                 font=('Microsoft YaHei', 9),
                 bg=COLORS['bg_card'], fg=COLORS['text_muted'])
         self._subtitle_lbl.pack(side=tk.LEFT, pady=(3, 0))
+        style(self._subtitle_lbl, bg='bg_card')
 
         # 右侧按钮组
         btn_area = tk.Frame(toolbar_inner, bg=COLORS['bg_card'])
         btn_area.pack(side=tk.RIGHT, fill=tk.Y)
+        style(btn_area, bg='bg_card')
+
         btn_row = tk.Frame(btn_area, bg=COLORS['bg_card'])
         btn_row.pack(expand=True)
+        style(btn_row, bg='bg_card')
 
+        self._mod_buttons = []
+        self._theme_btn = None
         theme_label = '☀' if get_theme() == 'dark' else '☾'
         for text, cmd, pri in [('?', self._on_help, False),
                                ('重启', self._on_restart, False),
@@ -79,40 +95,56 @@ class App(tk.Tk):
                                ('保存', self._on_save, False),
                                ('复制结果', self._on_copy, True)]:
             w = 32 if len(text) <= 1 else 64 if len(text) <= 2 else 72
-            ModernButton(btn_row, text, command=cmd,
-                        primary=pri, width=w, height=30).pack(
-                side=tk.LEFT, padx=(0, 6))
+            btn = ModernButton(btn_row, text, command=cmd,
+                        primary=pri, width=w, height=30)
+            btn.pack(side=tk.LEFT, padx=(0, 6))
+            style(btn, bg='bg_card')
+            self._mod_buttons.append(btn)
+            if cmd == self._on_toggle_theme:
+                self._theme_btn = btn
 
         # 工具栏底部分隔线
-        tk.Frame(main, bg=COLORS['divider'], height=1).pack(fill=tk.X)
+        div = tk.Frame(main, bg=COLORS['divider'], height=1)
+        div.pack(fill=tk.X)
+        style(div, bg='divider')
 
         # ── 主内容区（三栏布局） ──
         content = tk.Frame(main, bg=COLORS['bg_main'])
         content.pack(fill=tk.BOTH, expand=True)
+        style(content, bg='bg_main')
 
         # ── 左侧边栏（文稿管理面板） ──
         self.left_sidebar = tk.Frame(content, bg=COLORS['bg_sidebar'], width=240)
         self.left_sidebar.pack(side=tk.LEFT, fill=tk.Y)
         self.left_sidebar.pack_propagate(False)
+        style(self.left_sidebar, bg='bg_sidebar')
+
         # 右边分割线
-        tk.Frame(content, bg=COLORS['divider'], width=1).pack(side=tk.LEFT, fill=tk.Y)
+        div2 = tk.Frame(content, bg=COLORS['divider'], width=1)
+        div2.pack(side=tk.LEFT, fill=tk.Y)
+        style(div2, bg='divider')
 
         # 编辑区（无边框，直接铺满中间）
         edit_area = tk.Frame(content, bg=COLORS['bg_canvas'])
         edit_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        style(edit_area, bg='bg_canvas')
 
         self.canvas = tk.Canvas(edit_area, bg=COLORS['bg_canvas'],
                                 highlightthickness=0,
                                 yscrollincrement=20)
         self.canvas.pack(fill=tk.BOTH, expand=True)
+        style(self.canvas, bg='bg_canvas')
 
         # 右侧分割线
-        tk.Frame(content, bg=COLORS['divider'], width=1).pack(side=tk.LEFT, fill=tk.Y)
+        div3 = tk.Frame(content, bg=COLORS['divider'], width=1)
+        div3.pack(side=tk.LEFT, fill=tk.Y)
+        style(div3, bg='divider')
 
         # ── 右侧边栏（音标选择面板） ──
         self.sidebar = tk.Frame(content, bg=COLORS['bg_sidebar'], width=260)
         self.sidebar.pack(side=tk.RIGHT, fill=tk.Y)
         self.sidebar.pack_propagate(False)
+        style(self.sidebar, bg='bg_sidebar')
         
         sidebar_options.build_placeholder(self.sidebar)
 
@@ -223,6 +255,7 @@ class App(tk.Tk):
         if event.delta > 0 and self.canvas.yview()[0] <= 0:
             return
         self.canvas.yview_scroll(-event.delta // 40, 'units')
+        self.renderer.render_on_scroll()
 
     def _on_configure(self, event):
         self.renderer.on_configure(event, self.buf.buffer, self.buf.cell_info,
@@ -394,21 +427,41 @@ class App(tk.Tk):
         os.execv(python, [python] + sys.argv)
 
     def _on_toggle_theme(self):
-        """切换深色/浅色主题并重建整个界面。"""
+        """切换深色/浅色主题，平滑过渡颜色（不销毁控件）。"""
         new = 'light' if get_theme() == 'dark' else 'dark'
         set_theme(new)
-        freeze_redraw(self)
-        try:
-            # 销毁旧 UI
-            for w in self.winfo_children():
-                w.destroy()
-            self.configure(bg=COLORS['bg_main'])
-            # 重建
-            self._build_ui()
-            self._rebuild_display()
-            self._update_title()
-        finally:
-            thaw_redraw(self)
+
+        # 1) 所有通过 style() 注册的控件平滑过渡
+        apply_theme_transition(250)
+
+        # 2) ModernButton（Canvas 多边形）单独更新
+        for btn in self._mod_buttons:
+            btn.update_theme()
+        self._theme_btn.set_text('☀' if new == 'dark' else '☾')
+
+        # 3) 重绘编辑器 Canvas（内容用新色重建）
+        self._rebuild_display()
+
+        # 4) 侧边栏内容用新色重建（内容轻量，freeze/thaw 无闪烁）
+        self._build_sidebar_drafts()
+        if self._selected_poly:
+            sli, sci = self._selected_poly
+            if (sli < len(self.buf.buffer)
+                    and sci < len(self.buf.buffer[sli])
+                    and sci < len(self.buf.cell_info[sli])
+                    and self.buf.cell_info[sli][sci].get('is_poly')):
+                sidebar_options.build_options(
+                    self.sidebar, sli, sci,
+                    self.buf.buffer[sli][sci],
+                    self.buf.cell_info[sli][sci],
+                    self.buf.buffer, on_apply=self._apply_reading)
+            else:
+                self._selected_poly = None
+                sidebar_options.build_placeholder(self.sidebar)
+        else:
+            sidebar_options.build_placeholder(self.sidebar)
+
+        self._update_title()
 
     def _save_draft(self, filename=None, name=None):
         self._current_draft = save_draft(
