@@ -245,6 +245,11 @@ class App(tk.Tk):
     def _do_apply(self, li, ci, phonetic, global_apply):
         self.buf.save_undo()
         if global_apply:
+            # 将上次的紫色（global_recent）降级为蓝色（global）
+            for linfo in self.buf.cell_info:
+                for info in linfo:
+                    if info.get('selected') == 'global_recent':
+                        info['selected'] = 'global'
             ch = self.buf.buffer[li][ci]
             for _li, (lc, linfo) in enumerate(zip(self.buf.buffer, self.buf.cell_info)):
                 for _ci, (c, info) in enumerate(zip(lc, linfo)):
@@ -253,7 +258,7 @@ class App(tk.Tk):
                         if _li == li and _ci == ci:
                             info['selected'] = 'manual'
                         else:
-                            info['selected'] = 'global'
+                            info['selected'] = 'global_recent'
         else:
             self.buf.cell_info[li][ci]['phonetic'] = phonetic
             self.buf.cell_info[li][ci]['selected'] = 'manual'
@@ -320,6 +325,7 @@ class App(tk.Tk):
             '   · 橙色 = 未手动选择读音\n'
             '   · 绿色 = 已手动选择读音\n'
             '   · 蓝色 = 通过「全局应用」间接选择\n'
+            '   · 紫色 = 上一次「全局应用」间接选择\n'
             '4. 点击多音字在右侧面板选择读音\n'
             '   · 点击「全局应用」将读音应用到所有同字\n'
             '5. 点击「复制结果」复制输出到剪贴板\n'
@@ -413,7 +419,7 @@ class App(tk.Tk):
             on_new=self._on_new_draft,
             on_delete=self._handle_delete_draft,
             on_rename=self._handle_rename_draft,
-            on_rebuild=lambda: self.after(1, self._build_sidebar_drafts),
+            on_rebuild=self._build_sidebar_drafts,
         )
 
     def _handle_load_draft(self, fn):

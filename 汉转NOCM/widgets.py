@@ -19,9 +19,13 @@ class ScrollableFrame(tk.Frame):
         self.canvas.pack(fill=tk.BOTH, expand=True)
         self.inner.bind('<Configure>', lambda e: self._sync())
         self.canvas.bind('<Configure>', self._on_resize)
+        self._pending_yview = None
+
+    def set_pending_yview(self, pos):
+        """设置待恢复的滚动位置，将在下次 _sync 时应用。"""
+        self._pending_yview = pos
 
     def _sync(self):
-        self.canvas.update_idletasks()
         bbox = self.canvas.bbox('all')
         if not bbox:
             return
@@ -30,6 +34,11 @@ class ScrollableFrame(tk.Frame):
             self.canvas.configure(scrollregion=bbox)
         else:
             self.canvas.configure(scrollregion=(0, 0, bbox[2], cvh))
+        # 滚动位置和 scrollregion 在同一帧设置，避免闪烁
+        if self._pending_yview is not None:
+            self.canvas.yview_moveto(self._pending_yview)
+            self._pending_yview = None
+        elif ch <= cvh:
             self.canvas.yview_moveto(0)
 
     def _on_resize(self, e):

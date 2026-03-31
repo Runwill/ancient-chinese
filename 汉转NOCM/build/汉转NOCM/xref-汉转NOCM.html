@@ -177,7 +177,6 @@ imports:
  &#8226;   <a href="#threading">threading</a>
  &#8226;   <a href="#tkinter">tkinter</a>
  &#8226;   <a href="#tkinter.messagebox">tkinter.messagebox</a>
- &#8226;   <a href="#tkinter.ttk">tkinter.ttk</a>
  &#8226;   <a href="#traceback">traceback</a>
  &#8226;   <a href="#types">types</a>
  &#8226;   <a href="#warnings">warnings</a>
@@ -1554,13 +1553,11 @@ imported by:
   <a name="constants"></a>
   <a target="code" href="///C:/Users/Administrator/Desktop/suno%E4%B8%8A%E5%8F%A4%E6%B1%89%E8%AF%AD/suno-ancient-chinese/ancient-chinese/%E6%B1%89%E8%BD%ACNOCM/constants.py" type="text/plain"><tt>constants</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#re">re</a>
-
-  </div>
-  <div class="import">
 imported by:
-    <a href="#gui">gui</a>
+    <a href="#drag_drop">drag_drop</a>
+ &#8226;   <a href="#editor_buffer">editor_buffer</a>
+ &#8226;   <a href="#editor_render">editor_render</a>
+ &#8226;   <a href="#gui">gui</a>
  &#8226;   <a href="#sidebar_drafts">sidebar_drafts</a>
  &#8226;   <a href="#sidebar_options">sidebar_options</a>
  &#8226;   <a href="#widgets">widgets</a>
@@ -1746,8 +1743,9 @@ imports:
 imported by:
     <a href="#_strptime">_strptime</a>
  &#8226;   <a href="#calendar">calendar</a>
- &#8226;   <a href="#draft_manager">draft_manager</a>
+ &#8226;   <a href="#draft_io">draft_io</a>
  &#8226;   <a href="#email.utils">email.utils</a>
+ &#8226;   <a href="#folder_manager">folder_manager</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
  &#8226;   <a href="#sidebar_drafts">sidebar_drafts</a>
 
@@ -1797,8 +1795,8 @@ imported by:
 </div>
 
 <div class="node">
-  <a name="draft_manager"></a>
-  <a target="code" href="///C:/Users/Administrator/Desktop/suno%E4%B8%8A%E5%8F%A4%E6%B1%89%E8%AF%AD/suno-ancient-chinese/ancient-chinese/%E6%B1%89%E8%BD%ACNOCM/draft_manager.py" type="text/plain"><tt>draft_manager</tt></a>
+  <a name="draft_io"></a>
+  <a target="code" href="///C:/Users/Administrator/Desktop/suno%E4%B8%8A%E5%8F%A4%E6%B1%89%E8%AF%AD/suno-ancient-chinese/ancient-chinese/%E6%B1%89%E8%BD%ACNOCM/draft_io.py" type="text/plain"><tt>draft_io</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#datetime">datetime</a>
@@ -1809,8 +1807,60 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#gui">gui</a>
+    <a href="#folder_manager">folder_manager</a>
+ &#8226;   <a href="#gui">gui</a>
  &#8226;   <a href="#sidebar_drafts">sidebar_drafts</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="drag_drop"></a>
+  <a target="code" href="///C:/Users/Administrator/Desktop/suno%E4%B8%8A%E5%8F%A4%E6%B1%89%E8%AF%AD/suno-ancient-chinese/ancient-chinese/%E6%B1%89%E8%BD%ACNOCM/drag_drop.py" type="text/plain"><tt>drag_drop</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#constants">constants</a>
+ &#8226;   <a href="#folder_manager">folder_manager</a>
+ &#8226;   <a href="#tkinter">tkinter</a>
+ &#8226;   <a href="#widgets">widgets</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#sidebar_drafts">sidebar_drafts</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="editor_buffer"></a>
+  <a target="code" href="///C:/Users/Administrator/Desktop/suno%E4%B8%8A%E5%8F%A4%E6%B1%89%E8%AF%AD/suno-ancient-chinese/ancient-chinese/%E6%B1%89%E8%BD%ACNOCM/editor_buffer.py" type="text/plain"><tt>editor_buffer</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#constants">constants</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#gui">gui</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="editor_render"></a>
+  <a target="code" href="///C:/Users/Administrator/Desktop/suno%E4%B8%8A%E5%8F%A4%E6%B1%89%E8%AF%AD/suno-ancient-chinese/ancient-chinese/%E6%B1%89%E8%BD%ACNOCM/editor_render.py" type="text/plain"><tt>editor_render</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#constants">constants</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#gui">gui</a>
 
   </div>
 
@@ -4877,6 +4927,25 @@ imported by:
 </div>
 
 <div class="node">
+  <a name="folder_manager"></a>
+  <a target="code" href="///C:/Users/Administrator/Desktop/suno%E4%B8%8A%E5%8F%A4%E6%B1%89%E8%AF%AD/suno-ancient-chinese/ancient-chinese/%E6%B1%89%E8%BD%ACNOCM/folder_manager.py" type="text/plain"><tt>folder_manager</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#datetime">datetime</a>
+ &#8226;   <a href="#draft_io">draft_io</a>
+ &#8226;   <a href="#os">os</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#drag_drop">drag_drop</a>
+ &#8226;   <a href="#sidebar_drafts">sidebar_drafts</a>
+
+  </div>
+
+</div>
+
+<div class="node">
   <a name="fractions"></a>
   <a target="code" href="///C:/Users/Administrator/AppData/Local/Programs/Python/Python313/Lib/fractions.py" type="text/plain"><tt>fractions</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
@@ -5119,7 +5188,9 @@ imported by:
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#constants">constants</a>
- &#8226;   <a href="#draft_manager">draft_manager</a>
+ &#8226;   <a href="#draft_io">draft_io</a>
+ &#8226;   <a href="#editor_buffer">editor_buffer</a>
+ &#8226;   <a href="#editor_render">editor_render</a>
  &#8226;   <a href="#sidebar_drafts">sidebar_drafts</a>
  &#8226;   <a href="#sidebar_options">sidebar_options</a>
  &#8226;   <a href="#tkinter">tkinter</a>
@@ -5949,7 +6020,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#data_loader">data_loader</a>
- &#8226;   <a href="#draft_manager">draft_manager</a>
+ &#8226;   <a href="#draft_io">draft_io</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
  &#8226;   <a href="#json.decoder">json.decoder</a>
  &#8226;   <a href="#json.encoder">json.encoder</a>
@@ -6360,9 +6431,10 @@ imported by:
  &#8226;   <a href="#bz2">bz2</a>
  &#8226;   <a href="#contextlib">contextlib</a>
  &#8226;   <a href="#data_loader">data_loader</a>
- &#8226;   <a href="#draft_manager">draft_manager</a>
+ &#8226;   <a href="#draft_io">draft_io</a>
  &#8226;   <a href="#email.utils">email.utils</a>
  &#8226;   <a href="#fnmatch">fnmatch</a>
+ &#8226;   <a href="#folder_manager">folder_manager</a>
  &#8226;   <a href="#genericpath">genericpath</a>
  &#8226;   <a href="#getopt">getopt</a>
  &#8226;   <a href="#getpass">getpass</a>
@@ -6713,10 +6785,9 @@ imported by:
  &#8226;   <a href="#argparse">argparse</a>
  &#8226;   <a href="#ast">ast</a>
  &#8226;   <a href="#base64">base64</a>
- &#8226;   <a href="#constants">constants</a>
  &#8226;   <a href="#csv">csv</a>
  &#8226;   <a href="#dataclasses">dataclasses</a>
- &#8226;   <a href="#draft_manager">draft_manager</a>
+ &#8226;   <a href="#draft_io">draft_io</a>
  &#8226;   <a href="#email._encoded_words">email._encoded_words</a>
  &#8226;   <a href="#email._header_value_parser">email._header_value_parser</a>
  &#8226;   <a href="#email.feedparser">email.feedparser</a>
@@ -6754,6 +6825,7 @@ imported by:
  &#8226;   <a href="#re._compiler">re._compiler</a>
  &#8226;   <a href="#re._constants">re._constants</a>
  &#8226;   <a href="#re._parser">re._parser</a>
+ &#8226;   <a href="#sidebar_options">sidebar_options</a>
  &#8226;   <a href="#sre_compile">sre_compile</a>
  &#8226;   <a href="#sre_constants">sre_constants</a>
  &#8226;   <a href="#sre_parse">sre_parse</a>
@@ -6962,7 +7034,9 @@ imported by:
 imports:
     <a href="#constants">constants</a>
  &#8226;   <a href="#datetime">datetime</a>
- &#8226;   <a href="#draft_manager">draft_manager</a>
+ &#8226;   <a href="#draft_io">draft_io</a>
+ &#8226;   <a href="#drag_drop">drag_drop</a>
+ &#8226;   <a href="#folder_manager">folder_manager</a>
  &#8226;   <a href="#tkinter">tkinter</a>
  &#8226;   <a href="#tkinter.messagebox">tkinter.messagebox</a>
  &#8226;   <a href="#widgets">widgets</a>
@@ -6982,6 +7056,7 @@ imported by:
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#constants">constants</a>
+ &#8226;   <a href="#re">re</a>
  &#8226;   <a href="#tkinter">tkinter</a>
  &#8226;   <a href="#widgets">widgets</a>
 
@@ -7520,14 +7595,14 @@ imports:
  &#8226;   <a href="#sys">sys</a>
  &#8226;   <a href="#tkinter.constants">tkinter.constants</a>
  &#8226;   <a href="#tkinter.messagebox">tkinter.messagebox</a>
- &#8226;   <a href="#tkinter.ttk">tkinter.ttk</a>
  &#8226;   <a href="#traceback">traceback</a>
  &#8226;   <a href="#types">types</a>
 
   </div>
   <div class="import">
 imported by:
-    <a href="#gui">gui</a>
+    <a href="#drag_drop">drag_drop</a>
+ &#8226;   <a href="#gui">gui</a>
  &#8226;   <a href="#main.py">main.py</a>
  &#8226;   <a href="#sidebar_drafts">sidebar_drafts</a>
  &#8226;   <a href="#sidebar_options">sidebar_options</a>
@@ -7535,7 +7610,6 @@ imported by:
  &#8226;   <a href="#tkinter.constants">tkinter.constants</a>
  &#8226;   <a href="#tkinter.font">tkinter.font</a>
  &#8226;   <a href="#tkinter.messagebox">tkinter.messagebox</a>
- &#8226;   <a href="#tkinter.ttk">tkinter.ttk</a>
  &#8226;   <a href="#widgets">widgets</a>
 
   </div>
@@ -7605,23 +7679,6 @@ imported by:
     <a href="#gui">gui</a>
  &#8226;   <a href="#main.py">main.py</a>
  &#8226;   <a href="#sidebar_drafts">sidebar_drafts</a>
- &#8226;   <a href="#tkinter">tkinter</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="tkinter.ttk"></a>
-  <a target="code" href="///C:/Users/Administrator/AppData/Local/Programs/Python/Python313/Lib/tkinter/ttk.py" type="text/plain"><tt>tkinter.ttk</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#tkinter">tkinter</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#main.py">main.py</a>
  &#8226;   <a href="#tkinter">tkinter</a>
 
   </div>
@@ -8044,7 +8101,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#gui">gui</a>
+    <a href="#drag_drop">drag_drop</a>
+ &#8226;   <a href="#gui">gui</a>
  &#8226;   <a href="#sidebar_drafts">sidebar_drafts</a>
  &#8226;   <a href="#sidebar_options">sidebar_options</a>
 

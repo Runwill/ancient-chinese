@@ -64,6 +64,25 @@ def build_options(sidebar, li, ci, char, info, buffer, on_apply):
     sf.canvas.bind('<MouseWheel>', sf.on_mousewheel)
 
 
+def _create_note_widget(parent, note_txt, bg):
+    """创建带《》书名号着色的注释文本控件。"""
+    lines = note_txt.split('\n')
+    est_h = sum(max(1, (len(ln) + 30) // 31) for ln in lines)
+    tw = tk.Text(parent, wrap=tk.WORD, bg=bg, fg=COLORS['text_muted'],
+                 font=('Microsoft YaHei', 9),
+                 borderwidth=0, highlightthickness=0,
+                 cursor='hand2', height=est_h,
+                 padx=0, pady=0, spacing1=0, spacing3=0)
+    tw.tag_configure('book', foreground='#00897B')
+    for part in re.split(r'(《[^》]*》)', note_txt):
+        if part.startswith('《') and part.endswith('》'):
+            tw.insert(tk.END, part, 'book')
+        else:
+            tw.insert(tk.END, part)
+    tw.configure(state=tk.DISABLED)
+    return tw
+
+
 def _build_card(parent, opt, info, li, ci, total, on_apply):
     """构建单个读音选项卡片"""
     phon = opt.get('phonetic') if isinstance(opt, dict) else str(opt)
@@ -99,9 +118,7 @@ def _build_card(parent, opt, info, li, ci, total, on_apply):
         gb.bind('<Leave>', lambda e: gb.configure(bg=COLORS['poly_orange_bg']))
 
     if note_txt:
-        nl = tk.Label(card, text=note_txt, font=('Microsoft YaHei', 9),
-                      bg=bg, fg=COLORS['text_muted'],
-                      wraplength=220, justify='left', anchor='w')
+        nl = _create_note_widget(card, note_txt, bg)
         nl.pack(fill=tk.X, pady=(6, 0))
         nl.bind('<Button-1>', lambda e, p=phon: on_apply(li, ci, p, False))
 

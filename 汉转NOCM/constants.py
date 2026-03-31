@@ -41,6 +41,8 @@ COLORS = {
     'poly_green_bg': '#ECFDF5',
     'poly_blue': '#3B82F6',      # 全局选择 - 蓝色
     'poly_blue_bg': '#EFF6FF',
+    'poly_purple': '#8B5CF6',     # 上次全局选择 - 紫色
+    'poly_purple_bg': '#F5F3FF',
     'cursor': '#6366F1',         # 光标
     'btn_primary': '#6366F1',
     'btn_primary_hover': '#4F46E5',

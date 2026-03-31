@@ -407,23 +407,11 @@ def _on_drag_end(event):
     rebuild = state.on_rebuild
     src_w = state.src_widget
 
-    _clear_visuals()
-    state.hl_id = None
-    state.insert_target = None
-    if src_w:
-        try:
-            if src_type == 'draft':
-                bdr = (COLORS['accent'] if src_id == state.current_draft
-                       else COLORS['border'])
-                src_w.configure(highlightbackground=bdr)
-            else:
-                set_widget_bg(src_w, COLORS['bg_sidebar'])
-            for ch in src_w.winfo_children():
-                _dim_widget(ch, False)
-        except tk.TclError:
-            pass
-
     if abs(event.y_root - state.start_y) < 8:
+        _clear_visuals()
+        state.hl_id = None
+        state.insert_target = None
+        _restore_src_widget(src_type, src_id, src_w)
         return
 
     changed = False
@@ -433,10 +421,32 @@ def _on_drag_end(event):
         changed = _exec_move_into(src_type, src_id, src_group, target)
 
     if changed and rebuild:
-        try:
-            state.sidebar.after(1, rebuild)
-        except (tk.TclError, AttributeError):
-            rebuild()
+        # 同步重建 —— sidebar_drafts.build() 自带 overlay 机制
+        state.hl_id = None
+        state.insert_target = None
+        rebuild()
+    else:
+        _clear_visuals()
+        state.hl_id = None
+        state.insert_target = None
+        _restore_src_widget(src_type, src_id, src_w)
+
+
+def _restore_src_widget(src_type, src_id, src_w):
+    """恢复被拖拽控件的外观。"""
+    if not src_w:
+        return
+    try:
+        if src_type == 'draft':
+            bdr = (COLORS['accent'] if src_id == state.current_draft
+                   else COLORS['border'])
+            src_w.configure(highlightbackground=bdr)
+        else:
+            set_widget_bg(src_w, COLORS['bg_sidebar'])
+        for ch in src_w.winfo_children():
+            _dim_widget(ch, False)
+    except tk.TclError:
+        pass
 
 
 def _exec_insert(src_type, src_id, src_group, ins_parent, ins_before):

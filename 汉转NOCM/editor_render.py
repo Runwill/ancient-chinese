@@ -80,6 +80,8 @@ class EditorRenderer:
                     sel = info.get('selected', 'none')
                     if sel == 'manual':
                         bg, fg_ch = COLORS['poly_green_bg'], COLORS['poly_green']
+                    elif sel == 'global_recent':
+                        bg, fg_ch = COLORS['poly_purple_bg'], COLORS['poly_purple']
                     elif sel == 'global':
                         bg, fg_ch = COLORS['poly_blue_bg'], COLORS['poly_blue']
                     else:

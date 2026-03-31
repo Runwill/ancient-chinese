@@ -18,30 +18,27 @@ import drag_drop
 
 def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
           on_rebuild=None):
-    """构建左侧文稿列表。"""
+    """构建左侧文稿列表。
+
+    为防止闪烁，先在尚未 pack 的 wrapper 内构建全部新控件，
+    再一次性 pack(wrapper) 显示、然后销毁旧内容。
+    """
     # 记录滚动位置以便重建后恢复
     scroll_pos = None
-    for w in sidebar.winfo_children():
-        if isinstance(w, ScrollableFrame):
-            try:
-                scroll_pos = w.canvas.yview()[0]
-            except tk.TclError:
-                pass
-            break
+    old_sf = _find_scrollable(sidebar)
+    if old_sf:
+        try:
+            scroll_pos = old_sf.canvas.yview()[0]
+        except tk.TclError:
+            pass
 
-    # 用遮盖层覆盖侧边栏，隐藏重建过程中的中间态
-    sidebar.update_idletasks()
-    overlay = tk.Frame(sidebar, bg=COLORS['bg_sidebar'])
-    overlay.place(x=0, y=0, relwidth=1, relheight=1)
-
-    for w in sidebar.winfo_children():
-        if w is not overlay:
-            w.destroy()
+    # 新内容全部放入 wrapper（此时 wrapper 尚未 pack，不可见）
+    wrapper = tk.Frame(sidebar, bg=COLORS['bg_sidebar'])
 
     drag_drop.init(sidebar, current_draft, on_rebuild)
 
     # 按钮行
-    btn_row = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16)
+    btn_row = tk.Frame(wrapper, bg=COLORS['bg_sidebar'], padx=16)
     btn_row.pack(fill=tk.X, pady=(10, 10))
 
     for i, (text, cmd) in enumerate([
@@ -56,10 +53,10 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
         b.bind('<Enter>', lambda e, w=b: w.configure(bg=COLORS['border']))
         b.bind('<Leave>', lambda e, w=b: w.configure(bg=COLORS['accent_light']))
 
-    tk.Frame(sidebar, bg=COLORS['border'], height=1).pack(fill=tk.X, padx=16)
+    tk.Frame(wrapper, bg=COLORS['border'], height=1).pack(fill=tk.X, padx=16)
 
     # 滚动列表
-    sf = ScrollableFrame(sidebar, bg=COLORS['bg_sidebar'])
+    sf = ScrollableFrame(wrapper, bg=COLORS['bg_sidebar'])
     sf.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
 
     groups = get_groups()
@@ -96,13 +93,26 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
 
     sf.canvas.bind('<MouseWheel>', sf.on_mousewheel)
 
-    # 恢复滚动位置并移除遮盖层
-    def _unfreeze():
-        sidebar.update_idletasks()
-        if scroll_pos is not None:
-            sf.canvas.yview_moveto(scroll_pos)
-        overlay.destroy()
-    sidebar.after_idle(_unfreeze)
+    # 滚动位置将在 ScrollableFrame._sync() 中与 scrollregion 一同恢复
+    if scroll_pos is not None:
+        sf.set_pending_yview(scroll_pos)
+
+    # ★ 先显示新内容，再销毁旧内容 —— 屏幕上永远不会出现空白
+    wrapper.pack(fill=tk.BOTH, expand=True)
+    for w in sidebar.winfo_children():
+        if w is not wrapper:
+            w.destroy()
+
+
+def _find_scrollable(widget):
+    """递归查找子树中的 ScrollableFrame。"""
+    for w in widget.winfo_children():
+        if isinstance(w, ScrollableFrame):
+            return w
+        found = _find_scrollable(w)
+        if found:
+            return found
+    return None
 
 
 def show_rename_dialog(parent_win, filename, old_name, on_done):
