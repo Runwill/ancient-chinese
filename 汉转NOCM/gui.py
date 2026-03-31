@@ -303,8 +303,38 @@ class App(tk.Tk):
         self.after(20, lambda: self._do_apply(li, ci, phonetic, global_apply))
 
     def _do_apply(self, li, ci, phonetic, global_apply):
-        self.buf.save_undo()
         ch = self.buf.buffer[li][ci]
+
+        # 全局应用时，逐个询问已手动选择不同读音的位置
+        skip_positions = set()  # 用户选择跳过的 (li, ci)
+        if global_apply:
+            for _li, (lc, linfo) in enumerate(zip(self.buf.buffer, self.buf.cell_info)):
+                for _ci, (c, info) in enumerate(zip(lc, linfo)):
+                    if c == ch and info['is_poly'] and (_li != li or _ci != ci):
+                        if info.get('selected') == 'manual' and info['phonetic'] != phonetic:
+                            sentence = ''.join(self.buf.buffer[_li])
+                            # 标记目标字位置
+                            before = sentence[:_ci]
+                            after = sentence[_ci + 1:]
+                            ctx = f'{before}【{ch}】{after}'
+                            if len(ctx) > 40:
+                                start = max(0, _ci - 15)
+                                end = min(len(sentence), _ci + 16)
+                                seg_b = sentence[start:_ci]
+                                seg_a = sentence[_ci + 1:end]
+                                ctx = f'…{seg_b}【{ch}】{seg_a}…'
+                            ans = messagebox.askyesnocancel(
+                                '确认替换',
+                                f'第 {_li + 1} 行：{ctx}\n\n'
+                                f'该处「{ch}」已手动选为 {info["phonetic"]}，'
+                                f'要替换为 {phonetic} 吗？\n\n'
+                                f'是 = 替换此处　　否 = 跳过此处　　取消 = 中止全局应用')
+                            if ans is None:  # 取消
+                                return
+                            if not ans:  # 否 → 跳过
+                                skip_positions.add((_li, _ci))
+
+        self.buf.save_undo()
         # 清除该字的 stale 标记
         had_stale = False
         if global_apply:
@@ -316,10 +346,15 @@ class App(tk.Tk):
             for _li, (lc, linfo) in enumerate(zip(self.buf.buffer, self.buf.cell_info)):
                 for _ci, (c, info) in enumerate(zip(lc, linfo)):
                     if c == ch and info['is_poly']:
-                        info['phonetic'] = phonetic
+                        if (_li, _ci) in skip_positions:
+                            continue
                         if _li == li and _ci == ci:
+                            info['phonetic'] = phonetic
                             info['selected'] = 'manual'
+                        elif info['phonetic'] == phonetic and info.get('selected') == 'manual':
+                            pass  # 读音已相同且为手动选择，保留不变
                         else:
+                            info['phonetic'] = phonetic
                             info['selected'] = 'global_recent'
                     if c == ch and info.get('stale'):
                         info.pop('stale', None)

@@ -1,5 +1,7 @@
 """常量定义：配色方案、布局参数及通用工具函数。"""
 
+import os
+
 
 # ── 括号范围（共用逻辑）──────────────────────────────
 
@@ -118,18 +120,44 @@ def _detect_system_theme():
     except Exception:
         return 'dark'
 
+
+_THEME_PREF_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.theme_pref')
+
+
+def _load_theme_pref():
+    """读取用户保存的主题偏好，无则跟随系统。"""
+    try:
+        with open(_THEME_PREF_FILE, 'r') as f:
+            name = f.read().strip()
+            if name in ('light', 'dark'):
+                return name
+    except OSError:
+        pass
+    return _detect_system_theme()
+
+
+def _save_theme_pref(name):
+    """持久化主题偏好。"""
+    try:
+        with open(_THEME_PREF_FILE, 'w') as f:
+            f.write(name)
+    except OSError:
+        pass
+
+
 # 当前主题名称
-_current_theme = _detect_system_theme()
+_current_theme = _load_theme_pref()
 
 # 活动配色字典 —— 所有模块通过 from constants import COLORS 引用同一对象
 COLORS = dict(_LIGHT_THEME if _current_theme == 'light' else _DARK_THEME)
 
 
 def set_theme(name):
-    """切换主题（'light' 或 'dark'），就地更新 COLORS 字典。"""
+    """切换主题（'light' 或 'dark'），就地更新 COLORS 字典并保存偏好。"""
     global _current_theme
     _current_theme = name
     COLORS.update(_LIGHT_THEME if name == 'light' else _DARK_THEME)
+    _save_theme_pref(name)
 
 
 def get_theme():

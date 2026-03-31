@@ -59,7 +59,7 @@ def build_options(sidebar, li, ci, char, info, buffer, on_apply):
         row = tk.Frame(hdr, bg=COLORS['bg_sidebar'])
         row.pack(fill=tk.X)
         tk.Label(row, text=char, font=('Microsoft YaHei', 24, 'bold'),
-                 bg=COLORS['bg_sidebar'], fg=COLORS['accent']).pack(side=tk.LEFT)
+                 bg=COLORS['bg_sidebar'], fg=COLORS['poly_orange']).pack(side=tk.LEFT)
         detail_col = tk.Frame(row, bg=COLORS['bg_sidebar'])
         detail_col.pack(side=tk.LEFT, padx=(12, 0), fill=tk.Y)
         tk.Label(detail_col, text='选择读音', font=('Microsoft YaHei', 10),
@@ -86,11 +86,36 @@ def build_options(sidebar, li, ci, char, info, buffer, on_apply):
 
 
 def _create_note_widget(parent, note_txt, bg):
-    """创建注释文本控件（纯 Label，不可滚动）。"""
-    lbl = tk.Label(parent, text=note_txt, bg=bg, fg=COLORS['text_muted'],
-                   font=('Microsoft YaHei', 9), wraplength=220,
-                   justify='left', anchor='w', cursor='hand2')
-    return lbl
+    """创建带《》书名号着色的注释文本控件。"""
+    tw = tk.Text(parent, wrap=tk.WORD, bg=bg, fg=COLORS['text_muted'],
+                 font=('Microsoft YaHei', 9),
+                 borderwidth=0, highlightthickness=0,
+                 cursor='hand2', height=1,
+                 padx=0, pady=0, spacing1=0, spacing3=0)
+    tw.tag_configure('book', foreground='#00897B')
+    for part in re.split(r'(《[^》]*》)', note_txt):
+        if part.startswith('《') and part.endswith('》'):
+            tw.insert(tk.END, part, 'book')
+        else:
+            tw.insert(tk.END, part)
+    tw.configure(state=tk.DISABLED)
+
+    _last_h = [0]
+
+    def _fit_height(e=None):
+        tw.update_idletasks()
+        try:
+            n = tw.count('1.0', 'end', 'displaylines')
+            if isinstance(n, (list, tuple)):
+                n = n[0]
+            h = max(n or 1, 1)
+            if h != _last_h[0]:
+                _last_h[0] = h
+                tw.configure(height=h)
+        except (tk.TclError, TypeError):
+            pass
+    tw.bind('<Configure>', _fit_height, add='+')
+    return tw
 
 
 def _build_card(parent, opt, info, li, ci, total, on_apply):
@@ -115,8 +140,9 @@ def _build_card(parent, opt, info, li, ci, total, on_apply):
     lbl.pack(side=tk.LEFT)
 
     if is_cur:
-        tk.Label(row, text='✓', font=('Microsoft YaHei', 9),
-                 bg=bg, fg=COLORS['poly_green']).pack(side=tk.LEFT, padx=(8, 0))
+        tk.Label(row, text='当前', font=('Microsoft YaHei', 8),
+                 bg=COLORS['poly_green_bg'], fg=COLORS['poly_green'],
+                 padx=5, pady=1).pack(side=tk.LEFT, padx=(8, 0))
 
     if total > 1:
         gb = tk.Label(row, text='全局', font=('Microsoft YaHei', 8),
