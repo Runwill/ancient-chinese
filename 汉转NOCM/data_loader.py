@@ -64,24 +64,63 @@ def _load_gz_json(path_or_bytes):
 
 
 def _diff_data(old_data, new_data, filename):
-    """比较新旧数据，返回差异描述列表。"""
+    """比较新旧数据，返回差异描述列表。
+    base.json.gz 按字分组比较读音列表，不受插入/删除位移影响；
+    其它文件回退到逐索引对比。"""
     if old_data is None or new_data is None:
         return []
     diffs = []
-    max_len = max(len(old_data), len(new_data))
-    for i in range(max_len):
-        old_entry = old_data[i] if i < len(old_data) else None
-        new_entry = new_data[i] if i < len(new_data) else None
-        if old_entry == new_entry:
-            continue
-        if old_entry is None:
-            diffs.append(f'  [新增] #{i}: {json.dumps(new_entry, ensure_ascii=False)}')
-        elif new_entry is None:
-            diffs.append(f'  [删除] #{i}: {json.dumps(old_entry, ensure_ascii=False)}')
-        else:
-            diffs.append(f'  [修改] #{i}:')
-            diffs.append(f'    旧: {json.dumps(old_entry, ensure_ascii=False)}')
-            diffs.append(f'    新: {json.dumps(new_entry, ensure_ascii=False)}')
+    if filename == 'base.json.gz':
+        # 按字分组: {字 -> sorted([读音列表])}
+        old_map = {}
+        for e in old_data:
+            ch = e.get('z', '')
+            ph = e.get('y', '').strip()
+            if ch and ph:
+                old_map.setdefault(ch, []).append(ph)
+        new_map = {}
+        for e in new_data:
+            ch = e.get('z', '')
+            ph = e.get('y', '').strip()
+            if ch and ph:
+                new_map.setdefault(ch, []).append(ph)
+        all_chars = sorted(set(old_map) | set(new_map))
+        for ch in all_chars:
+            old_phs = sorted(old_map.get(ch, []))
+            new_phs = sorted(new_map.get(ch, []))
+            if old_phs == new_phs:
+                continue
+            if not old_phs:
+                diffs.append(f'  [新增] {ch}: {", ".join(new_phs)}')
+            elif not new_phs:
+                diffs.append(f'  [删除] {ch}: {", ".join(old_phs)}')
+            else:
+                removed = sorted(set(old_phs) - set(new_phs))
+                added = sorted(set(new_phs) - set(old_phs))
+                parts = []
+                if removed:
+                    parts.append(f'移除 {", ".join(removed)}')
+                if added:
+                    parts.append(f'新增 {", ".join(added)}')
+                if not parts:
+                    # 读音相同但出现次数变化
+                    parts.append(f'{", ".join(old_phs)} → {", ".join(new_phs)}')
+                diffs.append(f'  [修改] {ch}: {"; ".join(parts)}')
+    else:
+        max_len = max(len(old_data), len(new_data))
+        for i in range(max_len):
+            old_entry = old_data[i] if i < len(old_data) else None
+            new_entry = new_data[i] if i < len(new_data) else None
+            if old_entry == new_entry:
+                continue
+            if old_entry is None:
+                diffs.append(f'  [新增] #{i}: {json.dumps(new_entry, ensure_ascii=False)}')
+            elif new_entry is None:
+                diffs.append(f'  [删除] #{i}: {json.dumps(old_entry, ensure_ascii=False)}')
+            else:
+                diffs.append(f'  [修改] #{i}:')
+                diffs.append(f'    旧: {json.dumps(old_entry, ensure_ascii=False)}')
+                diffs.append(f'    新: {json.dumps(new_entry, ensure_ascii=False)}')
     return diffs
 
 
