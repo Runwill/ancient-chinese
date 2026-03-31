@@ -4,7 +4,7 @@ import re
 import tkinter as tk
 
 from constants import COLORS
-from widgets import ScrollableFrame, bind_hover, bind_color_hover, bind_mousewheel
+from widgets import ScrollableFrame, bind_hover, bind_color_hover, bind_mousewheel, freeze_redraw, thaw_redraw
 
 
 def _format_note(note_txt):
@@ -34,36 +34,42 @@ def build_placeholder(sidebar):
 
 def build_options(sidebar, li, ci, char, info, buffer, on_apply):
     """构建读音选项面板。on_apply(li, ci, phonetic, global_apply)"""
-    for w in sidebar.winfo_children():
-        w.destroy()
-    opts = info['options']
-    if not opts:
-        build_placeholder(sidebar)
-        return
+    freeze_redraw(sidebar)
+    try:
+        for w in sidebar.winfo_children():
+            w.destroy()
+        opts = info['options']
+        if not opts:
+            build_placeholder(sidebar)
+            return
 
-    # 头部
-    hdr = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16, pady=14)
-    hdr.pack(fill=tk.X)
-    row = tk.Frame(hdr, bg=COLORS['bg_sidebar'])
-    row.pack(fill=tk.X)
-    tk.Label(row, text=char, font=('Microsoft YaHei', 24, 'bold'),
-             bg=COLORS['bg_sidebar'], fg=COLORS['accent']).pack(side=tk.LEFT)
-    detail_col = tk.Frame(row, bg=COLORS['bg_sidebar'])
-    detail_col.pack(side=tk.LEFT, padx=(12, 0), fill=tk.Y)
-    tk.Label(detail_col, text='选择读音', font=('Microsoft YaHei', 10),
-             bg=COLORS['bg_sidebar'], fg=COLORS['text_secondary']
-             ).pack(anchor='w', pady=(4, 0))
+        # 头部
+        hdr = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16, pady=14)
+        hdr.pack(fill=tk.X)
+        row = tk.Frame(hdr, bg=COLORS['bg_sidebar'])
+        row.pack(fill=tk.X)
+        tk.Label(row, text=char, font=('Microsoft YaHei', 24, 'bold'),
+                 bg=COLORS['bg_sidebar'], fg=COLORS['accent']).pack(side=tk.LEFT)
+        detail_col = tk.Frame(row, bg=COLORS['bg_sidebar'])
+        detail_col.pack(side=tk.LEFT, padx=(12, 0), fill=tk.Y)
+        tk.Label(detail_col, text='选择读音', font=('Microsoft YaHei', 10),
+                 bg=COLORS['bg_sidebar'], fg=COLORS['text_secondary']
+                 ).pack(anchor='w', pady=(4, 0))
 
-    tk.Frame(sidebar, bg=COLORS['divider'], height=1).pack(fill=tk.X, padx=16)
+        tk.Frame(sidebar, bg=COLORS['divider'], height=1).pack(fill=tk.X, padx=16)
 
-    total = sum(ln.count(char) for ln in buffer)
+        total = sum(ln.count(char) for ln in buffer)
 
-    sf = ScrollableFrame(sidebar, bg=COLORS['bg_sidebar'])
-    sf.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
-    for o in opts:
-        _build_card(sf.inner, o, info, li, ci, total, on_apply)
-    bind_mousewheel(sf.inner, sf.on_mousewheel)
-    sf.canvas.bind('<MouseWheel>', sf.on_mousewheel)
+        sf = ScrollableFrame(sidebar, bg=COLORS['bg_sidebar'])
+        sf.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        for o in opts:
+            _build_card(sf.inner, o, info, li, ci, total, on_apply)
+        bind_mousewheel(sf.inner, sf.on_mousewheel)
+        sf.canvas.bind('<MouseWheel>', sf.on_mousewheel)
+
+        sidebar.update_idletasks()
+    finally:
+        thaw_redraw(sidebar)
 
 
 def _create_note_widget(parent, note_txt, bg):

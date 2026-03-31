@@ -3,7 +3,9 @@
 import os
 import gzip
 import json
+import io
 import urllib.request
+from datetime import datetime
 from typing import Dict, List, Any, Optional
 
 
@@ -46,6 +48,115 @@ def _needs_update(url: str, local_path: str) -> bool:
         return True
     local_ts = os.path.getmtime(local_path)
     return remote_ts > local_ts
+
+
+def _load_gz_json(path_or_bytes):
+    """从文件路径或 bytes 加载 gzip JSON 数据。"""
+    try:
+        if isinstance(path_or_bytes, bytes):
+            with gzip.open(io.BytesIO(path_or_bytes), 'rt', encoding='utf-8') as f:
+                return json.load(f)
+        else:
+            with gzip.open(path_or_bytes, 'rt', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        return None
+
+
+def _diff_data(old_data, new_data, filename):
+    """比较新旧数据，返回差异描述列表。"""
+    if old_data is None or new_data is None:
+        return []
+    diffs = []
+    max_len = max(len(old_data), len(new_data))
+    for i in range(max_len):
+        old_entry = old_data[i] if i < len(old_data) else None
+        new_entry = new_data[i] if i < len(new_data) else None
+        if old_entry == new_entry:
+            continue
+        if old_entry is None:
+            diffs.append(f'  [新增] #{i}: {json.dumps(new_entry, ensure_ascii=False)}')
+        elif new_entry is None:
+            diffs.append(f'  [删除] #{i}: {json.dumps(old_entry, ensure_ascii=False)}')
+        else:
+            diffs.append(f'  [修改] #{i}:')
+            diffs.append(f'    旧: {json.dumps(old_entry, ensure_ascii=False)}')
+            diffs.append(f'    新: {json.dumps(new_entry, ensure_ascii=False)}')
+    return diffs
+
+
+def _log_diff(filename, diffs, status_fn):
+    """将差异写入 data_update.log。"""
+    if not diffs:
+        status_fn(f'[对比] {filename} 内容无实质变化')
+        return
+    log_path = os.path.join(get_data_dir(), 'data_update.log')
+    header = f'\n{"="*60}\n[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] {filename} 更新 — 共 {len([d for d in diffs if d.startswith("  [")])} 处差异\n{"="*60}'
+    entry = header + '\n' + '\n'.join(diffs) + '\n'
+    with open(log_path, 'a', encoding='utf-8') as f:
+        f.write(entry)
+    count = len([d for d in diffs if d.startswith('  [')])
+    status_fn(f'[对比] {filename} 有 {count} 处差异，已记录到 data_update.log')
+
+
+def _extract_changed_chars(old_data, new_data):
+    """从 base.json.gz 的新旧数据中提取读音有变化的汉字集合。"""
+    if old_data is None or new_data is None:
+        return set()
+    changed = set()
+    # 构建 旧: {字 -> [读音列表]}
+    old_map = {}
+    for entry in old_data:
+        ch = entry.get('z', '')
+        ph = entry.get('y', '').strip()
+        if ch and ph:
+            old_map.setdefault(ch, []).append(ph)
+    # 构建 新: {字 -> [读音列表]}
+    new_map = {}
+    for entry in new_data:
+        ch = entry.get('z', '')
+        ph = entry.get('y', '').strip()
+        if ch and ph:
+            new_map.setdefault(ch, []).append(ph)
+    # 对比
+    all_chars = set(old_map) | set(new_map)
+    for ch in all_chars:
+        if sorted(old_map.get(ch, [])) != sorted(new_map.get(ch, [])):
+            changed.add(ch)
+    return changed
+
+
+_CHANGED_CHARS_FILE = 'changed_chars.json'
+
+
+def get_changed_chars() -> set:
+    """读取因数据更新而读音发生变化的汉字集合。"""
+    path = os.path.join(get_data_dir(), _CHANGED_CHARS_FILE)
+    data = None
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        pass
+    if isinstance(data, list):
+        return set(data)
+    return set()
+
+
+def save_changed_chars(chars: set):
+    """保存变化汉字集合。"""
+    path = os.path.join(get_data_dir(), _CHANGED_CHARS_FILE)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(sorted(chars), f, ensure_ascii=False)
+
+
+def clear_changed_char(ch: str):
+    """从变化集合中移除单个汉字（用户已重新选择读音后）。"""
+    chars = get_changed_chars()
+    if ch in chars:
+        chars.discard(ch)
+        save_changed_chars(chars)
+    return chars
 
 
 def download_and_update(on_status=None, on_progress=None):
@@ -96,6 +207,21 @@ def download_and_update(on_status=None, on_progress=None):
                         _progress(-1, filename)
 
                 data = b''.join(chunks)
+
+            # 对比新旧数据
+            if os.path.exists(local_path):
+                old_data = _load_gz_json(local_path)
+                new_data = _load_gz_json(data)
+                diffs = _diff_data(old_data, new_data, filename)
+                _log_diff(filename, diffs, _status)
+                # base.json.gz 变化时记录受影响的汉字
+                if filename == 'base.json.gz' and old_data and new_data:
+                    changed = _extract_changed_chars(old_data, new_data)
+                    if changed:
+                        existing = get_changed_chars()
+                        merged = existing | changed
+                        save_changed_chars(merged)
+                        _status(f'[标记] {len(changed)} 个汉字的读音发生变化')
 
             tmp_path = local_path + '.tmp'
             with open(tmp_path, 'wb') as f:

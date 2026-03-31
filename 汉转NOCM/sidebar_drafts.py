@@ -8,12 +8,15 @@ from widgets import (ModernButton, ScrollableFrame,
                      bind_hover, bind_color_hover, bind_mousewheel,
                      bind_single_double,
                      set_widget_bg, freeze_redraw, thaw_redraw,
-                     animate_widget_bg)
-from draft_io import list_drafts, rename_draft
+                     animate_widget_bg, animate_color)
+from draft_io import list_drafts, rename_draft, draft_has_stale_chars
+from data_loader import get_changed_chars
 from folder_manager import (get_groups, get_grouped_filenames, create_group,
                             rename_group, delete_group, toggle_group)
 import drag_drop
 
+
+_pending_active_card = None  # (card, indicator_or_None) for post-thaw animation
 
 # ── 公开接口 ──────────────────────────────────────────
 
@@ -48,14 +51,15 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
 
         for i, (text, cmd) in enumerate([
             ('＋📁', lambda: _do_create_folder(on_rebuild)),
-            ('＋ 新建', lambda: on_new()),
+            ('＋📝', lambda: on_new()),
         ]):
             b = tk.Label(btn_row, text=text, font=('Microsoft YaHei', 9),
                          bg=COLORS['tag_bg'], fg=COLORS['tag_fg'],
                          padx=8, pady=2, cursor='hand2')
             b.pack(side=tk.RIGHT, padx=(4, 0))
             b.bind('<Button-1>', lambda e, c=cmd: c())
-            bind_color_hover(b, {'bg': (COLORS['tag_bg'], COLORS['accent'])})
+            bind_color_hover(b, {'bg': (COLORS['tag_bg'], COLORS['accent']),
+                                  'fg': (COLORS['tag_fg'], '#FFFFFF')})
 
         tk.Frame(sidebar, bg=COLORS['divider'], height=1).pack(fill=tk.X,
                                                                 padx=14)
@@ -71,10 +75,13 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
         ungrouped = [d for d in all_drafts
                      if d['filename'] not in grouped_fns]
 
+        changed = get_changed_chars()
+
         # 递归渲染文件夹树
         _render_tree(sf.inner, groups, drafts_map, current_draft,
                      on_load, on_delete, on_rename, on_rebuild,
-                     sf.on_mousewheel, depth=0, parent_gid=None)
+                     sf.on_mousewheel, depth=0, parent_gid=None,
+                     changed_chars=changed)
 
         if not groups and not ungrouped:
             _build_empty(sf.inner)
@@ -96,7 +103,8 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
             for d in ungrouped:
                 _build_card(sf.inner, d, current_draft, None,
                             on_load, on_delete, on_rename,
-                            sf.on_mousewheel, on_rebuild, depth=0)
+                            sf.on_mousewheel, on_rebuild, depth=0,
+                            changed_chars=changed)
 
         sf.canvas.bind('<MouseWheel>', sf.on_mousewheel)
 
@@ -107,6 +115,17 @@ def build(sidebar, current_draft, on_load, on_new, on_delete, on_rename,
         sidebar.update_idletasks()
     finally:
         thaw_redraw(sidebar)
+
+    # 活跃卡片入场动画
+    global _pending_active_card
+    if _pending_active_card is not None:
+        card, indicator = _pending_active_card
+        _pending_active_card = None
+        target = COLORS['accent_light']
+        animate_widget_bg(card, target, duration=200, depth=3)
+        if indicator is not None:
+            # 取消 indicator 的 bg 动画，保持 accent 色
+            animate_color(indicator, 'bg', COLORS['accent'], duration=1)
 
 
 def _find_scrollable(widget):
@@ -216,17 +235,18 @@ def _do_delete_folder(gid, name, parent_widget, on_rebuild):
 
 def _render_tree(parent, groups, drafts_map, current_draft,
                  on_load, on_delete, on_rename, on_rebuild,
-                 mw_handler, depth, parent_gid):
+                 mw_handler, depth, parent_gid, changed_chars=None):
     """递归渲染文件夹树。"""
     for g in groups:
         _build_folder(parent, g, drafts_map, current_draft,
                       on_load, on_delete, on_rename, on_rebuild,
-                      mw_handler, depth, parent_gid)
+                      mw_handler, depth, parent_gid,
+                      changed_chars=changed_chars)
 
 
 def _build_folder(parent, group, drafts_map, current_draft,
                   on_load, on_delete, on_rename, on_rebuild,
-                  mw_handler, depth, parent_gid):
+                  mw_handler, depth, parent_gid, changed_chars=None):
     """构建单个文件夹（头部 + 子内容）。"""
     gid = group['id']
     expanded = group.get('expanded', True)
@@ -256,7 +276,8 @@ def _build_folder(parent, group, drafts_map, current_draft,
     arrow_lbl.pack(side=tk.LEFT, padx=(0, 2))
 
     icon_lbl = tk.Label(hdr, text='📁', font=('Segoe UI Emoji', 11),
-                        bg=COLORS['bg_sidebar'], cursor='hand2')
+                        bg=COLORS['bg_sidebar'], fg=COLORS['text_secondary'],
+                        cursor='hand2')
     icon_lbl.pack(side=tk.LEFT, padx=(0, 4))
 
     name_lbl = tk.Label(hdr, text=group['name'],
@@ -321,6 +342,8 @@ def _build_folder(parent, group, drafts_map, current_draft,
     hdr.bind('<Leave>', _hdr_leave)
     hdr.bind('<MouseWheel>', mw_handler)
     for ch in hdr.winfo_children():
+        ch.bind('<Enter>', _hdr_enter)
+        ch.bind('<Leave>', _hdr_leave)
         ch.bind('<MouseWheel>', mw_handler)
 
     tk.Frame(zone, bg=COLORS['divider'], height=1).pack(fill=tk.X, padx=14)
@@ -331,7 +354,8 @@ def _build_folder(parent, group, drafts_map, current_draft,
     # 子文件夹（递归）
     _render_tree(container, group.get('children', []), drafts_map,
                  current_draft, on_load, on_delete, on_rename,
-                 on_rebuild, mw_handler, depth + 1, parent_gid=gid)
+                 on_rebuild, mw_handler, depth + 1, parent_gid=gid,
+                 changed_chars=changed_chars)
 
     # 文件
     has_content = bool(group.get('children'))
@@ -340,7 +364,8 @@ def _build_folder(parent, group, drafts_map, current_draft,
             has_content = True
             _build_card(container, drafts_map[fn], current_draft, gid,
                         on_load, on_delete, on_rename,
-                        mw_handler, on_rebuild, depth + 1)
+                        mw_handler, on_rebuild, depth + 1,
+                        changed_chars=changed_chars)
 
     if not has_content:
         tip = tk.Label(container, text='（空文件夹）',
@@ -355,20 +380,24 @@ def _build_folder(parent, group, drafts_map, current_draft,
 
 def _build_card(parent, draft, current_draft, group_id,
                 on_load, on_delete, on_rename,
-                mw_handler, on_rebuild, depth):
+                mw_handler, on_rebuild, depth, changed_chars=None):
     """构建单个文稿卡片。"""
+    global _pending_active_card
     fn = draft['filename']
     active = fn == current_draft
-    bg = COLORS['accent_light'] if active else COLORS['bg_sidebar']
+    # 活跃卡片初始用中性色，thaw 后通过动画过渡到 accent_light
+    bg = COLORS['bg_sidebar']
     left_pad = 8 + depth * 16
 
     card = tk.Frame(parent, bg=bg, padx=10, pady=8)
     card.pack(fill=tk.X, pady=1, padx=(left_pad, 6))
 
     # 左侧竖条指示器（当前活跃时）
+    indicator = None
     if active:
         indicator = tk.Frame(card, bg=COLORS['accent'], width=3)
         indicator.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 8))
+        _pending_active_card = (card, indicator)
 
     top = tk.Frame(card, bg=bg)
     top.pack(fill=tk.X)
@@ -384,6 +413,13 @@ def _build_card(parent, draft, current_draft, group_id,
                         bg=bg, fg=COLORS['text_primary'],
                         anchor='w', cursor='hand2')
     name_lbl.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+    # 数据更新警告标记
+    is_stale = bool(changed_chars) and draft_has_stale_chars(fn, changed_chars)
+    if is_stale:
+        stale_dot = tk.Label(top, text='●', font=('Microsoft YaHei', 9),
+                             bg=bg, fg=COLORS['stale'], cursor='hand2')
+        stale_dot.pack(side=tk.RIGHT, padx=(4, 0))
 
     bot = tk.Frame(card, bg=bg)
     bot.pack(fill=tk.X, pady=(3, 0))

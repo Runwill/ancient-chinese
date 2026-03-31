@@ -104,6 +104,8 @@ class EditorRenderer:
         c_poly_orange = COLORS['poly_orange']
         c_unknown = COLORS['unknown_char']
         c_unknown_bg = COLORS['unknown_char_bg']
+        c_stale = COLORS['stale']
+        c_stale_bg = COLORS['stale_bg']
         margin = _CANVAS_MARGIN
         gap = _CELL_GAP
         measure = self._measure_cell
@@ -128,6 +130,22 @@ class EditorRenderer:
                 if in_brk:
                     fg_ch = fg_ph = c_text_muted
                     bg = outline = ''
+                elif info.get('stale'):
+                    # 数据源变化标记：琥珀色警告
+                    if info['is_poly']:
+                        sel = info.get('selected', 'none')
+                        if sel == 'manual':
+                            bg, fg_ch = c_poly_green_bg, c_poly_green
+                        elif sel == 'global_recent':
+                            bg, fg_ch = c_poly_purple_bg, c_poly_purple
+                        elif sel == 'global':
+                            bg, fg_ch = c_poly_blue_bg, c_poly_blue
+                        else:
+                            bg, fg_ch = c_poly_orange_bg, c_poly_orange
+                        fg_ph, outline = c_accent, c_stale
+                    else:
+                        fg_ch, fg_ph = c_text_primary, c_text_muted
+                        bg, outline = c_stale_bg, c_stale
                 elif info['is_poly']:
                     sel = info.get('selected', 'none')
                     if sel == 'manual':

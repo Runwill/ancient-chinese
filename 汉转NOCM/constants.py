@@ -60,6 +60,8 @@ _LIGHT_THEME = {
     'danger':            '#DC2626',
     'danger_hover':      '#B91C1C',
     'warning':           '#E8850C',
+    'stale':             '#D97706',
+    'stale_bg':          '#FFFBEB',
 }
 
 _DARK_THEME = {
@@ -99,13 +101,28 @@ _DARK_THEME = {
     'danger':            '#FB7185',
     'danger_hover':      '#F43F5E',
     'warning':           '#F5A623',
+    'stale':             '#FBBF24',
+    'stale_bg':          '#2A2410',
 }
 
+def _detect_system_theme():
+    """检测 Windows 系统主题，返回 'light' 或 'dark'。"""
+    try:
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize')
+        val, _ = winreg.QueryValueEx(key, 'AppsUseLightTheme')
+        winreg.CloseKey(key)
+        return 'light' if val == 1 else 'dark'
+    except Exception:
+        return 'dark'
+
 # 当前主题名称
-_current_theme = 'dark'
+_current_theme = _detect_system_theme()
 
 # 活动配色字典 —— 所有模块通过 from constants import COLORS 引用同一对象
-COLORS = dict(_DARK_THEME)
+COLORS = dict(_LIGHT_THEME if _current_theme == 'light' else _DARK_THEME)
 
 
 def set_theme(name):

@@ -12,6 +12,7 @@ from widgets import ModernButton, freeze_redraw, thaw_redraw, style, apply_theme
 from editor_buffer import EditorBuffer
 from editor_render import EditorRenderer
 from draft_io import save_draft, load_draft, delete_draft, rename_draft, get_draft_name
+from data_loader import get_changed_chars, clear_changed_char
 import sidebar_drafts
 import sidebar_options
 
@@ -91,7 +92,6 @@ class App(tk.Tk):
         for text, cmd, pri in [('?', self._on_help, False),
                                ('重启', self._on_restart, False),
                                (theme_label, self._on_toggle_theme, False),
-                               ('清空', self._on_clear, False),
                                ('保存', self._on_save, False),
                                ('复制结果', self._on_copy, True)]:
             w = 32 if len(text) <= 1 else 64 if len(text) <= 2 else 72
@@ -272,7 +272,21 @@ class App(tk.Tk):
     def _on_cell_click(self, li, ci):
         """点击多音字时，在侧边栏显示选项"""
         info = self.buf.cell_info[li][ci]
+        ch = self.buf.buffer[li][ci]
         opts = info['options']
+
+        # 非多音字但被标记 stale：点击即确认，更新读音并清除标记
+        if not opts and info.get('stale'):
+            new_opts = self.mapping.get(ch)
+            if new_opts:
+                first = new_opts[0]
+                info['phonetic'] = first['phonetic'] if isinstance(first, dict) else str(first)
+            info.pop('stale', None)
+            clear_changed_char(ch)
+            self._rebuild_display()
+            self._build_sidebar_drafts()
+            return
+
         if not opts:
             return
 
@@ -280,7 +294,7 @@ class App(tk.Tk):
         self.buf.cur_col = ci + 1
         self._selected_poly = (li, ci)
         sidebar_options.build_options(
-            self.sidebar, li, ci, self.buf.buffer[li][ci], info,
+            self.sidebar, li, ci, ch, info,
             self.buf.buffer, on_apply=self._apply_reading)
         self._update_cursor()
 
@@ -290,13 +304,15 @@ class App(tk.Tk):
 
     def _do_apply(self, li, ci, phonetic, global_apply):
         self.buf.save_undo()
+        ch = self.buf.buffer[li][ci]
+        # 清除该字的 stale 标记
+        had_stale = False
         if global_apply:
             # 将上次的紫色（global_recent）降级为蓝色（global）
             for linfo in self.buf.cell_info:
                 for info in linfo:
                     if info.get('selected') == 'global_recent':
                         info['selected'] = 'global'
-            ch = self.buf.buffer[li][ci]
             for _li, (lc, linfo) in enumerate(zip(self.buf.buffer, self.buf.cell_info)):
                 for _ci, (c, info) in enumerate(zip(lc, linfo)):
                     if c == ch and info['is_poly']:
@@ -305,9 +321,18 @@ class App(tk.Tk):
                             info['selected'] = 'manual'
                         else:
                             info['selected'] = 'global_recent'
+                    if c == ch and info.get('stale'):
+                        info.pop('stale', None)
+                        had_stale = True
         else:
             self.buf.cell_info[li][ci]['phonetic'] = phonetic
             self.buf.cell_info[li][ci]['selected'] = 'manual'
+            if self.buf.cell_info[li][ci].get('stale'):
+                self.buf.cell_info[li][ci].pop('stale', None)
+                had_stale = True
+        if had_stale:
+            clear_changed_char(ch)
+            self._build_sidebar_drafts()
         self._rebuild_display()
         if self._selected_poly:
             sli, sci = self._selected_poly
@@ -372,11 +397,18 @@ class App(tk.Tk):
             '   · 绿色 = 已手动选择读音\n'
             '   · 蓝色 = 通过「全局应用」间接选择\n'
             '   · 紫色 = 上一次「全局应用」间接选择\n'
+            '   · 琥珀色边框 = 数据更新后读音有变化，需重新确认\n'
             '4. 点击多音字在右侧面板选择读音\n'
             '   · 点击「全局应用」将读音应用到所有同字\n'
-            '5. 点击「复制结果」复制输出到剪贴板\n'
-            '6. 点击「保存」保存当前文稿\n'
-            '7. 左侧文稿面板可加载/删除文稿，双击名称可重命名\n\n'
+            '5. 琥珀色标记（数据更新提示）：\n'
+            '   · 当远程数据更新导致某些字的读音变化时，\n'
+            '     文稿中受影响的字会显示琥珀色标记\n'
+            '   · 侧边栏文稿卡片上会出现琥珀色圆点提示\n'
+            '   · 多音字：点击后重新选择读音即可消除标记\n'
+            '   · 非多音字：点击该字即可确认并更新为新读音\n'
+            '6. 点击「复制结果」复制输出到剪贴板\n'
+            '7. 点击「保存」保存当前文稿\n'
+            '8. 左侧文稿面板可加载/删除文稿，双击名称可重命名\n\n'
             '方括号 [] 内的内容原样保留，不做转换。\n'
             'Ctrl+Z 撤回，Ctrl+Y / Ctrl+Shift+Z 重做\n'
             'Ctrl+S 保存文稿\n'
@@ -478,6 +510,13 @@ class App(tk.Tk):
         self._selected_poly = None
         self._current_draft = filename
         self.buf.dirty = False
+        # 标记数据更新后读音变化的字
+        changed = get_changed_chars()
+        if changed:
+            for line_chars, line_info in zip(self.buf.buffer, self.buf.cell_info):
+                for ch, info in zip(line_chars, line_info):
+                    if ch in changed:
+                        info['stale'] = True
         self._rebuild_display()
 
     def _delete_draft(self, filename):

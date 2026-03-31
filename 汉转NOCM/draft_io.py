@@ -143,3 +143,17 @@ def get_draft_name(filename):
     """读取文稿显示名称。"""
     data = load_json(os.path.join(DRAFTS_DIR, filename))
     return data.get('name', filename) if data else filename
+
+
+def draft_has_stale_chars(filename, changed_chars):
+    """检查文稿是否包含读音变化的汉字（快速扫描，不完整加载）。"""
+    if not changed_chars:
+        return False
+    data = load_json(os.path.join(DRAFTS_DIR, filename))
+    if not data or 'buffer' not in data:
+        return False
+    for row in data['buffer']:
+        for ch in row:
+            if ch in changed_chars:
+                return True
+    return False
