@@ -26,7 +26,7 @@ def build_placeholder(sidebar):
     center.place(relx=0.5, rely=0.5, anchor='center')
     tk.Label(center, text='✎', font=('Segoe UI Symbol', 28),
              bg=COLORS['bg_sidebar'], fg=COLORS['text_muted']).pack()
-    tk.Label(center, text='点击多音字\n选择读音',
+    tk.Label(center, text='点击文字\n查看读音',
              font=('Microsoft YaHei', 10),
              bg=COLORS['bg_sidebar'], fg=COLORS['text_muted'],
              justify='center').pack(pady=(10, 0))
@@ -170,3 +170,74 @@ def _build_card(parent, opt, info, li, ci, total, on_apply):
 
     if not is_cur:
         bind_hover(card, bg)
+
+
+def build_char_info(sidebar, char, mapping):
+    """构建普通字（非多音字）的信息面板。"""
+    freeze_redraw(sidebar)
+    try:
+        for w in sidebar.winfo_children():
+            w.destroy()
+
+        opts = mapping.get(char)
+
+        # 头部
+        hdr = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16, pady=14)
+        hdr.pack(fill=tk.X)
+        row = tk.Frame(hdr, bg=COLORS['bg_sidebar'])
+        row.pack(fill=tk.X)
+        tk.Label(row, text=char, font=('Microsoft YaHei', 24, 'bold'),
+                 bg=COLORS['bg_sidebar'], fg=COLORS['text_primary']).pack(side=tk.LEFT)
+        detail_col = tk.Frame(row, bg=COLORS['bg_sidebar'])
+        detail_col.pack(side=tk.LEFT, padx=(12, 0), fill=tk.Y)
+
+        if not opts:
+            tk.Label(detail_col, text='未收录',
+                     font=('Microsoft YaHei', 10),
+                     bg=COLORS['bg_sidebar'], fg=COLORS['text_muted']
+                     ).pack(anchor='w', pady=(4, 0))
+        else:
+            first = opts[0]
+            phon = first['phonetic'] if isinstance(first, dict) else str(first)
+            tk.Label(detail_col, text=phon,
+                     font=('Consolas', 13, 'bold'),
+                     bg=COLORS['bg_sidebar'], fg=COLORS['accent']
+                     ).pack(anchor='w', pady=(2, 0))
+
+        tk.Frame(sidebar, bg=COLORS['divider'], height=1).pack(fill=tk.X, padx=16)
+
+        if opts:
+            sf = ScrollableFrame(sidebar, bg=COLORS['bg_sidebar'])
+            sf.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+            for o in opts:
+                _build_info_card(sf.inner, o)
+            bind_mousewheel(sf.inner, sf.on_mousewheel)
+            sf.canvas.bind('<MouseWheel>', sf.on_mousewheel)
+        else:
+            box = tk.Frame(sidebar, bg=COLORS['bg_sidebar'])
+            box.pack(fill=tk.BOTH, expand=True)
+            tk.Label(box, text='该字符不在数据库中',
+                     font=('Microsoft YaHei', 9),
+                     bg=COLORS['bg_sidebar'], fg=COLORS['text_muted']
+                     ).pack(pady=20)
+    finally:
+        thaw_redraw(sidebar)
+
+
+def _build_info_card(parent, opt):
+    """构建普通字的只读信息卡片（不可选择读音）。"""
+    phon = opt.get('phonetic') if isinstance(opt, dict) else str(opt)
+    note_raw = opt.get('note') if isinstance(opt, dict) else None
+    note_txt = _format_note(str(note_raw).strip()) if note_raw else ''
+    bg = COLORS['bg_card']
+
+    card = tk.Frame(parent, bg=bg, highlightbackground=COLORS['border_light'],
+                    highlightthickness=1, padx=12, pady=10)
+    card.pack(fill=tk.X, pady=3, padx=6)
+
+    tk.Label(card, text=phon, font=('Consolas', 13, 'bold'),
+             bg=bg, fg=COLORS['accent']).pack(anchor='w')
+
+    if note_txt:
+        nl = _create_note_widget(card, note_txt, bg)
+        nl.pack(fill=tk.X, pady=(6, 0))

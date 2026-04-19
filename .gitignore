@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+
+# 构建产物
+汉转NOCM/build/
+汉转NOCM/dist/
+
+# 用户数据（文稿、偏好）
+汉转NOCM/drafts/
+汉转NOCM/.theme_pref
+
+# 数据文件（运行时下载）
+汉转NOCM/base.json.gz
+汉转NOCM/extra.json.gz

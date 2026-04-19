@@ -2,10 +2,17 @@
 
 import json
 import os
+import sys
 import re
 from datetime import datetime
 
-DRAFTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'drafts')
+# PyInstaller exe 时用 exe 所在目录，源码运行时用脚本所在目录
+if getattr(sys, 'frozen', False):
+    _BASE_DIR = os.path.dirname(sys.executable)
+else:
+    _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+DRAFTS_DIR = os.path.join(_BASE_DIR, 'drafts')
 _DRAFTS_ORDER_FILE = os.path.join(DRAFTS_DIR, '_order.json')
 
 

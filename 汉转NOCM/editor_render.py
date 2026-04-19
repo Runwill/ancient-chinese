@@ -251,6 +251,75 @@ class EditorRenderer:
                             fb - (vis[1] - vis[0]) + 0.02)
                         self._render_visible()
 
+    # ── 视觉行导航 ─────────────────────────────────
+
+    def visual_nav(self, cur_line, cur_col, direction):
+        """按视觉行（含自动换行）上下导航，返回 (new_line, new_col)。"""
+        cell_rects = self._cell_rects
+
+        # 1. 当前光标的视觉坐标
+        rects = cell_rects[cur_line] if cur_line < len(cell_rects) else []
+        if cur_col < len(rects):
+            cursor_x = rects[cur_col][0]
+            cursor_y = rects[cur_col][1]
+        elif rects:
+            cursor_x = rects[-1][2]
+            cursor_y = rects[-1][1]
+        else:
+            cursor_x = _CANVAS_MARGIN
+            cursor_y = (self._line_y[cur_line]
+                        if cur_line < len(self._line_y) else _CANVAS_MARGIN)
+
+        # 2. 收集所有视觉行 y -> [(li, ci, x1, x2)]
+        row_map = {}
+        for li, lr in enumerate(cell_rects):
+            if not lr:
+                y = (self._line_y[li]
+                     if li < len(self._line_y) else _CANVAS_MARGIN)
+                row_map.setdefault(y, [])
+            for ci, (x1, y1, x2, y2) in enumerate(lr):
+                row_map.setdefault(y1, []).append((li, ci, x1, x2))
+
+        y_sorted = sorted(row_map.keys())
+        if not y_sorted:
+            return cur_line, cur_col
+
+        # 3. 定位当前视觉行
+        curr_idx = 0
+        for i, y in enumerate(y_sorted):
+            if y <= cursor_y:
+                curr_idx = i
+
+        target_idx = curr_idx + (-1 if direction == 'Up' else 1)
+        if target_idx < 0 or target_idx >= len(y_sorted):
+            return cur_line, cur_col
+
+        cells = row_map[y_sorted[target_idx]]
+        if not cells:
+            # 空行
+            for li in range(len(cell_rects)):
+                y = (self._line_y[li]
+                     if li < len(self._line_y) else _CANVAS_MARGIN)
+                if y == y_sorted[target_idx] and not cell_rects[li]:
+                    return li, 0
+            return cur_line, cur_col
+
+        # 4. 找 x 最近的单元格
+        best_li, best_ci = cells[0][0], cells[0][1]
+        best_dist = abs(cursor_x - cells[0][2])
+        for li, ci, x1, x2 in cells[1:]:
+            d = abs(cursor_x - x1)
+            if d < best_dist:
+                best_dist = d
+                best_li, best_ci = li, ci
+
+        # 光标超过该行最右单元格右边缘时，定位到行尾
+        rightmost = max(cells, key=lambda c: c[3])
+        if cursor_x > rightmost[3]:
+            return rightmost[0], rightmost[1] + 1
+
+        return best_li, best_ci
+
     def on_configure(self, event, buffer, cell_info, cur_line, cur_col):
         """Canvas 大小变化时重绘（带 debounce 减少拖拽窗口时的调用）。"""
         if event.width == self._last_canvas_w:

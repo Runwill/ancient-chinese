@@ -1,6 +1,7 @@
 """常量定义：配色方案、布局参数及通用工具函数。"""
 
 import os
+import sys
 
 
 # ── 括号范围（共用逻辑）──────────────────────────────
@@ -123,7 +124,12 @@ def _detect_system_theme():
         return 'dark'
 
 
-_THEME_PREF_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.theme_pref')
+if getattr(sys, 'frozen', False):
+    _BASE_DIR = os.path.dirname(sys.executable)
+else:
+    _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+_THEME_PREF_FILE = os.path.join(_BASE_DIR, '.theme_pref')
 
 
 def _load_theme_pref():

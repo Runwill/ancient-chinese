@@ -207,8 +207,14 @@ class App(tk.Tk):
             elif ks == 'Return':
                 self.buf.insert_newline()
                 self._rebuild_display()
-            elif ks in ('Left', 'Right', 'Up', 'Down', 'Home', 'End'):
+            elif ks in ('Left', 'Right', 'Home', 'End'):
                 self.buf.handle_nav(ks)
+                self._update_cursor()
+            elif ks in ('Up', 'Down'):
+                nl, nc = self.renderer.visual_nav(
+                    self.buf.cur_line, self.buf.cur_col, ks)
+                self.buf.cur_line = nl
+                self.buf.cur_col = nc
                 self._update_cursor()
             elif event.char and len(event.char) == 1 and event.char.isprintable():
                 self.buf.insert_char(event.char)
@@ -234,9 +240,19 @@ class App(tk.Tk):
             for ci, (x1, y1, x2, y2) in enumerate(line_rects):
                 if x1 <= cx <= x2 and y1 <= cy <= y2:
                     info = self.buf.cell_info[li][ci]
+                    ch = self.buf.buffer[li][ci]
                     br = find_bracket_ranges(self.buf.buffer[li])
-                    if info['is_poly'] and info['options'] and not in_bracket(ci, br):
-                        self._on_cell_click(li, ci)
+                    if not in_bracket(ci, br):
+                        if info['is_poly'] and info['options']:
+                            self._on_cell_click(li, ci)
+                            return
+                        # 普通字：显示字符信息
+                        self.buf.cur_line = li
+                        self.buf.cur_col = min(ci + 1, len(self.buf.buffer[li]))
+                        self._selected_poly = None
+                        sidebar_options.build_char_info(
+                            self.sidebar, ch, self.mapping)
+                        self._update_cursor()
                         return
                     self.buf.cur_line = li
                     self.buf.cur_col = min(ci + 1, len(self.buf.buffer[li]))
@@ -423,8 +439,25 @@ class App(tk.Tk):
             messagebox.showinfo('提示', '没有可复制的内容。')
 
     def _on_help(self):
-        messagebox.showinfo('帮助', (
-            '使用说明：\n\n'
+        import webbrowser
+        dlg = tk.Toplevel(self)
+        dlg.title('帮助')
+        dlg.configure(bg=COLORS['bg_card'])
+        dlg.transient(self)
+        dlg.grab_set()
+        dlg.resizable(False, False)
+
+        inner = tk.Frame(dlg, bg=COLORS['bg_card'])
+        inner.pack(fill=tk.BOTH, expand=True)
+
+        pad = {'padx': 20}
+
+        # ─── 使用说明 ───
+        tk.Label(inner, text='使用说明', font=('Microsoft YaHei', 14, 'bold'),
+                 bg=COLORS['bg_card'], fg=COLORS['text_primary']
+                 ).pack(anchor='w', pady=(16, 8), **pad)
+
+        help_text = (
             '1. 直接在编辑区输入或粘贴汉字文本\n'
             '2. 每个字实时显示注音\n'
             '3. 多音字颜色含义：\n'
@@ -432,23 +465,65 @@ class App(tk.Tk):
             '   · 绿色 = 已手动选择读音\n'
             '   · 蓝色 = 通过「全局应用」间接选择\n'
             '   · 紫色 = 上一次「全局应用」间接选择\n'
-            '   · 琥珀色边框 = 数据更新后读音有变化，需重新确认\n'
+            '   · 琥珀色边框 = 数据更新后读音有变化\n'
             '4. 点击多音字在右侧面板选择读音\n'
             '   · 点击「全局应用」将读音应用到所有同字\n'
-            '5. 琥珀色标记（数据更新提示）：\n'
-            '   · 当远程数据更新导致某些字的读音变化时，\n'
-            '     文稿中受影响的字会显示琥珀色标记\n'
-            '   · 侧边栏文稿卡片上会出现琥珀色圆点提示\n'
-            '   · 多音字：点击后重新选择读音即可消除标记\n'
-            '   · 非多音字：点击该字即可确认并更新为新读音\n'
+            '5. 点击任意文字可在右侧查看读音和释义\n'
             '6. 点击「复制结果」复制输出到剪贴板\n'
-            '7. 点击「保存」保存当前文稿\n'
-            '8. 左侧文稿面板可加载/删除文稿，双击名称可重命名\n\n'
+            '7. 点击「保存」保存当前文稿\n\n'
             '方括号 [] 内的内容原样保留，不做转换。\n'
-            'Ctrl+Z 撤回，Ctrl+Y / Ctrl+Shift+Z 重做\n'
-            'Ctrl+S 保存文稿\n'
-            'Ctrl+C 复制原文，Ctrl+V 粘贴'
-        ))
+            'Ctrl+Z 撤回　Ctrl+Y / Ctrl+Shift+Z 重做\n'
+            'Ctrl+S 保存文稿　Ctrl+C 复制原文　Ctrl+V 粘贴'
+        )
+        tk.Label(inner, text=help_text, font=('Microsoft YaHei', 9),
+                 bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
+                 justify='left'
+                 ).pack(anchor='w', **pad)
+
+        # ─── 分隔线 ───
+        tk.Frame(inner, bg=COLORS['divider'], height=1
+                 ).pack(fill=tk.X, pady=12, **pad)
+
+        # ─── 关于 ───
+        tk.Label(inner, text='关于', font=('Microsoft YaHei', 14, 'bold'),
+                 bg=COLORS['bg_card'], fg=COLORS['text_primary']
+                 ).pack(anchor='w', pady=(0, 8), **pad)
+
+        about_items = [
+            ('作者', 'Bilibili-@-凛武-'),
+            ('拟音', '知乎-@Null'),
+            ('源数据1', 'https://zhuanlan.zhihu.com/p/12987993957'),
+            ('源数据2', 'https://github.com/qwert-ly/xtext'),
+            ('测试', 'Bilibili-@Freegrep'),
+        ]
+        for label, value in about_items:
+            row = tk.Frame(inner, bg=COLORS['bg_card'])
+            row.pack(fill=tk.X, pady=2, **pad)
+            tk.Label(row, text=f'{label}：', font=('Microsoft YaHei', 9, 'bold'),
+                     bg=COLORS['bg_card'], fg=COLORS['text_primary']
+                     ).pack(side=tk.LEFT)
+            if value.startswith('https://'):
+                link = tk.Label(row, text=value, font=('Microsoft YaHei', 9),
+                                bg=COLORS['bg_card'], fg=COLORS['accent'],
+                                cursor='hand2')
+                link.pack(side=tk.LEFT)
+                link.bind('<Button-1>',
+                          lambda e, url=value: webbrowser.open(url))
+            else:
+                tk.Label(row, text=value, font=('Microsoft YaHei', 9),
+                         bg=COLORS['bg_card'], fg=COLORS['text_secondary']
+                         ).pack(side=tk.LEFT)
+
+        # 底部留白
+        tk.Frame(inner, bg=COLORS['bg_card'], height=16).pack()
+
+        # 等内容排列完毕后自适应大小并居中
+        dlg.update_idletasks()
+        w = inner.winfo_reqwidth()
+        h = inner.winfo_reqheight()
+        x = self.winfo_x() + (self.winfo_width() - w) // 2
+        y = self.winfo_y() + (self.winfo_height() - h) // 2
+        dlg.geometry(f'{w}x{h}+{x}+{y}')
 
     # ── 文稿管理 ─────────────────────────
 
