@@ -42,6 +42,9 @@ class EditorRenderer:
         self._layout_lines = []  # [(y_min, y_max, [(x,y,cw,ch,phon,fg_ch,fg_ph,bg,outline), ...])]
         self._drawn_lines = set()
         self._total_h = 1
+        # 选区：归一化 ((sli, sci), (eli, eci)) 或 None
+        self._selection = None
+        self._sel_item_ids = []
 
     @property
     def cell_h(self):
@@ -78,6 +81,7 @@ class EditorRenderer:
             self._cursor_id = None
             self._drawn_lines = set()
             self._layout_lines = []
+            self._sel_item_ids = []
             self._layout(buffer, cell_info)
             self._render_visible()
         finally:
@@ -106,6 +110,11 @@ class EditorRenderer:
         c_unknown_bg = COLORS['unknown_char_bg']
         c_stale = COLORS['stale']
         c_stale_bg = COLORS['stale_bg']
+        c_manual = COLORS['manual_hl']
+        c_search_hit = COLORS['search_hit']
+        c_search_hit_bg = COLORS['search_hit_bg']
+        c_search_cur = COLORS['search_current']
+        c_search_cur_bg = COLORS['search_current_bg']
         margin = _CANVAS_MARGIN
         gap = _CELL_GAP
         measure = self._measure_cell
@@ -165,7 +174,20 @@ class EditorRenderer:
                         fg_ch, fg_ph = c_text_primary, c_text_muted
                         bg = outline = ''
 
-                line_cells.append((x, y, cw, ch, phon, fg_ch, fg_ph, bg, outline))
+                manual_hl = bool(info.get('manual_hl')) and not in_brk
+                sh = info.get('search_hit') if not in_brk else None
+                if sh == 'current':
+                    search_color = c_search_cur
+                    search_bg = c_search_cur_bg
+                elif sh:
+                    search_color = c_search_hit
+                    search_bg = c_search_hit_bg
+                else:
+                    search_color = ''
+                    search_bg = ''
+
+                line_cells.append((x, y, cw, ch, phon, fg_ch, fg_ph, bg, outline,
+                                   manual_hl, search_color, search_bg))
                 line_rects.append((x, y, x + cw, y + cell_h))
                 x += cw + gap
 
@@ -200,16 +222,104 @@ class EditorRenderer:
                 continue
             if y_max < y_top or y_min > y_bot:
                 continue
-            for (x, y, cw, ch, phon, fg_ch, fg_ph, bg, outline) in cells:
-                if bg:
+            for cell in cells:
+                (x, y, cw, ch, phon, fg_ch, fg_ph, bg, outline,
+                 manual_hl, search_color, search_bg) = cell
+                # 1. 普通 cell 底色
+                if bg and not search_bg:
                     create_rect(x, y, x + cw, y + cell_h,
                                 fill=bg, outline=outline, width=1)
+                # 2. 搜索高亮：黄色填充 + 黄色边框（覆盖原 cell 底色）
+                if search_bg:
+                    is_cur = (search_color == COLORS['search_current'])
+                    bw = 3 if is_cur else 2
+                    create_rect(x, y, x + cw, y + cell_h,
+                                fill=search_bg, outline=search_color,
+                                width=bw)
+                # 3. 文字
                 mid = x + cw / 2
                 create_text(mid, y + pad, text=ch,
                             font=ch_font, fill=fg_ch, anchor='n')
                 create_text(mid, y + pad + ch_h, text=phon,
                             font=ph_font, fill=fg_ph, anchor='n')
+                # 4. 手动高亮：青色顶+底双条（独立于一切底色）
+                if manual_hl:
+                    mhl = COLORS['manual_hl']
+                    create_rect(x + 2, y - 3, x + cw - 2, y,
+                                fill=mhl, outline='', width=0)
+                    create_rect(x + 2, y + cell_h,
+                                x + cw - 2, y + cell_h + 3,
+                                fill=mhl, outline='', width=0)
             drawn.add(li)
+        # 选区覆盖层（每次都重绘到所有可见行）
+        self._draw_selection_overlay()
+
+    def set_selection(self, sel):
+        """sel: ((sli, sci), (eli, eci)) 或 None。"""
+        self._selection = sel
+        self._draw_selection_overlay()
+
+    def _draw_selection_overlay(self):
+        canvas = self.canvas
+        for iid in self._sel_item_ids:
+            canvas.delete(iid)
+        self._sel_item_ids = []
+        sel = self._selection
+        if sel is None:
+            return
+        (sli, sci), (eli, eci) = sel
+        accent = COLORS['accent']
+        cell_h = self._cell_h
+        canvas_w = max(self.canvas.winfo_width(), 200)
+        right_edge = canvas_w - _CANVAS_MARGIN + 4
+
+        def emit(x1, y1, x2):
+            iid = canvas.create_rectangle(
+                x1 - 2, y1 - 2, x2 + 2, y1 + cell_h + 2,
+                fill=accent, outline='', stipple='gray25')
+            self._sel_item_ids.append(iid)
+
+        for li in range(sli, eli + 1):
+            if li >= len(self._cell_rects):
+                break
+            rects = self._cell_rects[li]
+            lo = sci if li == sli else 0
+            hi = eci if li == eli else len(rects)
+            is_last = (li == eli)
+            # 空逻辑行
+            if not rects:
+                ly = (self._line_y[li]
+                      if li < len(self._line_y) else _CANVAS_MARGIN)
+                if not is_last:
+                    emit(_CANVAS_MARGIN, ly, _CANVAS_MARGIN + 6)
+                continue
+            if lo >= hi and not (lo == hi and not is_last):
+                # 末尾正好选中 0 字也允许显示一个行尾标记？跳过
+                continue
+            # 把 [lo, hi) 范围的 cell 按 y1 分组成视觉行
+            cur_y = None
+            cur_x1 = None
+            cur_x2 = None
+            for ci in range(lo, min(hi, len(rects))):
+                x1, y1, x2, _ = rects[ci]
+                if cur_y is None:
+                    cur_y = y1
+                    cur_x1 = x1
+                    cur_x2 = x2
+                elif y1 != cur_y:
+                    # 上一段结束（非该逻辑行末视觉行 → 拉到右边缘表示折行）
+                    emit(cur_x1, cur_y, right_edge)
+                    cur_y = y1
+                    cur_x1 = x1
+                    cur_x2 = x2
+                else:
+                    cur_x2 = x2
+            if cur_y is not None:
+                # 最末段：若不是 selection 的最后一行，拉到右边缘表示「到行尾」
+                if is_last:
+                    emit(cur_x1, cur_y, cur_x2)
+                else:
+                    emit(cur_x1, cur_y, right_edge)
 
     def render_on_scroll(self):
         """滚动后调用，增量绘制新进入可视区域的行。"""

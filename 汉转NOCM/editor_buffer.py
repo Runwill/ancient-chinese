@@ -12,6 +12,7 @@ class EditorBuffer:
         self.cell_info = [[]]
         self.cur_line = 0
         self.cur_col = 0
+        self.sel_anchor = None  # (line, col) or None
         self.undo_stack = []
         self.redo_stack = []
         self._dirty = False
@@ -71,7 +72,7 @@ class EditorBuffer:
         opts = self.mapping.get(ch)
         if not opts:
             return {'phonetic': ch, 'options': None, 'is_poly': False,
-                    'selected': 'none'}
+                    'selected': 'none', 'manual_hl': False}
         first = opts[0]
         phon = first['phonetic'] if isinstance(first, dict) else str(first)
         is_poly = len(opts) > 1
@@ -80,6 +81,7 @@ class EditorBuffer:
             'options': opts if is_poly else None,
             'is_poly': is_poly,
             'selected': 'none',
+            'manual_hl': False,
         }
 
     # ── 缓冲区编辑 ────────────────────────────────
@@ -196,6 +198,60 @@ class EditorBuffer:
         self.cell_info = [[]]
         self.cur_line = 0
         self.cur_col = 0
+        self.sel_anchor = None
         self.undo_stack.clear()
         self.redo_stack.clear()
         self._dirty = False
+
+    # ── 选区操作 ──────────────────────────────────
+
+    def has_selection(self):
+        return (self.sel_anchor is not None
+                and self.sel_anchor != (self.cur_line, self.cur_col))
+
+    def selection_range(self):
+        """返回归一化的 ((sli, sci), (eli, eci))；无选区返回 None。"""
+        if not self.has_selection():
+            return None
+        a = self.sel_anchor
+        c = (self.cur_line, self.cur_col)
+        return (a, c) if a < c else (c, a)
+
+    def clear_selection(self):
+        self.sel_anchor = None
+
+    def selection_text(self):
+        rng = self.selection_range()
+        if rng is None:
+            return ''
+        (sli, sci), (eli, eci) = rng
+        if sli == eli:
+            return ''.join(self.buffer[sli][sci:eci])
+        parts = [''.join(self.buffer[sli][sci:])]
+        for li in range(sli + 1, eli):
+            parts.append(''.join(self.buffer[li]))
+        parts.append(''.join(self.buffer[eli][:eci]))
+        return '\n'.join(parts)
+
+    def delete_selection(self):
+        """删除选区内容；调用前会自动 save_undo。返回是否删除了。"""
+        rng = self.selection_range()
+        if rng is None:
+            return False
+        self.save_undo()
+        (sli, sci), (eli, eci) = rng
+        if sli == eli:
+            del self.buffer[sli][sci:eci]
+            del self.cell_info[sli][sci:eci]
+        else:
+            prefix = self.buffer[sli][:sci]
+            prefix_info = self.cell_info[sli][:sci]
+            suffix = self.buffer[eli][eci:]
+            suffix_info = self.cell_info[eli][eci:]
+            self.buffer[sli] = prefix + suffix
+            self.cell_info[sli] = prefix_info + suffix_info
+            del self.buffer[sli + 1:eli + 1]
+            del self.cell_info[sli + 1:eli + 1]
+        self.cur_line, self.cur_col = sli, sci
+        self.sel_anchor = None
+        return True

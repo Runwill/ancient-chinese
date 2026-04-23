@@ -66,6 +66,12 @@ _LIGHT_THEME = {
     'warning':           '#E8850C',
     'stale':             '#D97706',
     'stale_bg':          '#FFFBEB',
+    'manual_hl':         '#EC4899',
+    'manual_hl_bg':      '#FCE7F3',
+    'search_hit':        '#CA8A04',
+    'search_hit_bg':     '#FEF08A',
+    'search_current':    '#854D0E',
+    'search_current_bg': '#FACC15',
 }
 
 _DARK_THEME = {
@@ -108,6 +114,12 @@ _DARK_THEME = {
     'warning':           '#F5A623',
     'stale':             '#FBBF24',
     'stale_bg':          '#2A2410',
+    'manual_hl':         '#F472B6',
+    'manual_hl_bg':      '#3B1A2A',
+    'search_hit':        '#FDE047',
+    'search_hit_bg':     '#3A2F12',
+    'search_current':    '#FACC15',
+    'search_current_bg': '#5C4A14',
 }
 
 def _detect_system_theme():

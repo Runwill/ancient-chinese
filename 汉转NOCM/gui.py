@@ -33,6 +33,15 @@ class App(tk.Tk):
         self._selected_poly = None  # (line_idx, col_idx)
         # 当前文稿文件名（None表示新文稿）
         self._current_draft: Optional[str] = None
+        # 手动高亮模式开关
+        self._highlight_mode = False
+        # 搜索状态
+        self._search_visible = False
+        self._search_matches = []  # [(li, ci), ...]
+        self._search_idx = 0
+        # 导出选项
+        self._export_punct_to_newline = False
+        self._export_mode = 'phon'  # 'phon' 音标 / 'raw' 原文
 
         self._build_ui()
 
@@ -88,13 +97,15 @@ class App(tk.Tk):
 
         self._mod_buttons = []
         self._theme_btn = None
+        self._highlight_btn = None
         theme_label = '☀' if get_theme() == 'dark' else '☾'
         for text, cmd, pri in [('?', self._on_help, False),
                                ('重启', self._on_restart, False),
                                (theme_label, self._on_toggle_theme, False),
+                               ('高亮', self._on_toggle_highlight, False),
                                ('保存', self._on_save, False),
-                               ('复制结果', self._on_copy, True)]:
-            w = 32 if len(text) <= 1 else 64 if len(text) <= 2 else 72
+                               ('导出', self._on_export, True)]:
+            w = 32 if len(text) <= 1 else 56 if len(text) <= 2 else 72
             btn = ModernButton(btn_row, text, command=cmd,
                         primary=pri, width=w, height=30)
             btn.pack(side=tk.LEFT, padx=(0, 6))
@@ -102,6 +113,8 @@ class App(tk.Tk):
             self._mod_buttons.append(btn)
             if cmd == self._on_toggle_theme:
                 self._theme_btn = btn
+            elif cmd == self._on_toggle_highlight:
+                self._highlight_btn = btn
 
         # 工具栏底部分隔线
         div = tk.Frame(main, bg=COLORS['divider'], height=1)
@@ -128,6 +141,9 @@ class App(tk.Tk):
         edit_area = tk.Frame(content, bg=COLORS['bg_canvas'])
         edit_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         style(edit_area, bg='bg_canvas')
+
+        # 搜索栏（默认隐藏）
+        self._build_search_bar(edit_area)
 
         self.canvas = tk.Canvas(edit_area, bg=COLORS['bg_canvas'],
                                 highlightthickness=0,
@@ -158,6 +174,8 @@ class App(tk.Tk):
 
         self.canvas.bind('<Key>', self._on_key)
         self.canvas.bind('<Button-1>', self._on_canvas_click)
+        self.canvas.bind('<Shift-Button-1>', self._on_canvas_shift_click)
+        self.canvas.bind('<B1-Motion>', self._on_canvas_drag)
         self.canvas.bind('<MouseWheel>', self._on_mousewheel)
         self.canvas.bind('<Configure>', self._on_configure)
         self.canvas.focus_set()
@@ -168,6 +186,7 @@ class App(tk.Tk):
     def _rebuild_display(self):
         self.renderer.rebuild(self.buf.buffer, self.buf.cell_info)
         self.renderer.update_cursor(self.buf.cur_line, self.buf.cur_col)
+        self.renderer.set_selection(self.buf.selection_range())
         # 撤回/重做后复位多音字选中
         if self._selected_poly:
             sli, sci = self._selected_poly
@@ -180,43 +199,137 @@ class App(tk.Tk):
 
     def _update_cursor(self):
         self.renderer.update_cursor(self.buf.cur_line, self.buf.cur_col)
+        self.renderer.set_selection(self.buf.selection_range())
+
+    # ── 选区辅助 ──────────────────────────────────
+
+    def _caret_at(self, cx, cy):
+        """canvas 坐标 → caret 位置 (li, ci)。ci 是字符之间的位置（0..len）。
+
+        正确处理自动换行（每个逻辑行可能有多个视觉行 y）以及空行。
+        cy 落在任意 cell 的 y1..y2 范围 → 命中该视觉行；否则按 y 距离吸附到最近视觉行。
+        """
+        cell_h = self.renderer.cell_h
+        cell_rects = self.renderer.cell_rects
+
+        # 1. 收集所有视觉行：[(y1, y2, li, [(ci, x1, x2)])]
+        rows = []
+        for li, lr in enumerate(cell_rects):
+            if not lr:
+                # 空逻辑行：取该行的 line_y，造一个虚拟视觉行（只允许 caret 0）
+                ly = (self.renderer.line_y[li]
+                      if li < len(self.renderer.line_y) else _CANVAS_MARGIN)
+                rows.append((ly, ly + cell_h, li, []))
+                continue
+            # 按 y1 分组（同一 y1 = 同一视觉行）
+            cur_y = lr[0][1]
+            cur_cells = []
+            for ci, (x1, y1, x2, y2) in enumerate(lr):
+                if y1 != cur_y and cur_cells:
+                    rows.append((cur_y, cur_y + cell_h, li, cur_cells))
+                    cur_cells = []
+                cur_y = y1
+                cur_cells.append((ci, x1, x2))
+            if cur_cells:
+                rows.append((cur_y, cur_y + cell_h, li, cur_cells))
+
+        if not rows:
+            return 0, 0
+
+        # 2. 选定目标视觉行：优先 cy 落入 y1..y2，否则取 y 距离最小者
+        target = None
+        for r in rows:
+            if r[0] <= cy <= r[1]:
+                target = r
+                break
+        if target is None:
+            target = min(rows, key=lambda r: abs((r[0] + r[1]) / 2 - cy))
+
+        y1, y2, li, cells = target
+        if not cells:
+            return li, 0
+        # 3. 在该视觉行上取 caret：以 cell 中线为分界
+        # 第一个 cell 的左侧
+        if cx < cells[0][1]:
+            return li, cells[0][0]
+        for ci, x1, x2 in cells:
+            if cx < (x1 + x2) / 2:
+                return li, ci
+        # 落到最后一个 cell 的右侧 → caret 在该 cell 之后
+        last_ci = cells[-1][0]
+        return li, last_ci + 1
+
+    def _set_caret(self, li, ci, extend=False):
+        """移动光标；extend=True 保留/建立选区锚点。"""
+        if extend:
+            if self.buf.sel_anchor is None:
+                self.buf.sel_anchor = (self.buf.cur_line, self.buf.cur_col)
+        else:
+            self.buf.sel_anchor = None
+        self.buf.cur_line = li
+        self.buf.cur_col = ci
+        self._update_cursor()
+
+    def _delete_selection_if_any(self):
+        """若有选区则删除并重绘，返回是否删除了。"""
+        if self.buf.delete_selection():
+            self._rebuild_display()
+            return True
+        return False
 
     # ── 键盘处理 ──────────────────────────────────
 
     def _on_key(self, event):
         ctrl = bool(event.state & 0x4)
+        shift = bool(event.state & 0x1)
+        ks = event.keysym
+        # 方向键 / Home / End：无论 ctrl 是否按下，都按选区逻辑处理（Shift = 扩展选区）
+        # 这样 Ctrl+Shift+方向 仍可触发多选（Ctrl 暂不支持词级跳转，行为与不带 Ctrl 一致）
+        if ks in ('Left', 'Right', 'Home', 'End', 'Up', 'Down'):
+            if shift and self.buf.sel_anchor is None:
+                self.buf.sel_anchor = (self.buf.cur_line, self.buf.cur_col)
+            elif not shift:
+                self.buf.sel_anchor = None
+            if ks in ('Up', 'Down'):
+                nl, nc = self.renderer.visual_nav(
+                    self.buf.cur_line, self.buf.cur_col, ks)
+                self.buf.cur_line = nl
+                self.buf.cur_col = nc
+            else:
+                self.buf.handle_nav(ks)
+            self._update_cursor()
+            return 'break'
+
         if ctrl:
             _acts = {'v': self._on_paste, 'c': self._copy_raw,
                      'y': lambda: (self.buf.redo() and self._rebuild_display()),
-                     's': self._on_save}
-            k = event.keysym.lower()
+                     's': self._on_save,
+                     'f': self._on_toggle_search,
+                     'a': self._select_all}
+            k = ks.lower()
             if k == 'z':
-                fn = self.buf.redo if event.state & 0x1 else self.buf.undo
+                fn = self.buf.redo if shift else self.buf.undo
                 if fn():
                     self._rebuild_display()
             elif k in _acts:
                 _acts[k]()
         else:
-            ks = event.keysym
             if ks == 'BackSpace':
-                if self.buf.backspace():
+                if self._delete_selection_if_any():
+                    pass
+                elif self.buf.backspace():
                     self._rebuild_display()
             elif ks == 'Delete':
-                if self.buf.delete_char():
+                if self._delete_selection_if_any():
+                    pass
+                elif self.buf.delete_char():
                     self._rebuild_display()
             elif ks == 'Return':
+                self._delete_selection_if_any()
                 self.buf.insert_newline()
                 self._rebuild_display()
-            elif ks in ('Left', 'Right', 'Home', 'End'):
-                self.buf.handle_nav(ks)
-                self._update_cursor()
-            elif ks in ('Up', 'Down'):
-                nl, nc = self.renderer.visual_nav(
-                    self.buf.cur_line, self.buf.cur_col, ks)
-                self.buf.cur_line = nl
-                self.buf.cur_col = nc
-                self._update_cursor()
             elif event.char and len(event.char) == 1 and event.char.isprintable():
+                self._delete_selection_if_any()
                 self.buf.insert_char(event.char)
                 self._rebuild_display()
         return 'break'
@@ -227,45 +340,101 @@ class App(tk.Tk):
         except tk.TclError:
             return 'break'
         if text:
-            self.buf.save_undo()
+            # 粘贴覆盖选区：先 delete_selection（其内部 save_undo），无选区则手动 save_undo
+            if not self.buf.delete_selection():
+                self.buf.save_undo()
             self.buf.insert_chars_raw(text)
             self._rebuild_display()
+        return 'break'
+
+    def _select_all(self):
+        if not self.buf.buffer:
+            return
+        last_li = len(self.buf.buffer) - 1
+        last_ci = len(self.buf.buffer[last_li])
+        if last_li == 0 and last_ci == 0:
+            return
+        self.buf.sel_anchor = (0, 0)
+        self.buf.cur_line = last_li
+        self.buf.cur_col = last_ci
+        self._update_cursor()
+
+    def _on_canvas_shift_click(self, event):
+        self.canvas.focus_set()
+        cx = self.canvas.canvasx(event.x)
+        cy = self.canvas.canvasy(event.y)
+        li, ci = self._caret_at(cx, cy)
+        if self.buf.sel_anchor is None:
+            self.buf.sel_anchor = (self.buf.cur_line, self.buf.cur_col)
+        self.buf.cur_line = li
+        self.buf.cur_col = ci
+        self._update_cursor()
+        return 'break'
+
+    def _on_canvas_drag(self, event):
+        cx = self.canvas.canvasx(event.x)
+        cy = self.canvas.canvasy(event.y)
+        li, ci = self._caret_at(cx, cy)
+        # 锚点尚未建立 → 用上次点击位置为锚
+        if self.buf.sel_anchor is None:
+            self.buf.sel_anchor = (self.buf.cur_line, self.buf.cur_col)
+        if (li, ci) != (self.buf.cur_line, self.buf.cur_col):
+            self.buf.cur_line = li
+            self.buf.cur_col = ci
+            self._update_cursor()
         return 'break'
 
     def _on_canvas_click(self, event):
         self.canvas.focus_set()
         cx = self.canvas.canvasx(event.x)
         cy = self.canvas.canvasy(event.y)
+        # 任意点击都先清除选区
+        had_selection = self.buf.has_selection()
+        self.buf.sel_anchor = None
         for li, line_rects in enumerate(self.renderer.cell_rects):
             for ci, (x1, y1, x2, y2) in enumerate(line_rects):
                 if x1 <= cx <= x2 and y1 <= cy <= y2:
                     info = self.buf.cell_info[li][ci]
                     ch = self.buf.buffer[li][ci]
                     br = find_bracket_ranges(self.buf.buffer[li])
-                    if not in_bracket(ci, br):
-                        if info['is_poly'] and info['options']:
-                            self._on_cell_click(li, ci)
-                            return
-                        # 普通字：显示字符信息
+                    in_brk = in_bracket(ci, br)
+                    # 高亮模式：点击非括号字 -> 切换 manual_hl
+                    if self._highlight_mode and not in_brk:
+                        self.buf.save_undo()
+                        info['manual_hl'] = not info.get('manual_hl', False)
                         self.buf.cur_line = li
                         self.buf.cur_col = min(ci + 1, len(self.buf.buffer[li]))
+                        self._rebuild_display()
+                        return
+                    if not in_brk:
+                        if info['is_poly'] and info['options']:
+                            self._on_cell_click(li, ci)
+                            # 设为该 cell 的左 caret，便于继续拖选
+                            self.buf.cur_line = li
+                            self.buf.cur_col = ci
+                            self._update_cursor()
+                            return
+                        # 普通字：显示字符信息
+                        # caret 取点击位置（左/右半决定）
+                        ci_caret = ci if cx < (x1 + x2) / 2 else ci + 1
+                        self.buf.cur_line = li
+                        self.buf.cur_col = ci_caret
                         self._selected_poly = None
                         sidebar_options.build_char_info(
                             self.sidebar, ch, self.mapping)
                         self._update_cursor()
                         return
+                    ci_caret = ci if cx < (x1 + x2) / 2 else ci + 1
                     self.buf.cur_line = li
-                    self.buf.cur_col = min(ci + 1, len(self.buf.buffer[li]))
+                    self.buf.cur_col = ci_caret
                     self._update_cursor()
                     return
-        best_li = 0
-        for i, ly in enumerate(self.renderer.line_y):
-            if cy >= ly:
-                best_li = i
-        best_li = min(best_li, len(self.buf.buffer) - 1)
-        self.buf.cur_line = best_li
-        self.buf.cur_col = len(self.buf.buffer[best_li])
+        li, ci = self._caret_at(cx, cy)
+        self.buf.cur_line = li
+        self.buf.cur_col = ci
         self._update_cursor()
+        if had_selection:
+            self._update_cursor()
 
     def _on_mousewheel(self, event):
         if event.delta > 0 and self.canvas.yview()[0] <= 0:
@@ -278,10 +447,11 @@ class App(tk.Tk):
                                    self.buf.cur_line, self.buf.cur_col)
 
     def _copy_raw(self):
-        raw = self.buf.copy_raw()
-        if raw:
+        # 有选区只复制选区文本，否则复制全文
+        text = self.buf.selection_text() if self.buf.has_selection() else self.buf.copy_raw()
+        if text:
             self.clipboard_clear()
-            self.clipboard_append(raw)
+            self.clipboard_append(text)
 
     # ── 点击多音字显示侧边栏选项 ────────────────────────
 
@@ -438,6 +608,152 @@ class App(tk.Tk):
         else:
             messagebox.showinfo('提示', '没有可复制的内容。')
 
+    # ── 标点 → 换行 转换 ──────────────────────────
+
+    # 中英文常见标点（不含小数点 . 以免误伤数字/英文缩写；不含括号 [] 因括号内容原样保留）
+    _PUNCT_TO_NEWLINE = '，。！？；：、,!?;:…—○'
+
+    def _convert_punct_to_newline(self, text):
+        """每个标点替换成换行；保留原有换行（换行+标点 → 两个换行）。"""
+        if not text:
+            return text
+        # 逐字替换：标点 → '\n'，其他原样
+        out = []
+        for ch in text:
+            if ch in self._PUNCT_TO_NEWLINE:
+                out.append('\n')
+            else:
+                out.append(ch)
+        # 去除每行首尾空白，但保留空行（让多个换行得以保留）
+        lines = [l.strip() for l in ''.join(out).split('\n')]
+        return '\n'.join(lines)
+
+    # ── 导出对话框：可选中复制 + 标点转换行 ──────────
+
+    def _on_export(self):
+        phon_text = self._get_result()
+        raw_text = self.buf.copy_raw().strip()
+        if not phon_text and not raw_text:
+            messagebox.showinfo('提示', '没有可导出的内容。')
+            return
+
+        dlg = tk.Toplevel(self)
+        dlg.title('导出')
+        dlg.configure(bg=COLORS['bg_card'])
+        dlg.transient(self)
+        dlg.geometry('640x520')
+
+        # 顶部选项栏
+        opts = tk.Frame(dlg, bg=COLORS['bg_card'])
+        opts.pack(fill=tk.X, padx=16, pady=(14, 8))
+
+        # ── 内容选择（chip 段控件） ──
+        mode_var = tk.StringVar(value=self._export_mode)
+        chips = {}
+
+        def _refresh():
+            self._export_mode = mode_var.get()
+            self._export_punct_to_newline = punct_var.get()
+            base = phon_text if mode_var.get() == 'phon' else raw_text
+            t = (self._convert_punct_to_newline(base)
+                 if punct_var.get() else base)
+            for val, c in chips.items():
+                _set_chip_active(c, val == mode_var.get())
+            # 音标用 Cambria，原文用 YaHei；字号都用 10
+            font = (('Cambria', 10) if mode_var.get() == 'phon'
+                    else ('Microsoft YaHei', 10))
+            txt.configure(state=tk.NORMAL, font=font)
+            txt.delete('1.0', tk.END)
+            txt.insert('1.0', t)
+
+        def _set_chip_active(chip, active):
+            if active:
+                chip.configure(bg=COLORS['accent_light'], fg=COLORS['accent'])
+            else:
+                chip.configure(bg=COLORS['bg_card'], fg=COLORS['text_secondary'])
+
+        seg = tk.Frame(opts, bg=COLORS['bg_card'],
+                       highlightbackground=COLORS['border'],
+                       highlightthickness=1)
+        seg.pack(side=tk.LEFT)
+        for label, val in [('音标', 'phon'), ('原文', 'raw')]:
+            chip = tk.Label(seg, text=label, font=('Microsoft YaHei', 9),
+                            bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
+                            padx=14, pady=4, cursor='hand2')
+            chip.pack(side=tk.LEFT)
+            chip.bind('<Button-1>',
+                      lambda e, v=val: (mode_var.set(v), _refresh()))
+            chips[val] = chip
+
+        punct_var = tk.BooleanVar(value=self._export_punct_to_newline)
+
+        def _refresh_punct_chip():
+            on = punct_var.get()
+            if on:
+                punct_chip.configure(bg=COLORS['accent_light'],
+                                     fg=COLORS['accent'],
+                                     text='☑  把标点转换为换行')
+            else:
+                punct_chip.configure(bg=COLORS['bg_card'],
+                                     fg=COLORS['text_secondary'],
+                                     text='☐  把标点转换为换行')
+
+        def _toggle_punct(_e=None):
+            punct_var.set(not punct_var.get())
+            _refresh_punct_chip()
+            _refresh()
+
+        punct_chip = tk.Label(opts, text='☐  把标点转换为换行',
+                              font=('Microsoft YaHei', 9),
+                              bg=COLORS['bg_card'],
+                              fg=COLORS['text_secondary'],
+                              padx=12, pady=4, cursor='hand2',
+                              highlightbackground=COLORS['border'],
+                              highlightthickness=1)
+        punct_chip.pack(side=tk.LEFT, padx=(10, 0))
+        punct_chip.bind('<Button-1>', _toggle_punct)
+        _refresh_punct_chip()
+
+        def _do_copy():
+            content = txt.get('1.0', 'end-1c')
+            self.clipboard_clear()
+            self.clipboard_append(content)
+            copy_btn.set_text('已复制 ✓')
+            self.after(1200, lambda: copy_btn.set_text('复制全部'))
+
+        copy_btn = ModernButton(opts, '复制全部', command=_do_copy,
+                                primary=True, width=88, height=28)
+        copy_btn.pack(side=tk.RIGHT, padx=(8, 0))
+        ModernButton(opts, '关闭', command=dlg.destroy,
+                     primary=False, width=64, height=28).pack(side=tk.RIGHT)
+
+        # 文本框 + 滚动条
+        body = tk.Frame(dlg, bg=COLORS['bg_card'])
+        body.pack(fill=tk.BOTH, expand=True, padx=16, pady=(4, 14))
+        sb = tk.Scrollbar(body)
+        sb.pack(side=tk.RIGHT, fill=tk.Y)
+        txt = tk.Text(body, wrap=tk.WORD,
+                      font=('Cambria', 10),
+                      bg=COLORS['bg_canvas'], fg=COLORS['text_primary'],
+                      insertbackground=COLORS['cursor'],
+                      borderwidth=0, relief='flat',
+                      highlightthickness=1,
+                      highlightbackground=COLORS['border'],
+                      highlightcolor=COLORS['accent'],
+                      yscrollcommand=sb.set, padx=10, pady=8)
+        txt.pack(fill=tk.BOTH, expand=True)
+        sb.config(command=txt.yview)
+
+        _refresh()
+        txt.focus_set()
+
+        # 居中
+        dlg.update_idletasks()
+        w, h = dlg.winfo_width(), dlg.winfo_height()
+        x = self.winfo_x() + (self.winfo_width() - w) // 2
+        y = self.winfo_y() + (self.winfo_height() - h) // 2
+        dlg.geometry(f'+{x}+{y}')
+
     def _on_help(self):
         import webbrowser
         dlg = tk.Toplevel(self)
@@ -466,14 +782,20 @@ class App(tk.Tk):
             '   · 蓝色 = 通过「全局应用」间接选择\n'
             '   · 紫色 = 上一次「全局应用」间接选择\n'
             '   · 琥珀色边框 = 数据更新后读音有变化\n'
+            '   · 粉色双条 = 手动高亮（独立于以上颜色）\n'
             '4. 点击多音字在右侧面板选择读音\n'
             '   · 点击「全局应用」将读音应用到所有同字\n'
             '5. 点击任意文字可在右侧查看读音和释义\n'
-            '6. 点击「复制结果」复制输出到剪贴板\n'
-            '7. 点击「保存」保存当前文稿\n\n'
+            '6. 点击「导出」打开导出对话框（音标 / 原文 · 标点转换行 · 复制）\n'
+            '7. 按 Ctrl+F 在当前文稿中搜索汉字 / 音标\n'
+            '   · 回车下一个，Shift+回车上一个，Esc 关闭\n'
+            '8. 点击「高亮」进入高亮模式后点击字可添加/取消手动高亮\n'
+            '   · 再次点击「高亮」或按 Esc 退出该模式\n'
+            '9. 点击「保存」保存当前文稿\n\n'
             '方括号 [] 内的内容原样保留，不做转换。\n'
             'Ctrl+Z 撤回　Ctrl+Y / Ctrl+Shift+Z 重做\n'
-            'Ctrl+S 保存文稿　Ctrl+C 复制原文　Ctrl+V 粘贴'
+            'Ctrl+S 保存文稿　Ctrl+C 复制原文（或选区）　Ctrl+V 粘贴　Ctrl+F 搜索　Ctrl+A 全选\n'
+            '鼠标拖动 / Shift+点击 / Shift+方向键 选择文本，Delete / Backspace 删除选区'
         )
         tk.Label(inner, text=help_text, font=('Microsoft YaHei', 9),
                  bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
@@ -491,7 +813,7 @@ class App(tk.Tk):
 
         about_items = [
             ('作者', 'Bilibili-@-凛武-'),
-            ('拟音', '知乎-@Null'),
+            ('拟音', '知乎-@Nulll'),
             ('源数据1', 'https://zhuanlan.zhihu.com/p/12987993957'),
             ('源数据2', 'https://github.com/qwert-ly/xtext'),
             ('测试', 'Bilibili-@Freegrep'),
@@ -580,6 +902,11 @@ class App(tk.Tk):
         for btn in self._mod_buttons:
             btn.update_theme()
         self._theme_btn.set_text('☀' if new == 'dark' else '☾')
+
+        # 2.5) 搜索栏 chip 的 active/inactive 颜色由 _set_search_scope
+        # 直接读取 COLORS 写入，未走 style() 注册，需手动重新应用
+        if hasattr(self, '_scope_chips') and self._scope_chips:
+            self._set_search_scope(self._search_scope.get(), refresh=False)
 
         # 3) 重绘编辑器 Canvas（内容用新色重建）
         self._rebuild_display()
@@ -688,3 +1015,209 @@ class App(tk.Tk):
         self._save_draft(filename=None, name='未命名文稿')
         self._rebuild_display()
         self._build_sidebar_drafts()
+
+    # ── 搜索栏 ────────────────────────────────────
+
+    def _build_search_bar(self, parent):
+        """创建搜索栏（默认隐藏，外观与工具栏一致）。"""
+        # 包含分隔线 + 主体的容器
+        bar = tk.Frame(parent, bg=COLORS['bg_card'])
+        style(bar, bg='bg_card')
+        self._search_bar = bar
+
+        inner = tk.Frame(bar, bg=COLORS['bg_card'])
+        inner.pack(fill=tk.X, padx=20, pady=8)
+        style(inner, bg='bg_card')
+
+        # 搜索图标
+        icon = tk.Label(inner, text='🔍', font=('Segoe UI Symbol', 11),
+                        bg=COLORS['bg_card'], fg=COLORS['text_muted'])
+        icon.pack(side=tk.LEFT, padx=(0, 6))
+        style(icon, bg='bg_card', fg='text_muted')
+
+        # 输入框（细边框，圆角观感由 padding 替代）
+        entry_wrap = tk.Frame(inner, bg=COLORS['bg_canvas'],
+                              highlightbackground=COLORS['border'],
+                              highlightcolor=COLORS['accent'],
+                              highlightthickness=1)
+        entry_wrap.pack(side=tk.LEFT)
+        style(entry_wrap, bg='bg_canvas',
+              highlightbackground='border', highlightcolor='accent')
+        self._search_var = tk.StringVar()
+        entry = tk.Entry(entry_wrap, textvariable=self._search_var,
+                         font=('Microsoft YaHei', 10),
+                         bg=COLORS['bg_canvas'], fg=COLORS['text_primary'],
+                         insertbackground=COLORS['cursor'],
+                         relief='flat', borderwidth=0,
+                         highlightthickness=0, width=22)
+        entry.pack(padx=8, pady=4, ipady=1)
+        style(entry, bg='bg_canvas', fg='text_primary',
+              insertbackground='cursor')
+        self._search_entry = entry
+
+        self._search_var.trace_add('write', lambda *a: self._run_search())
+        entry.bind('<Return>', lambda e: self._jump_match(1))
+        entry.bind('<Shift-Return>', lambda e: self._jump_match(-1))
+        entry.bind('<Escape>', lambda e: self._on_toggle_search())
+        entry.bind('<Control-f>', lambda e: (self._on_toggle_search(), 'break')[1])
+        entry.bind('<Control-F>', lambda e: (self._on_toggle_search(), 'break')[1])
+
+        # 范围 chip 段控件
+        self._search_scope = tk.StringVar(value='all')
+        self._scope_chips = {}
+        seg = tk.Frame(inner, bg=COLORS['bg_card'],
+                       highlightbackground=COLORS['border'],
+                       highlightthickness=1)
+        seg.pack(side=tk.LEFT, padx=(10, 0))
+        style(seg, bg='bg_card', highlightbackground='border')
+        for label, val in [('全部', 'all'), ('汉字', 'char'), ('音标', 'phon')]:
+            chip = tk.Label(seg, text=label, font=('Microsoft YaHei', 9),
+                            bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
+                            padx=10, pady=3, cursor='hand2')
+            chip.pack(side=tk.LEFT)
+            chip.bind('<Button-1>',
+                      lambda e, v=val: self._set_search_scope(v))
+            self._scope_chips[val] = chip
+        self._set_search_scope('all', refresh=False)
+
+        # 计数
+        self._search_count_lbl = tk.Label(inner, text='',
+                                          font=('Microsoft YaHei', 9),
+                                          bg=COLORS['bg_card'],
+                                          fg=COLORS['text_muted'])
+        self._search_count_lbl.pack(side=tk.LEFT, padx=(12, 0))
+        style(self._search_count_lbl, bg='bg_card', fg='text_muted')
+
+        # 右侧按钮（与工具栏同款 ModernButton）
+        btn_close = ModernButton(inner, '关闭', command=self._on_toggle_search,
+                                 primary=False, width=56, height=26)
+        btn_close.pack(side=tk.RIGHT)
+        btn_next = ModernButton(inner, '下一个',
+                                command=lambda: self._jump_match(1),
+                                primary=False, width=56, height=26)
+        btn_next.pack(side=tk.RIGHT, padx=(0, 6))
+        btn_prev = ModernButton(inner, '上一个',
+                                command=lambda: self._jump_match(-1),
+                                primary=False, width=56, height=26)
+        btn_prev.pack(side=tk.RIGHT, padx=(0, 6))
+        for b in (btn_close, btn_next, btn_prev):
+            style(b, bg='bg_card')
+            self._mod_buttons.append(b)
+
+        # 底部分隔线
+        div = tk.Frame(bar, bg=COLORS['divider'], height=1)
+        div.pack(fill=tk.X)
+        style(div, bg='divider')
+
+    def _set_search_scope(self, val, refresh=True):
+        self._search_scope.set(val)
+        for v, chip in self._scope_chips.items():
+            if v == val:
+                chip.configure(bg=COLORS['accent_light'], fg=COLORS['accent'])
+            else:
+                chip.configure(bg=COLORS['bg_card'],
+                               fg=COLORS['text_secondary'])
+        if refresh:
+            self._run_search()
+
+    def _on_toggle_search(self):
+        if self._search_visible:
+            # 关闭搜索
+            self._search_bar.pack_forget()
+            self._search_visible = False
+            self._clear_search_hits()
+            self._rebuild_display()
+            self.canvas.focus_set()
+        else:
+            self._search_bar.pack(side=tk.TOP, fill=tk.X,
+                                  before=self.canvas)
+            self._search_visible = True
+            self._search_entry.focus_set()
+            self._search_entry.select_range(0, tk.END)
+            self._run_search()
+
+    def _clear_search_hits(self):
+        for line_info in self.buf.cell_info:
+            for info in line_info:
+                if 'search_hit' in info:
+                    info.pop('search_hit', None)
+        self._search_matches = []
+        self._search_idx = 0
+
+    def _run_search(self):
+        q = self._search_var.get().strip()
+        scope = self._search_scope.get()
+        self._clear_search_hits()
+        if not q:
+            self._search_count_lbl.configure(text='')
+            self._rebuild_display()
+            return
+        ql = q.lower()
+        matches = []
+        for li, (lc, linfo) in enumerate(zip(self.buf.buffer, self.buf.cell_info)):
+            for ci, (ch, info) in enumerate(zip(lc, linfo)):
+                hit = False
+                if scope in ('all', 'char') and ch and q in ch:
+                    hit = True
+                if not hit and scope in ('all', 'phon'):
+                    phon = info.get('phonetic', '') or ''
+                    if phon and ql in phon.lower():
+                        hit = True
+                if hit:
+                    info['search_hit'] = True
+                    matches.append((li, ci))
+        self._search_matches = matches
+        if matches:
+            self._search_idx = 0
+            li, ci = matches[0]
+            self.buf.cell_info[li][ci]['search_hit'] = 'current'
+            self._search_count_lbl.configure(
+                text=f'{self._search_idx + 1}/{len(matches)}')
+        else:
+            self._search_count_lbl.configure(text='无匹配')
+        self._rebuild_display()
+
+    def _jump_match(self, step):
+        if not self._search_matches:
+            return
+        # 还原上一个 current 为普通 hit
+        cur_li, cur_ci = self._search_matches[self._search_idx]
+        if (cur_li < len(self.buf.cell_info)
+                and cur_ci < len(self.buf.cell_info[cur_li])):
+            self.buf.cell_info[cur_li][cur_ci]['search_hit'] = True
+        self._search_idx = (self._search_idx + step) % len(self._search_matches)
+        li, ci = self._search_matches[self._search_idx]
+        self.buf.cell_info[li][ci]['search_hit'] = 'current'
+        self.buf.cur_line = li
+        self.buf.cur_col = min(ci + 1, len(self.buf.buffer[li]))
+        self._search_count_lbl.configure(
+            text=f'{self._search_idx + 1}/{len(self._search_matches)}')
+        self._rebuild_display()
+
+    # ── 高亮模式 ──────────────────────────────────
+
+    def _on_toggle_highlight(self):
+        self._highlight_mode = not self._highlight_mode
+        # 视觉反馈：切换按钮 primary 状态
+        if self._highlight_btn is not None:
+            self._highlight_btn.primary = self._highlight_mode
+            self._highlight_btn.update_theme()
+        # 副标题提示
+        if self._highlight_mode:
+            self._subtitle_lbl.configure(
+                text='  高亮模式：点击字添加/取消高亮（Esc 退出）',
+                fg=COLORS['manual_hl'])
+            self.bind_all('<Escape>', lambda e: self._exit_highlight_mode())
+        else:
+            self._exit_highlight_mode()
+
+    def _exit_highlight_mode(self):
+        self._highlight_mode = False
+        if self._highlight_btn is not None:
+            self._highlight_btn.primary = False
+            self._highlight_btn.update_theme()
+        try:
+            self.unbind_all('<Escape>')
+        except tk.TclError:
+            pass
+        self._update_title()

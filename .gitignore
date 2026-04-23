@@ -13,3 +13,7 @@ __pycache__/
 # 数据文件（运行时下载）
 汉转NOCM/base.json.gz
 汉转NOCM/extra.json.gz
+
+#数据更新日志
+汉转NOCM/data_update.log
+汉转NOCM/changed_chars.json

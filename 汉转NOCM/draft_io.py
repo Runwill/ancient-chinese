@@ -84,7 +84,8 @@ def save_draft(filename, name, buffer, cell_info):
 
     serialized_info = [
         [{'phonetic': i['phonetic'], 'is_poly': i['is_poly'],
-          'selected': i.get('selected', 'none')} for i in row]
+          'selected': i.get('selected', 'none'),
+          'manual_hl': bool(i.get('manual_hl'))} for i in row]
         for row in cell_info
     ]
 
@@ -121,6 +122,7 @@ def load_draft(filename, mapping):
                 'options': opts if is_poly and opts and len(opts) > 1 else None,
                 'is_poly': is_poly,
                 'selected': info.get('selected', 'none'),
+                'manual_hl': bool(info.get('manual_hl', False)),
             })
         cell_info.append(rebuilt)
 
