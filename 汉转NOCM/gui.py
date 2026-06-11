@@ -13,6 +13,7 @@ from editor_buffer import EditorBuffer
 from editor_render import EditorRenderer
 from draft_io import save_draft, load_draft, delete_draft, rename_draft, get_draft_name
 from data_loader import get_changed_chars, clear_changed_char
+from nocm_transcriber import DEFAULT_SCHEME_ID, NocmTranscriber, list_schemes, load_scheme
 import sidebar_drafts
 import sidebar_options
 
@@ -42,6 +43,11 @@ class App(tk.Tk):
         # 导出选项
         self._export_punct_to_newline = False
         self._export_mode = 'phon'  # 'phon' 音标 / 'raw' 原文
+        self._export_scheme_id = DEFAULT_SCHEME_ID
+        # 选区相关：复制模式 + 侧边栏面板状态
+        self._sel_copy_mode = 'raw'  # 'raw' | 'phon'
+        self._sel_panel_active = False  # 当前侧边栏是否为选区面板
+        self._sel_refs = None        # 选区面板的控件引用（更新计数用）
 
         self._build_ui()
 
@@ -200,6 +206,95 @@ class App(tk.Tk):
     def _update_cursor(self):
         self.renderer.update_cursor(self.buf.cur_line, self.buf.cur_col)
         self.renderer.set_selection(self.buf.selection_range())
+        self._sync_selection_sidebar()
+
+    def _sync_selection_sidebar(self):
+        """选区出现/消失时切换侧边栏；选区扩展时刷新计数。"""
+        rng = self.buf.selection_range()
+        # 通过 count_lbl 是否存活判定面板是否还在屏上
+        # （build_options/build_char_info 会销毁 sidebar 子控件）
+        panel_alive = False
+        if self._sel_panel_active and self._sel_refs:
+            lbl = self._sel_refs.get('count_lbl')
+            try:
+                panel_alive = bool(lbl and lbl.winfo_exists())
+            except tk.TclError:
+                panel_alive = False
+            if not panel_alive:
+                self._sel_panel_active = False
+                self._sel_refs = None
+        if rng is None:
+            if panel_alive:
+                # 选区被清除 → 恢复占位（仅当无其它面板内容）
+                self._sel_panel_active = False
+                self._sel_refs = None
+                if self._selected_poly is None:
+                    sidebar_options.build_placeholder(self.sidebar)
+            return
+        cc, lc = self._selection_metrics(rng)
+        if not panel_alive:
+            self._sel_panel_active = True
+            self._selected_poly = None
+            self._sel_refs = sidebar_options.build_selection_info(
+                self.sidebar, cc, lc, self._sel_copy_mode,
+                on_copy=self._copy_selection_as,
+                on_set_mode=self._set_sel_copy_mode,
+                on_delete=self._delete_selection_action)
+        else:
+            sidebar_options.update_selection_count(self._sel_refs, cc, lc)
+
+    def _selection_metrics(self, rng):
+        (sli, sci), (eli, eci) = rng
+        if sli == eli:
+            return eci - sci, 1
+        cc = len(self.buf.buffer[sli]) - sci
+        for li in range(sli + 1, eli):
+            cc += len(self.buf.buffer[li])
+        cc += eci
+        return cc, eli - sli + 1
+
+    def _selection_phonetic(self):
+        """构造选区的音标文本（与 _get_result 一致格式）。"""
+        rng = self.buf.selection_range()
+        if rng is None:
+            return ''
+        (sli, sci), (eli, eci) = rng
+        out_lines = []
+        for li in range(sli, eli + 1):
+            line_chars = self.buf.buffer[li]
+            line_info = self.buf.cell_info[li]
+            lo = sci if li == sli else 0
+            hi = eci if li == eli else len(line_chars)
+            br = find_bracket_ranges(line_chars)
+            parts = []
+            bracket_buf = []
+            for ci in range(lo, hi):
+                if in_bracket(ci, br):
+                    bracket_buf.append(line_chars[ci])
+                else:
+                    if bracket_buf:
+                        parts.append(''.join(bracket_buf))
+                        bracket_buf = []
+                    parts.append(line_info[ci]['phonetic'])
+            if bracket_buf:
+                parts.append(''.join(bracket_buf))
+            out_lines.append(' '.join(parts))
+        return '\n'.join(out_lines).strip()
+
+    def _set_sel_copy_mode(self, mode):
+        if mode in ('raw', 'phon'):
+            self._sel_copy_mode = mode
+
+    def _copy_selection_as(self, mode):
+        text = (self._selection_phonetic() if mode == 'phon'
+                else self.buf.selection_text())
+        if text:
+            self.clipboard_clear()
+            self.clipboard_append(text)
+
+    def _delete_selection_action(self):
+        if self._delete_selection_if_any():
+            self._update_cursor()
 
     # ── 选区辅助 ──────────────────────────────────
 
@@ -297,6 +392,12 @@ class App(tk.Tk):
                 self.buf.cur_col = nc
             else:
                 self.buf.handle_nav(ks)
+            self._update_cursor()
+            return 'break'
+
+        # Esc：优先清除选区
+        if ks == 'Escape' and self.buf.has_selection():
+            self.buf.sel_anchor = None
             self._update_cursor()
             return 'break'
 
@@ -447,8 +548,11 @@ class App(tk.Tk):
                                    self.buf.cur_line, self.buf.cur_col)
 
     def _copy_raw(self):
-        # 有选区只复制选区文本，否则复制全文
-        text = self.buf.selection_text() if self.buf.has_selection() else self.buf.copy_raw()
+        # 有选区时按选区复制模式复制；否则复制全文
+        if self.buf.has_selection():
+            self._copy_selection_as(self._sel_copy_mode)
+            return
+        text = self.buf.copy_raw()
         if text:
             self.clipboard_clear()
             self.clipboard_append(text)
@@ -583,6 +687,11 @@ class App(tk.Tk):
             lines.append(' '.join(parts))
         return '\n'.join(lines).strip()
 
+    def _get_suno_result(self, scheme_id=None):
+        scheme_id = scheme_id or self._export_scheme_id
+        transcriber = NocmTranscriber(load_scheme(scheme_id))
+        return transcriber.convert_text(self._get_result())
+
     def _reset_editor(self):
         """重置编辑器到空白状态。"""
         self.buf.reset()
@@ -612,21 +721,72 @@ class App(tk.Tk):
 
     # 中英文常见标点（不含小数点 . 以免误伤数字/英文缩写；不含括号 [] 因括号内容原样保留）
     _PUNCT_TO_NEWLINE = '，。！？；：、,!?;:…—○'
+    # 句号转换为两个换行（段落分隔）
+    _PUNCT_DOUBLE_NEWLINE = '。'
 
     def _convert_punct_to_newline(self, text):
-        """每个标点替换成换行；保留原有换行（换行+标点 → 两个换行）。"""
+        """每个标点替换成换行；句号 `。` 替换为两个换行（产生空行作段落分隔）。"""
         if not text:
             return text
-        # 逐字替换：标点 → '\n'，其他原样
         out = []
         for ch in text:
-            if ch in self._PUNCT_TO_NEWLINE:
+            if ch in self._PUNCT_DOUBLE_NEWLINE:
+                out.append('\n\n')
+            elif ch in self._PUNCT_TO_NEWLINE:
                 out.append('\n')
             else:
                 out.append(ch)
         # 去除每行首尾空白，但保留空行（让多个换行得以保留）
         lines = [l.strip() for l in ''.join(out).split('\n')]
         return '\n'.join(lines)
+
+    def _build_both_text(self, punct_split):
+        """构造「原文 + 音标」交替文本：每行原文下面紧跟一行音标。
+
+        启用 punct_split 时，按标点切分每个 buffer 行，使原文/音标按短句对齐；
+        遇到 `。` 时额外插入一个空行。
+        """
+        out_lines = []  # 最终行序列
+        pending_blank = False
+
+        def emit(raw, phon, double=False):
+            nonlocal pending_blank
+            r = raw.strip()
+            p = phon.strip()
+            if not r and not p:
+                return
+            if pending_blank and out_lines:
+                out_lines.append('')
+                pending_blank = False
+            out_lines.append(r)
+            out_lines.append(p)
+            if double:
+                pending_blank = True
+
+        for line_chars, line_info in zip(self.buf.buffer, self.buf.cell_info):
+            br = find_bracket_ranges(line_chars)
+            raw_buf = []
+            phon_parts = []
+
+            for ci, (ch, info) in enumerate(zip(line_chars, line_info)):
+                if in_bracket(ci, br):
+                    # 括号内容仅保留在原文侧；音标侧跳过以免与原文行重复
+                    raw_buf.append(ch)
+                    continue
+                if punct_split and ch in self._PUNCT_TO_NEWLINE:
+                    emit(''.join(raw_buf), ' '.join(phon_parts),
+                         double=(ch in self._PUNCT_DOUBLE_NEWLINE))
+                    raw_buf = []
+                    phon_parts = []
+                else:
+                    raw_buf.append(ch)
+                    phon_parts.append(info['phonetic'])
+            emit(''.join(raw_buf), ' '.join(phon_parts))
+            # 缓冲区原始换行视为段落边界（添加空行分隔），但避免开头空行
+            if out_lines and not pending_blank:
+                pending_blank = True
+
+        return '\n'.join(out_lines).rstrip()
 
     # ── 导出对话框：可选中复制 + 标点转换行 ──────────
 
@@ -636,6 +796,14 @@ class App(tk.Tk):
         if not phon_text and not raw_text:
             messagebox.showinfo('提示', '没有可导出的内容。')
             return
+        schemes = list_schemes()
+        if not schemes:
+            schemes = [{'id': DEFAULT_SCHEME_ID, 'name': '当前 Suno 方案'}]
+        scheme_names = {s['name']: s['id'] for s in schemes}
+        scheme_labels = list(scheme_names.keys())
+        current_scheme_label = next(
+            (s['name'] for s in schemes if s['id'] == self._export_scheme_id),
+            scheme_labels[0])
 
         dlg = tk.Toplevel(self)
         dlg.title('导出')
@@ -651,16 +819,28 @@ class App(tk.Tk):
         mode_var = tk.StringVar(value=self._export_mode)
         chips = {}
 
+        scheme_var = tk.StringVar(value=current_scheme_label)
+
         def _refresh():
             self._export_mode = mode_var.get()
             self._export_punct_to_newline = punct_var.get()
-            base = phon_text if mode_var.get() == 'phon' else raw_text
-            t = (self._convert_punct_to_newline(base)
-                 if punct_var.get() else base)
+            self._export_scheme_id = scheme_names.get(
+                scheme_var.get(), self._export_scheme_id)
+            mode = mode_var.get()
+            if mode == 'both':
+                t = self._build_both_text(punct_var.get())
+            elif mode == 'suno':
+                base = self._get_suno_result(self._export_scheme_id)
+                t = (self._convert_punct_to_newline(base)
+                     if punct_var.get() else base)
+            else:
+                base = phon_text if mode == 'phon' else raw_text
+                t = (self._convert_punct_to_newline(base)
+                     if punct_var.get() else base)
             for val, c in chips.items():
-                _set_chip_active(c, val == mode_var.get())
-            # 音标用 Cambria，原文用 YaHei；字号都用 10
-            font = (('Cambria', 10) if mode_var.get() == 'phon'
+                _set_chip_active(c, val == mode)
+            # 音标用 Cambria，原文/全部用 YaHei；字号都用 10
+                font = (('Cambria', 10) if mode in ('phon', 'suno')
                     else ('Microsoft YaHei', 10))
             txt.configure(state=tk.NORMAL, font=font)
             txt.delete('1.0', tk.END)
@@ -676,7 +856,8 @@ class App(tk.Tk):
                        highlightbackground=COLORS['border'],
                        highlightthickness=1)
         seg.pack(side=tk.LEFT)
-        for label, val in [('音标', 'phon'), ('原文', 'raw')]:
+        for label, val in [('NOCM', 'phon'), ('Suno', 'suno'),
+                           ('原文', 'raw'), ('全部', 'both')]:
             chip = tk.Label(seg, text=label, font=('Microsoft YaHei', 9),
                             bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
                             padx=14, pady=4, cursor='hand2')
@@ -684,6 +865,24 @@ class App(tk.Tk):
             chip.bind('<Button-1>',
                       lambda e, v=val: (mode_var.set(v), _refresh()))
             chips[val] = chip
+
+        scheme_menu = tk.OptionMenu(opts, scheme_var, *scheme_labels,
+                                    command=lambda _v: _refresh())
+        scheme_menu.configure(font=('Microsoft YaHei', 9),
+                              bg=COLORS['bg_card'],
+                              fg=COLORS['text_secondary'],
+                              activebackground=COLORS['accent_light'],
+                              activeforeground=COLORS['accent'],
+                              highlightbackground=COLORS['border'],
+                              highlightthickness=1,
+                              borderwidth=0,
+                              cursor='hand2')
+        scheme_menu['menu'].configure(font=('Microsoft YaHei', 9),
+                                      bg=COLORS['bg_card'],
+                                      fg=COLORS['text_primary'],
+                                      activebackground=COLORS['accent_light'],
+                                      activeforeground=COLORS['accent'])
+        scheme_menu.pack(side=tk.LEFT, padx=(10, 0))
 
         punct_var = tk.BooleanVar(value=self._export_punct_to_newline)
 

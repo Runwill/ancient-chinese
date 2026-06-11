@@ -11,6 +11,7 @@ def build():
         '--windowed',
         '--name', '汉转NOCM',
         '--hidden-import', 'email.utils',
+        '--add-data', 'schemes;schemes',
         'main.py',
     ]
     print('执行打包命令:')

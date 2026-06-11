@@ -4,7 +4,8 @@ import re
 import tkinter as tk
 
 from constants import COLORS
-from widgets import ScrollableFrame, bind_hover, bind_color_hover, bind_mousewheel, freeze_redraw, thaw_redraw
+from widgets import (ScrollableFrame, ModernButton, bind_hover, bind_color_hover,
+                     bind_mousewheel, freeze_redraw, thaw_redraw)
 
 
 def _format_note(note_txt):
@@ -241,3 +242,135 @@ def _build_info_card(parent, opt):
     if note_txt:
         nl = _create_note_widget(card, note_txt, bg)
         nl.pack(fill=tk.X, pady=(6, 0))
+
+
+# ── 选区信息面板 ───────────────────────────────────
+
+
+def build_selection_info(sidebar, char_count, line_count, copy_mode,
+                         on_copy, on_set_mode, on_delete):
+    """构建选区面板：显示选区统计、复制模式切换、复制/删除按钮、快捷键提示。
+
+    参数:
+      char_count, line_count: 选区统计
+      copy_mode: 'raw' 或 'phon' 当前 Ctrl+C 默认复制模式
+      on_copy(mode): 立即复制（mode='raw'/'phon'）
+      on_set_mode(mode): 设置默认复制模式
+      on_delete(): 删除选区
+    返回 dict: {'count_lbl': Label, 'mode_chips': {mode: Label}, 'set_active': fn}
+    """
+    freeze_redraw(sidebar)
+    refs = {}
+    try:
+        for w in sidebar.winfo_children():
+            w.destroy()
+
+        # 头部
+        hdr = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16, pady=14)
+        hdr.pack(fill=tk.X)
+        tk.Label(hdr, text='已选择文本',
+                 font=('Microsoft YaHei', 11, 'bold'),
+                 bg=COLORS['bg_sidebar'], fg=COLORS['text_primary']
+                 ).pack(anchor='w')
+        count_lbl = tk.Label(hdr, text=_fmt_sel_count(char_count, line_count),
+                             font=('Microsoft YaHei', 9),
+                             bg=COLORS['bg_sidebar'], fg=COLORS['text_muted'])
+        count_lbl.pack(anchor='w', pady=(4, 0))
+        refs['count_lbl'] = count_lbl
+
+        tk.Frame(sidebar, bg=COLORS['divider'], height=1).pack(
+            fill=tk.X, padx=16)
+
+        body = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16, pady=14)
+        body.pack(fill=tk.X)
+        tk.Label(body, text='Ctrl+C 默认复制',
+                 font=('Microsoft YaHei', 9),
+                 bg=COLORS['bg_sidebar'], fg=COLORS['text_secondary']
+                 ).pack(anchor='w')
+
+        seg = tk.Frame(body, bg=COLORS['bg_sidebar'],
+                       highlightbackground=COLORS['border'],
+                       highlightthickness=1)
+        seg.pack(anchor='w', pady=(6, 0))
+
+        mode_chips = {}
+
+        def _set_active(mode):
+            for v, c in mode_chips.items():
+                if v == mode:
+                    c.configure(bg=COLORS['accent_light'],
+                                fg=COLORS['accent'])
+                else:
+                    c.configure(bg=COLORS['bg_sidebar'],
+                                fg=COLORS['text_secondary'])
+
+        for label, val in [('原文', 'raw'), ('音标', 'phon')]:
+            chip = tk.Label(seg, text=label, font=('Microsoft YaHei', 9),
+                            bg=COLORS['bg_sidebar'],
+                            fg=COLORS['text_secondary'],
+                            padx=14, pady=4, cursor='hand2')
+            chip.pack(side=tk.LEFT)
+            chip.bind('<Button-1>',
+                      lambda e, v=val: (on_set_mode(v), _set_active(v)))
+            mode_chips[val] = chip
+        _set_active(copy_mode)
+        refs['mode_chips'] = mode_chips
+        refs['set_active'] = _set_active
+
+        btn_row = tk.Frame(body, bg=COLORS['bg_sidebar'])
+        btn_row.pack(anchor='w', pady=(14, 0))
+        ModernButton(btn_row, '复制原文', command=lambda: on_copy('raw'),
+                     primary=False, width=80, height=28
+                     ).pack(side=tk.LEFT, padx=(0, 6))
+        ModernButton(btn_row, '复制音标', command=lambda: on_copy('phon'),
+                     primary=False, width=80, height=28
+                     ).pack(side=tk.LEFT, padx=(0, 6))
+        ModernButton(btn_row, '删除', command=on_delete,
+                     primary=False, width=56, height=28
+                     ).pack(side=tk.LEFT)
+
+        tk.Frame(sidebar, bg=COLORS['divider'], height=1).pack(
+            fill=tk.X, padx=16, pady=(4, 0))
+
+        tips = tk.Frame(sidebar, bg=COLORS['bg_sidebar'], padx=16, pady=12)
+        tips.pack(fill=tk.BOTH, expand=True)
+        tk.Label(tips, text='快捷键',
+                 font=('Microsoft YaHei', 9, 'bold'),
+                 bg=COLORS['bg_sidebar'], fg=COLORS['text_secondary']
+                 ).pack(anchor='w', pady=(0, 6))
+        for k, desc in [
+            ('Ctrl+C', '复制（按上方模式）'),
+            ('Ctrl+A', '全选'),
+            ('Shift+方向', '扩展选区'),
+            ('Shift+点击', '扩展到位置'),
+            ('Backspace', '删除选区'),
+            ('点击 / Esc', '取消选区'),
+        ]:
+            row = tk.Frame(tips, bg=COLORS['bg_sidebar'])
+            row.pack(fill=tk.X, pady=1)
+            tk.Label(row, text=k, font=('Consolas', 9),
+                     bg=COLORS['bg_sidebar'], fg=COLORS['accent'],
+                     width=12, anchor='w').pack(side=tk.LEFT)
+            tk.Label(row, text=desc, font=('Microsoft YaHei', 9),
+                     bg=COLORS['bg_sidebar'], fg=COLORS['text_muted'],
+                     anchor='w').pack(side=tk.LEFT)
+    finally:
+        thaw_redraw(sidebar)
+    return refs
+
+
+def _fmt_sel_count(char_count, line_count):
+    if line_count <= 1:
+        return f'{char_count} 个字符'
+    return f'{char_count} 个字符 · {line_count} 行'
+
+
+def update_selection_count(refs, char_count, line_count):
+    """更新已构建的选区面板的计数标签。"""
+    lbl = refs.get('count_lbl') if refs else None
+    if lbl is None:
+        return
+    try:
+        lbl.configure(text=_fmt_sel_count(char_count, line_count))
+    except tk.TclError:
+        pass

@@ -271,8 +271,14 @@ class ModernButton(tk.Canvas):
 
     def __init__(self, parent, text, command=None, primary=False,
                  width=80, height=32, **kwargs):
+        # 默认背景跟随父容器，避免在卡片色背景上出现 bg_main 的圆角"漏边"
+        if 'bg' not in kwargs:
+            try:
+                kwargs['bg'] = parent.cget('bg')
+            except Exception:
+                kwargs['bg'] = COLORS['bg_main']
         super().__init__(parent, width=width, height=height,
-                         highlightthickness=0, bg=COLORS['bg_main'], **kwargs)
+                         highlightthickness=0, **kwargs)
         self.text = text
         self.command = command
         self.primary = primary
