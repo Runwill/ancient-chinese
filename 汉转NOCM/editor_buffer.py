@@ -1,5 +1,7 @@
 """编辑器缓冲区：文本编辑操作、撤回/重做、光标导航。"""
 
+import copy
+
 from constants import MAX_UNDO
 
 
@@ -106,6 +108,21 @@ class EditorBuffer:
                 self.cell_info[self.cur_line].insert(
                     self.cur_col, self.make_cell_info(ch))
                 self.cur_col += 1
+
+    def insert_payload(self, payload):
+        """插入带逐字状态的内部剪贴板内容；调用前需手动 save_undo。"""
+        lines = payload.get('buffer', [])
+        info_lines = payload.get('cell_info', [])
+        for li, chars in enumerate(lines):
+            infos = info_lines[li] if li < len(info_lines) else []
+            for ci, ch in enumerate(chars):
+                info = (copy.deepcopy(infos[ci]) if ci < len(infos)
+                        else self.make_cell_info(ch))
+                self.buffer[self.cur_line].insert(self.cur_col, ch)
+                self.cell_info[self.cur_line].insert(self.cur_col, info)
+                self.cur_col += 1
+            if li < len(lines) - 1:
+                self._do_newline()
 
     def _do_newline(self):
         rest = self.buffer[self.cur_line][self.cur_col:]
@@ -232,6 +249,37 @@ class EditorBuffer:
             parts.append(''.join(self.buffer[li]))
         parts.append(''.join(self.buffer[eli][:eci]))
         return '\n'.join(parts)
+
+    def full_payload(self):
+        """返回全文及逐字编辑状态的深拷贝。"""
+        return {
+            'text': self.copy_raw(),
+            'buffer': [row[:] for row in self.buffer],
+            'cell_info': copy.deepcopy(self.cell_info),
+        }
+
+    def selection_payload(self):
+        """返回选区原文及逐字编辑状态的深拷贝；无选区返回 None。"""
+        rng = self.selection_range()
+        if rng is None:
+            return None
+        (sli, sci), (eli, eci) = rng
+        if sli == eli:
+            buffer = [self.buffer[sli][sci:eci]]
+            cell_info = [copy.deepcopy(self.cell_info[sli][sci:eci])]
+        else:
+            buffer = [self.buffer[sli][sci:]]
+            cell_info = [copy.deepcopy(self.cell_info[sli][sci:])]
+            for li in range(sli + 1, eli):
+                buffer.append(self.buffer[li][:])
+                cell_info.append(copy.deepcopy(self.cell_info[li]))
+            buffer.append(self.buffer[eli][:eci])
+            cell_info.append(copy.deepcopy(self.cell_info[eli][:eci]))
+        return {
+            'text': '\n'.join(''.join(row) for row in buffer),
+            'buffer': buffer,
+            'cell_info': cell_info,
+        }
 
     def delete_selection(self):
         """删除选区内容；调用前会自动 save_undo。返回是否删除了。"""

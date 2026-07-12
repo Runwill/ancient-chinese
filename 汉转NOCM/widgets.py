@@ -263,6 +263,100 @@ def bind_mousewheel(widget, handler):
         bind_mousewheel(ch, handler)
 
 
+def style_scrollbar(scrollbar):
+    """Apply the app palette to a classic Tk scrollbar where supported."""
+    try:
+        scrollbar.configure(
+            bg=COLORS['btn_secondary'],
+            activebackground=COLORS['btn_secondary_hover'],
+            troughcolor=COLORS['bg_card'],
+            highlightthickness=0,
+            borderwidth=0,
+            relief='flat',
+            elementborderwidth=0,
+            width=12,
+        )
+    except tk.TclError:
+        pass
+    return scrollbar
+
+
+# ── 扁平下拉菜单 ──────────────────────────────────
+
+
+class FlatDropdown(tk.Frame):
+    """Theme-aware dropdown without the native indicator box."""
+
+    def __init__(self, parent, variable, values, command=None,
+                 width=12, bg_key='bg_canvas', **kwargs):
+        super().__init__(parent, bd=0, highlightthickness=1, **kwargs)
+        self.variable = variable
+        self.command = command
+        self.width = width
+        self.bg_key = bg_key
+        self.values = []
+
+        self.label = tk.Label(self, textvariable=variable, width=width,
+                              anchor='w', padx=9, pady=4,
+                              font=('Microsoft YaHei', 9), cursor='hand2')
+        self.arrow = tk.Label(self, text='▾', width=2,
+                              font=('Microsoft YaHei', 9), cursor='hand2')
+        self.label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.arrow.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.menu = tk.Menu(self, tearoff=False, borderwidth=0,
+                            activeborderwidth=0)
+        self.set_values(values)
+        self.update_theme()
+
+        for widget in (self, self.label, self.arrow):
+            widget.bind('<Button-1>', self._show_menu)
+            widget.bind('<Enter>', self._on_enter)
+            widget.bind('<Leave>', self._on_leave)
+
+    def update_theme(self):
+        bg = COLORS.get(self.bg_key, COLORS['bg_canvas'])
+        for widget in (self, self.label, self.arrow):
+            widget.configure(bg=bg)
+        self.configure(highlightbackground=COLORS['border'])
+        self.label.configure(fg=COLORS['text_primary'])
+        self.arrow.configure(fg=COLORS['text_muted'])
+        self.menu.configure(bg=COLORS['bg_card'],
+                            fg=COLORS['text_primary'],
+                            activebackground=COLORS['accent_light'],
+                            activeforeground=COLORS['accent'])
+
+    def set_values(self, values):
+        self.values = list(values) or ['']
+        if self.variable.get() not in self.values:
+            self.variable.set(self.values[0])
+        self.menu.delete(0, tk.END)
+        for value in self.values:
+            self.menu.add_command(
+                label=value,
+                command=lambda v=value: self._select(v),
+            )
+
+    def _select(self, value):
+        self.variable.set(value)
+        if self.command:
+            self.command(value)
+
+    def _show_menu(self, _event=None):
+        self.update_theme()
+        try:
+            self.menu.tk_popup(self.winfo_rootx(),
+                               self.winfo_rooty() + self.winfo_height())
+        finally:
+            self.menu.grab_release()
+
+    def _on_enter(self, _event=None):
+        self.configure(highlightbackground=COLORS['accent'])
+
+    def _on_leave(self, _event=None):
+        self.configure(highlightbackground=COLORS['border'])
+
+
 # ── 现代化胶囊按钮 ──────────────────────────────────
 
 

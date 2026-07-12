@@ -6,6 +6,8 @@ import sys
 import re
 from datetime import datetime
 
+from atomic_io import save_json_atomic
+
 # PyInstaller exe 时用 exe 所在目录，源码运行时用脚本所在目录
 if getattr(sys, 'frozen', False):
     _BASE_DIR = os.path.dirname(sys.executable)
@@ -30,9 +32,8 @@ def load_json(path, default=None):
 
 
 def save_json(path, data):
-    """写入 JSON 文件。"""
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=1)
+    """原子写入 JSON 文件，避免异常退出留下半截文件。"""
+    save_json_atomic(path, data, indent=1)
 
 
 def get_drafts_order():
@@ -74,13 +75,27 @@ def list_drafts():
 def save_draft(filename, name, buffer, cell_info):
     """保存文稿到文件，返回实际使用的文件名。"""
     ensure_drafts_dir()
+    now = datetime.now()
+    existing = None
     if filename is None:
-        filename = datetime.now().strftime('%Y%m%d_%H%M%S') + '.json'
+        base = now.strftime('%Y%m%d_%H%M%S')
+        filename = base + '.json'
+        suffix = 1
+        while os.path.exists(os.path.join(DRAFTS_DIR, filename)):
+            filename = f'{base}_{suffix}.json'
+            suffix += 1
+    else:
+        existing = load_json(os.path.join(DRAFTS_DIR, filename))
+        if not isinstance(existing, dict):
+            existing = None
     if name is None:
-        raw = ''.join(buffer[0]) if buffer[0] else ''
-        m = re.match(
-            r"[^\s，。！？；：、「」『』【】（）\u201c\u201d\u2018\u2019',\.!\?;:\(\)\[\]\"'…—―．]+", raw)
-        name = m.group()[:20] if m else '未命名文稿'
+        if existing and existing.get('name'):
+            name = existing['name']
+        else:
+            raw = ''.join(buffer[0]) if buffer[0] else ''
+            m = re.match(
+                r"[^\s，。！？；：、「」『』【】（）\u201c\u201d\u2018\u2019',\.!\?;:\(\)\[\]\"'…—―．]+", raw)
+            name = m.group()[:20] if m else '未命名文稿'
 
     serialized_info = [
         [{'phonetic': i['phonetic'], 'is_poly': i['is_poly'],
@@ -93,8 +108,8 @@ def save_draft(filename, name, buffer, cell_info):
 
     data = {
         'name': name,
-        'created': datetime.now().isoformat(),
-        'modified': datetime.now().isoformat(),
+        'created': (existing or {}).get('created', now.isoformat()),
+        'modified': now.isoformat(),
         'preview': preview,
         'buffer': buffer,
         'cell_info': serialized_info,

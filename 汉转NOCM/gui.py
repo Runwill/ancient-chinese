@@ -8,12 +8,16 @@ from tkinter import messagebox
 from typing import Optional
 
 from constants import COLORS, _CANVAS_MARGIN, find_bracket_ranges, in_bracket, set_theme, get_theme
-from widgets import ModernButton, freeze_redraw, thaw_redraw, style, apply_theme_transition
+from widgets import (FlatDropdown, ModernButton, freeze_redraw, thaw_redraw,
+                     style, apply_theme_transition, style_scrollbar)
 from editor_buffer import EditorBuffer
 from editor_render import EditorRenderer
 from draft_io import save_draft, load_draft, delete_draft, rename_draft, get_draft_name
 from data_loader import get_changed_chars, clear_changed_char
-from nocm_transcriber import DEFAULT_SCHEME_ID, NocmTranscriber, list_schemes, load_scheme
+from nocm_transcriber import (DEFAULT_SCHEME_ID, NocmTranscriber,
+                              list_schemes, load_preferred_scheme_id,
+                              load_scheme, save_preferred_scheme_id)
+from scheme_editor import SchemeEditor
 import sidebar_drafts
 import sidebar_options
 
@@ -43,11 +47,12 @@ class App(tk.Tk):
         # 导出选项
         self._export_punct_to_newline = False
         self._export_mode = 'phon'  # 'phon' 音标 / 'raw' 原文
-        self._export_scheme_id = DEFAULT_SCHEME_ID
+        self._export_scheme_id = load_preferred_scheme_id()
         # 选区相关：复制模式 + 侧边栏面板状态
         self._sel_copy_mode = 'raw'  # 'raw' | 'phon'
         self._sel_panel_active = False  # 当前侧边栏是否为选区面板
         self._sel_refs = None        # 选区面板的控件引用（更新计数用）
+        self._rich_clipboard = None  # 最近一次应用内原文复制的逐字状态
 
         self._build_ui()
 
@@ -285,12 +290,24 @@ class App(tk.Tk):
         if mode in ('raw', 'phon'):
             self._sel_copy_mode = mode
 
+    def _set_clipboard(self, text, payload=None):
+        self.clipboard_clear()
+        self.clipboard_append(text)
+        self._rich_clipboard = payload
+
     def _copy_selection_as(self, mode):
+        payload = self.buf.selection_payload() if mode == 'raw' else None
         text = (self._selection_phonetic() if mode == 'phon'
-                else self.buf.selection_text())
+                else (payload or {}).get('text', ''))
         if text:
-            self.clipboard_clear()
-            self.clipboard_append(text)
+            self._set_clipboard(text, payload)
+
+    def _on_cut(self):
+        payload = self.buf.selection_payload()
+        if not payload or not payload['text']:
+            return
+        self._set_clipboard(payload['text'], payload)
+        self._delete_selection_if_any()
 
     def _delete_selection_action(self):
         if self._delete_selection_if_any():
@@ -403,6 +420,7 @@ class App(tk.Tk):
 
         if ctrl:
             _acts = {'v': self._on_paste, 'c': self._copy_raw,
+                     'x': self._on_cut,
                      'y': lambda: (self.buf.redo() and self._rebuild_display()),
                      's': self._on_save,
                      'f': self._on_toggle_search,
@@ -444,7 +462,12 @@ class App(tk.Tk):
             # 粘贴覆盖选区：先 delete_selection（其内部 save_undo），无选区则手动 save_undo
             if not self.buf.delete_selection():
                 self.buf.save_undo()
-            self.buf.insert_chars_raw(text)
+            normalized = text.replace('\r\n', '\n').replace('\r', '\n')
+            payload = self._rich_clipboard
+            if payload and normalized == payload.get('text'):
+                self.buf.insert_payload(payload)
+            else:
+                self.buf.insert_chars_raw(text)
             self._rebuild_display()
         return 'break'
 
@@ -554,8 +577,7 @@ class App(tk.Tk):
             return
         text = self.buf.copy_raw()
         if text:
-            self.clipboard_clear()
-            self.clipboard_append(text)
+            self._set_clipboard(text, self.buf.full_payload())
 
     # ── 点击多音字显示侧边栏选项 ────────────────────────
 
@@ -711,8 +733,7 @@ class App(tk.Tk):
     def _on_copy(self):
         text = self._get_result()
         if text:
-            self.clipboard_clear()
-            self.clipboard_append(text)
+            self._set_clipboard(text)
             messagebox.showinfo('提示', '结果已复制到剪贴板。')
         else:
             messagebox.showinfo('提示', '没有可复制的内容。')
@@ -796,14 +817,18 @@ class App(tk.Tk):
         if not phon_text and not raw_text:
             messagebox.showinfo('提示', '没有可导出的内容。')
             return
-        schemes = list_schemes()
-        if not schemes:
-            schemes = [{'id': DEFAULT_SCHEME_ID, 'name': '当前 Suno 方案'}]
-        scheme_names = {s['name']: s['id'] for s in schemes}
-        scheme_labels = list(scheme_names.keys())
-        current_scheme_label = next(
-            (s['name'] for s in schemes if s['id'] == self._export_scheme_id),
-            scheme_labels[0])
+        def _load_scheme_options():
+            schemes = list_schemes()
+            if not schemes:
+                schemes = [{'id': DEFAULT_SCHEME_ID, 'name': '当前 Suno 方案'}]
+            names = {s['name']: s['id'] for s in schemes}
+            labels = list(names.keys())
+            current_label = next(
+                (s['name'] for s in schemes if s['id'] == self._export_scheme_id),
+                labels[0])
+            return schemes, names, labels, current_label
+
+        schemes, scheme_names, scheme_labels, current_scheme_label = _load_scheme_options()
 
         dlg = tk.Toplevel(self)
         dlg.title('导出')
@@ -813,19 +838,24 @@ class App(tk.Tk):
 
         # 顶部选项栏
         opts = tk.Frame(dlg, bg=COLORS['bg_card'])
-        opts.pack(fill=tk.X, padx=16, pady=(14, 8))
+        opts.pack(fill=tk.X, padx=12, pady=(10, 8))
+        opts.grid_columnconfigure(3, weight=1)
 
         # ── 内容选择（chip 段控件） ──
         mode_var = tk.StringVar(value=self._export_mode)
         chips = {}
 
         scheme_var = tk.StringVar(value=current_scheme_label)
+        scheme_menu = None
 
         def _refresh():
             self._export_mode = mode_var.get()
             self._export_punct_to_newline = punct_var.get()
-            self._export_scheme_id = scheme_names.get(
+            selected_scheme_id = scheme_names.get(
                 scheme_var.get(), self._export_scheme_id)
+            if selected_scheme_id != self._export_scheme_id:
+                self._export_scheme_id = selected_scheme_id
+                save_preferred_scheme_id(selected_scheme_id)
             mode = mode_var.get()
             if mode == 'both':
                 t = self._build_both_text(punct_var.get())
@@ -840,11 +870,28 @@ class App(tk.Tk):
             for val, c in chips.items():
                 _set_chip_active(c, val == mode)
             # 音标用 Cambria，原文/全部用 YaHei；字号都用 10
-                font = (('Cambria', 10) if mode in ('phon', 'suno')
+            font = (('Cambria', 10) if mode in ('phon', 'suno')
                     else ('Microsoft YaHei', 10))
             txt.configure(state=tk.NORMAL, font=font)
             txt.delete('1.0', tk.END)
             txt.insert('1.0', t)
+
+        def _refresh_scheme_menu(saved_scheme_id=None):
+            nonlocal schemes, scheme_names, scheme_labels
+            schemes, scheme_names, scheme_labels, _current = _load_scheme_options()
+            if saved_scheme_id:
+                self._export_scheme_id = saved_scheme_id
+                save_preferred_scheme_id(saved_scheme_id)
+            label = next(
+                (s['name'] for s in schemes if s['id'] == self._export_scheme_id),
+                scheme_labels[0])
+            scheme_var.set(label)
+            scheme_menu.set_values(scheme_labels)
+            _refresh()
+
+        def _open_scheme_editor():
+            scheme_id = scheme_names.get(scheme_var.get(), self._export_scheme_id)
+            SchemeEditor(dlg, scheme_id=scheme_id, on_saved=_refresh_scheme_menu)
 
         def _set_chip_active(chip, active):
             if active:
@@ -855,34 +902,25 @@ class App(tk.Tk):
         seg = tk.Frame(opts, bg=COLORS['bg_card'],
                        highlightbackground=COLORS['border'],
                        highlightthickness=1)
-        seg.pack(side=tk.LEFT)
+        seg.grid(row=0, column=0, sticky='w')
         for label, val in [('NOCM', 'phon'), ('Suno', 'suno'),
                            ('原文', 'raw'), ('全部', 'both')]:
             chip = tk.Label(seg, text=label, font=('Microsoft YaHei', 9),
                             bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
-                            padx=14, pady=4, cursor='hand2')
+                            padx=9, pady=4, cursor='hand2')
             chip.pack(side=tk.LEFT)
             chip.bind('<Button-1>',
                       lambda e, v=val: (mode_var.set(v), _refresh()))
             chips[val] = chip
 
-        scheme_menu = tk.OptionMenu(opts, scheme_var, *scheme_labels,
-                                    command=lambda _v: _refresh())
-        scheme_menu.configure(font=('Microsoft YaHei', 9),
-                              bg=COLORS['bg_card'],
-                              fg=COLORS['text_secondary'],
-                              activebackground=COLORS['accent_light'],
-                              activeforeground=COLORS['accent'],
-                              highlightbackground=COLORS['border'],
-                              highlightthickness=1,
-                              borderwidth=0,
-                              cursor='hand2')
-        scheme_menu['menu'].configure(font=('Microsoft YaHei', 9),
-                                      bg=COLORS['bg_card'],
-                                      fg=COLORS['text_primary'],
-                                      activebackground=COLORS['accent_light'],
-                                      activeforeground=COLORS['accent'])
-        scheme_menu.pack(side=tk.LEFT, padx=(10, 0))
+        scheme_menu = FlatDropdown(opts, scheme_var, scheme_labels,
+                                   command=lambda _v: _refresh(),
+                                   width=13, bg_key='bg_card')
+        scheme_menu.grid(row=0, column=1, sticky='w', padx=(8, 0))
+
+        ModernButton(opts, '编辑方案', command=_open_scheme_editor,
+                     primary=False, width=76, height=28
+                     ).grid(row=0, column=2, sticky='w', padx=(8, 0))
 
         punct_var = tk.BooleanVar(value=self._export_punct_to_newline)
 
@@ -909,27 +947,29 @@ class App(tk.Tk):
                               padx=12, pady=4, cursor='hand2',
                               highlightbackground=COLORS['border'],
                               highlightthickness=1)
-        punct_chip.pack(side=tk.LEFT, padx=(10, 0))
+        punct_chip.grid(row=1, column=0, columnspan=3,
+                        sticky='w', pady=(8, 0))
         punct_chip.bind('<Button-1>', _toggle_punct)
         _refresh_punct_chip()
 
         def _do_copy():
             content = txt.get('1.0', 'end-1c')
-            self.clipboard_clear()
-            self.clipboard_append(content)
+            self._set_clipboard(content)
             copy_btn.set_text('已复制 ✓')
             self.after(1200, lambda: copy_btn.set_text('复制全部'))
 
         copy_btn = ModernButton(opts, '复制全部', command=_do_copy,
                                 primary=True, width=88, height=28)
-        copy_btn.pack(side=tk.RIGHT, padx=(8, 0))
+        copy_btn.grid(row=0, column=5, sticky='e', padx=(8, 0))
         ModernButton(opts, '关闭', command=dlg.destroy,
-                     primary=False, width=64, height=28).pack(side=tk.RIGHT)
+                     primary=False, width=64, height=28
+                     ).grid(row=0, column=4, sticky='e')
 
         # 文本框 + 滚动条
         body = tk.Frame(dlg, bg=COLORS['bg_card'])
         body.pack(fill=tk.BOTH, expand=True, padx=16, pady=(4, 14))
         sb = tk.Scrollbar(body)
+        style_scrollbar(sb)
         sb.pack(side=tk.RIGHT, fill=tk.Y)
         txt = tk.Text(body, wrap=tk.WORD,
                       font=('Cambria', 10),
@@ -993,7 +1033,8 @@ class App(tk.Tk):
             '9. 点击「保存」保存当前文稿\n\n'
             '方括号 [] 内的内容原样保留，不做转换。\n'
             'Ctrl+Z 撤回　Ctrl+Y / Ctrl+Shift+Z 重做\n'
-            'Ctrl+S 保存文稿　Ctrl+C 复制原文（或选区）　Ctrl+V 粘贴　Ctrl+F 搜索　Ctrl+A 全选\n'
+            'Ctrl+S 保存文稿　Ctrl+C 复制原文（或选区）　Ctrl+X 剪切选区　Ctrl+V 粘贴\n'
+            'Ctrl+F 搜索　Ctrl+A 全选\n'
             '鼠标拖动 / Shift+点击 / Shift+方向键 选择文本，Delete / Backspace 删除选区'
         )
         tk.Label(inner, text=help_text, font=('Microsoft YaHei', 9),

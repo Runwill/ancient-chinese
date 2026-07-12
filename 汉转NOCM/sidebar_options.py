@@ -340,6 +340,7 @@ def build_selection_info(sidebar, char_count, line_count, copy_mode,
                  ).pack(anchor='w', pady=(0, 6))
         for k, desc in [
             ('Ctrl+C', '复制（按上方模式）'),
+            ('Ctrl+X', '剪切原文'),
             ('Ctrl+A', '全选'),
             ('Shift+方向', '扩展选区'),
             ('Shift+点击', '扩展到位置'),

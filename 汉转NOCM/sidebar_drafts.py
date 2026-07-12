@@ -6,7 +6,6 @@ from datetime import datetime
 from constants import COLORS
 from widgets import (ModernButton, ScrollableFrame,
                      bind_hover, bind_color_hover, bind_mousewheel,
-                     bind_single_double,
                      set_widget_bg, freeze_redraw, thaw_redraw,
                      animate_widget_bg, animate_color)
 from draft_io import list_drafts, rename_draft, draft_has_stale_chars
@@ -259,15 +258,9 @@ def _build_folder(parent, group, drafts_map, current_draft,
 
     # ── 文件夹头部 ──
     hdr = tk.Frame(zone, bg=COLORS['bg_sidebar'], padx=left_pad, pady=5)
+    hdr.configure(cursor='hand2')
     hdr.pack(fill=tk.X, pady=(2, 0), padx=6)
     drag_drop.register_folder_hdr(gid, hdr)
-
-    # 拖拽手柄
-    handle = tk.Label(hdr, text='⣿', font=('Segoe UI Symbol', 9),
-                      bg=COLORS['bg_sidebar'], fg=COLORS['text_muted'],
-                      cursor='fleur')
-    handle.pack(side=tk.LEFT, padx=(0, 4))
-    drag_drop.bind_drag_handle(handle, 'folder', gid, parent_gid, hdr)
 
     arrow = '▼' if expanded else '▶'
     arrow_lbl = tk.Label(hdr, text=arrow, font=('Microsoft YaHei', 8),
@@ -293,9 +286,10 @@ def _build_folder(parent, group, drafts_map, current_draft,
             n += _count(ch)
         return n
 
-    tk.Label(hdr, text=str(_count(group)), font=('Microsoft YaHei', 8),
-             bg=COLORS['bg_sidebar'], fg=COLORS['text_muted']
-             ).pack(side=tk.RIGHT, padx=(0, 4))
+    count_lbl = tk.Label(hdr, text=str(_count(group)), font=('Microsoft YaHei', 8),
+                         bg=COLORS['bg_sidebar'], fg=COLORS['text_muted'],
+                         cursor='hand2')
+    count_lbl.pack(side=tk.RIGHT, padx=(0, 4))
 
     del_lbl = tk.Label(hdr, text='✕', font=('Microsoft YaHei', 9),
                        bg=COLORS['bg_sidebar'], fg=COLORS['text_muted'],
@@ -317,17 +311,19 @@ def _build_folder(parent, group, drafts_map, current_draft,
             container.pack(fill=tk.X)
             arrow_lbl.configure(text='▼')
 
-    for w in (arrow_lbl, icon_lbl):
-        w.bind('<Button-1>', _toggle)
-
-    bind_single_double(
-        name_lbl,
-        on_single=_toggle,
-        on_double=lambda: show_rename_folder_dialog(
+    def _rename():
+        show_rename_folder_dialog(
             hdr.winfo_toplevel(), gid, group['name'],
-            on_rebuild or (lambda: None)),
-        delay=250,
-    )
+            on_rebuild or (lambda: None))
+
+    for w in (hdr, name_lbl):
+        drag_drop.bind_drag_surface(
+            w, 'folder', gid, parent_gid, hdr,
+            on_single=_toggle, on_double=_rename, delay=250)
+    for w in (arrow_lbl, icon_lbl, count_lbl):
+        drag_drop.bind_drag_surface(
+            w, 'folder', gid, parent_gid, hdr,
+            on_single=_toggle, delay=250)
 
     # Hover（非拖拽时）
     def _hdr_enter(e):
@@ -390,23 +386,20 @@ def _build_card(parent, draft, current_draft, group_id,
     left_pad = 8 + depth * 16
 
     card = tk.Frame(parent, bg=bg, padx=10, pady=8)
+    card.configure(cursor='hand2')
     card.pack(fill=tk.X, pady=1, padx=(left_pad, 6))
 
     # 左侧竖条指示器（当前活跃时）
     indicator = None
     if active:
-        indicator = tk.Frame(card, bg=COLORS['accent'], width=3)
+        indicator = tk.Frame(card, bg=COLORS['accent'], width=3,
+                             cursor='hand2')
         indicator.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 8))
         _pending_active_card = (card, indicator)
 
     top = tk.Frame(card, bg=bg)
+    top.configure(cursor='hand2')
     top.pack(fill=tk.X)
-
-    # 拖拽手柄
-    handle = tk.Label(top, text='⣿', font=('Segoe UI Symbol', 9),
-                      bg=bg, fg=COLORS['text_muted'], cursor='fleur')
-    handle.pack(side=tk.LEFT, padx=(0, 6))
-    drag_drop.bind_drag_handle(handle, 'draft', fn, group_id, card)
 
     name_lbl = tk.Label(top, text=draft['name'],
                         font=('Microsoft YaHei', 10),
@@ -420,8 +413,11 @@ def _build_card(parent, draft, current_draft, group_id,
         stale_dot = tk.Label(top, text='●', font=('Microsoft YaHei', 9),
                              bg=bg, fg=COLORS['stale'], cursor='hand2')
         stale_dot.pack(side=tk.RIGHT, padx=(4, 0))
+    else:
+        stale_dot = None
 
     bot = tk.Frame(card, bg=bg)
+    bot.configure(cursor='hand2')
     bot.pack(fill=tk.X, pady=(3, 0))
 
     mod = ''
@@ -431,8 +427,9 @@ def _build_card(parent, draft, current_draft, group_id,
                 draft['modified']).strftime('%m/%d %H:%M')
         except (ValueError, TypeError):
             pass
-    tk.Label(bot, text=mod, font=('Microsoft YaHei', 8),
-             bg=bg, fg=COLORS['text_muted']).pack(side=tk.LEFT)
+    mod_lbl = tk.Label(bot, text=mod, font=('Microsoft YaHei', 8),
+                       bg=bg, fg=COLORS['text_muted'], cursor='hand2')
+    mod_lbl.pack(side=tk.LEFT)
 
     db = tk.Label(bot, text='✕', font=('Microsoft YaHei', 8),
                   bg=bg, fg=COLORS['text_muted'], cursor='hand2')
@@ -440,21 +437,21 @@ def _build_card(parent, draft, current_draft, group_id,
     db.bind('<Button-1>', lambda e: on_delete(fn, draft['name']))
     bind_color_hover(db, {'fg': (COLORS['text_muted'], COLORS['danger'])})
 
-    # 单击加载 / 双击重命名
-    bind_single_double(
-        name_lbl,
-        on_single=lambda: on_load(fn),
-        on_double=lambda: on_rename(fn, draft['name']),
-        delay=200,
-    )
+    def _load():
+        on_load(fn)
 
-    lh = lambda e: on_load(fn)
-    card.bind('<Button-1>', lh)
-    bot.bind('<Button-1>', lh)
-    top.bind('<Button-1>', lh)
-    for ch in bot.winfo_children():
-        if ch != db:
-            ch.bind('<Button-1>', lh)
+    def _rename():
+        on_rename(fn, draft['name'])
+
+    drag_widgets = [card, top, name_lbl, bot, mod_lbl]
+    if stale_dot is not None:
+        drag_widgets.append(stale_dot)
+    if indicator is not None:
+        drag_widgets.append(indicator)
+    for w in drag_widgets:
+        drag_drop.bind_drag_surface(
+            w, 'draft', fn, group_id, card,
+            on_single=_load, on_double=_rename, delay=200)
 
     if not active:
         bind_hover(card, bg)

@@ -35,6 +35,52 @@ def apply_replacements(text: str, replacements: Iterable[Tuple[str, str]]) -> st
     return text
 
 
+def resolve_rule_lookup(lookup, scheme: Dict = None) -> str:
+    """Resolve a rule lookup string or map-concatenation expression."""
+    if lookup is None:
+        return ''
+    if isinstance(lookup, dict) and lookup.get('type') == 'map_concat':
+        maps = (scheme or {}).get('maps', {})
+        field = lookup.get('field', 'target')
+        parts = lookup.get('parts', [])
+        resolved = []
+        for part in parts:
+            section = key = ''
+            if isinstance(part, dict):
+                section = str(part.get('section', ''))
+                key = str(part.get('key', ''))
+            elif isinstance(part, (list, tuple)) and len(part) >= 2:
+                section = str(part[0])
+                key = str(part[1])
+            if not section or not key:
+                continue
+            if field == 'source':
+                resolved.append(key)
+            else:
+                resolved.append(str(maps.get(section, {}).get(key, key)))
+        return ''.join(resolved)
+    return str(lookup)
+
+
+def replacement_pairs(
+        replacements: Iterable, scheme: Dict = None) -> List[Tuple[str, str]]:
+    """Normalize legacy and structured replacement rules into literal pairs."""
+    pairs = []
+    for item in replacements or []:
+        if isinstance(item, dict):
+            old = item.get('find', item.get('old', ''))
+            new = item.get('replace', item.get('new', ''))
+        elif isinstance(item, (list, tuple)) and len(item) >= 2:
+            old, new = item[0], item[1]
+        else:
+            continue
+        old = resolve_rule_lookup(old, scheme)
+        if old == '':
+            continue
+        pairs.append((old, '' if new is None else str(new)))
+    return pairs
+
+
 def _ordered_keys(source: Mapping[str, str], order: Iterable[str] = None) -> List[str]:
     if order:
         keys = [key for key in order if key in source]
@@ -66,7 +112,8 @@ def parse_syllable(token: str, scheme: Dict = None) -> NocmSyllable:
     parse_order = scheme.get('parse_order', {})
     rules = scheme.get('rules', {})
 
-    text = apply_replacements(token, rules.get('pre_normalize', []))
+    text = apply_replacements(token, replacement_pairs(
+        rules.get('pre_normalize', []), scheme))
 
     text, tone = consume_suffix(
         text, maps.get('tone', {}), parse_order.get('tone', DEFAULT_TONE_ORDER))
@@ -77,7 +124,8 @@ def parse_syllable(token: str, scheme: Dict = None) -> NocmSyllable:
     text, glide = consume_prefix(
         text, maps.get('glide', {}), parse_order.get('glide', DEFAULT_GLIDE_ORDER))
 
-    text = apply_replacements(text, rules.get('residual_preprocess', []))
+    text = apply_replacements(text, replacement_pairs(
+        rules.get('residual_preprocess', []), scheme))
     text, nucleus = consume_suffix(
         text, maps.get('nucleus', {}), parse_order.get('nucleus', DEFAULT_NUCLEUS_ORDER))
 

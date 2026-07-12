@@ -29,7 +29,16 @@ class DragState:
         self.src_id = None          # filename 或 group_id
         self.src_group = None       # 所在父文件夹 id（None=顶层）
         self.src_widget = None
+        self.start_x = 0
         self.start_y = 0
+
+        self.pending = False
+        self.pending_type = None
+        self.pending_id = None
+        self.pending_group = None
+        self.pending_widget = None
+        self.dimmed_colors = {}
+        self.drag_cursors = {}
 
         # 注册表（每次 sidebar rebuild 时重建）
         self.folder_hdrs = {}       # {gid: hdr_widget}
@@ -79,24 +88,112 @@ def set_root_zone(rz):
     state.root_zone = rz
 
 
-def bind_drag_handle(handle, dtype, src_id, src_group, src_widget):
-    handle.bind('<Button-1>',
-                lambda e: _start_drag(dtype, src_id, src_group,
-                                      src_widget, e.y_root))
-    handle.bind('<B1-Motion>', _on_drag_move)
-    handle.bind('<ButtonRelease-1>', _on_drag_end)
+def bind_drag_surface(widget, dtype, src_id, src_group, src_widget,
+                      on_single=None, on_double=None, delay=250):
+    """Bind one visible row/card area as both click target and drag source."""
+    timer = [None]
+    suppress_release_click = [False]
+
+    def _cancel_timer(event_widget):
+        if timer[0]:
+            try:
+                event_widget.after_cancel(timer[0])
+            except tk.TclError:
+                pass
+            timer[0] = None
+
+    def _press(event):
+        state.pending = True
+        state.pending_type = dtype
+        state.pending_id = src_id
+        state.pending_group = src_group
+        state.pending_widget = src_widget
+        state.start_x = event.x_root
+        state.start_y = event.y_root
+        state.active = False
+        state.hl_id = None
+        state.insert_target = None
+
+    def _motion(event):
+        if state.active:
+            _on_drag_move(event)
+            return 'break'
+        if not state.pending:
+            return None
+        moved = (abs(event.x_root - state.start_x) >= 8
+                 or abs(event.y_root - state.start_y) >= 8)
+        if moved:
+            _cancel_timer(event.widget)
+            suppress_release_click[0] = True
+            _start_drag(state.pending_type, state.pending_id,
+                        state.pending_group, state.pending_widget,
+                        state.start_x, state.start_y)
+            _on_drag_move(event)
+            return 'break'
+        return None
+
+    def _release(event):
+        if state.active:
+            _on_drag_end(event)
+            return 'break'
+        if not state.pending:
+            if suppress_release_click[0]:
+                suppress_release_click[0] = False
+                return 'break'
+            return None
+        state.pending = False
+        if suppress_release_click[0]:
+            suppress_release_click[0] = False
+            return 'break'
+        if on_single:
+            _cancel_timer(event.widget)
+            timer[0] = event.widget.after(delay, on_single)
+            return 'break'
+        return None
+
+    def _double(event):
+        _cancel_timer(event.widget)
+        state.pending = False
+        suppress_release_click[0] = True
+        if on_double:
+            on_double()
+            return 'break'
+        return None
+
+    widget.bind('<Button-1>', _press)
+    widget.bind('<B1-Motion>', _motion)
+    widget.bind('<ButtonRelease-1>', _release)
+    widget.bind('<Double-Button-1>', _double)
 
 
 # ── 内部：视觉工具 ──────────────────────────────────
 
 def _dim_widget(widget, dim):
     try:
-        widget.configure(fg=COLORS['text_muted'] if dim
-                         else COLORS['text_primary'])
+        if dim:
+            if widget not in state.dimmed_colors:
+                state.dimmed_colors[widget] = widget.cget('fg')
+            widget.configure(fg=COLORS['text_muted'])
+        elif widget in state.dimmed_colors:
+            widget.configure(fg=state.dimmed_colors.pop(widget))
     except tk.TclError:
         pass
     for ch in widget.winfo_children():
         _dim_widget(ch, dim)
+
+
+def _set_drag_cursor(widget, dragging):
+    try:
+        if dragging:
+            if widget not in state.drag_cursors:
+                state.drag_cursors[widget] = widget.cget('cursor')
+            widget.configure(cursor='fleur')
+        elif widget in state.drag_cursors:
+            widget.configure(cursor=state.drag_cursors.pop(widget))
+    except tk.TclError:
+        pass
+    for ch in widget.winfo_children():
+        _set_drag_cursor(ch, dragging)
 
 
 def _safe_destroy(attr):
@@ -302,16 +399,19 @@ def _find_card_folder_target(y):
 
 # ── 内部：拖拽事件 ──────────────────────────────────
 
-def _start_drag(dtype, src_id, src_group, widget, y_root):
+def _start_drag(dtype, src_id, src_group, widget, x_root, y_root):
     state.active = True
+    state.pending = False
     state.type = dtype
     state.src_id = src_id
     state.src_group = src_group
     state.src_widget = widget
+    state.start_x = x_root
     state.start_y = y_root
     state.hl_id = None
     state.insert_target = None
     try:
+        _set_drag_cursor(widget, True)
         set_widget_bg(widget, COLORS['accent_light'])
         for ch in widget.winfo_children():
             _dim_widget(ch, True)
@@ -434,9 +534,12 @@ def _restore_src_widget(src_type, src_id, src_w):
     if not src_w:
         return
     try:
+        _set_drag_cursor(src_w, False)
         animate_widget_bg(src_w, COLORS['bg_sidebar'])
         for ch in src_w.winfo_children():
             _dim_widget(ch, False)
+        state.dimmed_colors.clear()
+        state.drag_cursors.clear()
     except tk.TclError:
         pass
 

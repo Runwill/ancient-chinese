@@ -8,6 +8,8 @@ import urllib.request
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
+from atomic_io import save_json_atomic
+
 
 def get_data_dir() -> str:
     """返回数据文件所在目录：打包为 exe 时取 exe 所在目录，否则取脚本目录。"""
@@ -185,8 +187,7 @@ def get_changed_chars() -> set:
 def save_changed_chars(chars: set):
     """保存变化汉字集合。"""
     path = os.path.join(get_data_dir(), _CHANGED_CHARS_FILE)
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(sorted(chars), f, ensure_ascii=False)
+    save_json_atomic(path, sorted(chars))
 
 
 def clear_changed_char(ch: str):

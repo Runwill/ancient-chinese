@@ -3,6 +3,8 @@
 import os
 import sys
 
+from atomic_io import write_text_atomic
+
 
 # ── 括号范围（共用逻辑）──────────────────────────────
 
@@ -147,7 +149,7 @@ _THEME_PREF_FILE = os.path.join(_BASE_DIR, '.theme_pref')
 def _load_theme_pref():
     """读取用户保存的主题偏好，无则跟随系统。"""
     try:
-        with open(_THEME_PREF_FILE, 'r') as f:
+        with open(_THEME_PREF_FILE, 'r', encoding='utf-8') as f:
             name = f.read().strip()
             if name in ('light', 'dark'):
                 return name
@@ -159,8 +161,7 @@ def _load_theme_pref():
 def _save_theme_pref(name):
     """持久化主题偏好。"""
     try:
-        with open(_THEME_PREF_FILE, 'w') as f:
-            f.write(name)
+        write_text_atomic(_THEME_PREF_FILE, lambda f: f.write(name))
     except OSError:
         pass
 
