@@ -47,7 +47,9 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Release build failed ($LASTEXITCODE)" }
     }
 
-    $windows = Join-Path $repoRoot "dist\汉转NOCM-$version.exe"
+    $windowsSource = Join-Path $repoRoot "dist\汉转NOCM-$version.exe"
+    $windows = Join-Path $repoRoot "dist\HanToNocm-$version.exe"
+    Copy-Item -LiteralPath $windowsSource -Destination $windows -Force
     $android = Join-Path $repoRoot "dist\android\HanToNocm-$version-release.apk"
     $metadata = Join-Path $repoRoot "dist\release-$version"
     & python (Join-Path $PSScriptRoot 'release_metadata.py') `
