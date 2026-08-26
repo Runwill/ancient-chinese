@@ -1,142 +1,128 @@
-"""汉字转 NOCM 音标 — 主入口。"""
+"""汉字转 NOCM 音标桌面程序入口。"""
 
+from __future__ import annotations
+
+import os
+import importlib
+import subprocess
 import sys
-import threading
-import tkinter as tk
-from tkinter import messagebox
 
-from data_loader import download_and_update, load_map_from_json_gz
-from gui import App, COLORS
+from app_version import APP_NAME, __version__
 
 
-def _fatal(msg):
-    """显示错误弹窗后退出。"""
-    _tmp = tk.Tk()
-    _tmp.withdraw()
-    messagebox.showerror('错误', msg)
-    _tmp.destroy()
-    sys.exit(1)
+def _fatal(message):
+    """Display a native Windows error without importing the legacy UI."""
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(0, str(message), '汉字转 NOCM 音标', 0x10)
+    except Exception:
+        print(message, file=sys.stderr)
+    raise SystemExit(1)
 
 
-class SplashScreen(tk.Tk):
-    """启动画面：显示数据下载/加载进度（现代化样式）。"""
+def _load_webview():
+    """Import pywebview, bootstrapping it for source-tree launches."""
+    try:
+        return importlib.import_module('webview')
+    except ImportError as first_error:
+        if getattr(sys, 'frozen', False):
+            _fatal(f'打包程序缺少 HTML 界面组件：\n{first_error}')
 
-    def __init__(self):
-        super().__init__()
-        self.title('汉字转 NOCM 音标')
-        self.resizable(False, False)
-        self.overrideredirect(True)
-        self.configure(bg=COLORS['bg_card'])
+    requirements = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), 'requirements.txt')
+    try:
+        completed = subprocess.run(
+            [sys.executable, '-m', 'pip', 'install',
+             '--disable-pip-version-check', '-r', requirements],
+            capture_output=True,
+            text=True,
+            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+            check=False,
+        )
+        if completed.returncode != 0:
+            details = (completed.stderr or completed.stdout or '').strip()
+            raise RuntimeError(details or f'pip 退出代码 {completed.returncode}')
+        importlib.invalidate_caches()
+        return importlib.import_module('webview')
+    except Exception as exc:
+        _fatal(
+            'HTML 界面组件自动安装失败。\n\n'
+            f'当前 Python：{sys.executable}\n'
+            f'错误：{exc}')
 
-        # 主容器
-        frame = tk.Frame(self, bg=COLORS['bg_card'], padx=48, pady=36)
-        frame.pack()
 
-        # 标题
-        tk.Label(frame, text='汉字转 NOCM 音标',
-                font=('Microsoft YaHei', 18, 'bold'),
-                bg=COLORS['bg_card'], fg=COLORS['text_primary']).pack(pady=(0, 24))
+def run_legacy():
+    """Temporary Tkinter fallback while the HTML migration settles."""
+    import threading
+    import tkinter as tk
+    from tkinter import messagebox
 
-        # 状态文本
-        self.status_var = tk.StringVar(value='正在初始化...')
-        tk.Label(frame, textvariable=self.status_var,
-                font=('Microsoft YaHei', 9),
-                bg=COLORS['bg_card'], fg=COLORS['text_muted']).pack(pady=(0, 12))
+    from data_loader import download_and_update, load_map_from_json_gz
+    from gui import App, COLORS
 
-        # 进度条容器
-        progress_frame = tk.Frame(frame, bg=COLORS['bg_card'])
-        progress_frame.pack(fill=tk.X, pady=(0, 8))
-        
-        # 自定义进度条背景
-        self.progress_bg = tk.Canvas(progress_frame, width=340, height=4,
-                                     bg=COLORS['border'], highlightthickness=0)
-        self.progress_bg.pack()
-        
-        # 进度条填充
-        self._progress_fill = self.progress_bg.create_rectangle(
-            0, 0, 0, 4, fill=COLORS['accent'], outline='')
-        
-        self._progress_value = 0
-        self._indeterminate = False
-        self._indeterminate_pos = 0
+    splash = tk.Tk()
+    splash.title('汉字转 NOCM 音标')
+    splash.geometry('420x170')
+    splash.resizable(False, False)
+    splash.configure(bg=COLORS['bg_card'])
+    status = tk.StringVar(value='正在初始化...')
+    tk.Label(splash, text='汉字转 NOCM 音标', font=('Microsoft YaHei', 18, 'bold'),
+             bg=COLORS['bg_card'], fg=COLORS['text_primary']).pack(pady=(34, 16))
+    tk.Label(splash, textvariable=status, font=('Microsoft YaHei', 9),
+             bg=COLORS['bg_card'], fg=COLORS['text_muted']).pack()
+    result = {'mapping': None, 'error': None}
 
-        # 居中
-        self.update_idletasks()
-        w, h = self.winfo_reqwidth(), self.winfo_reqheight()
-        x = (self.winfo_screenwidth() - w) // 2
-        y = (self.winfo_screenheight() - h) // 2
-        self.geometry(f'+{x}+{y}')
-
-        self.mapping = None
-        self._error = None
-
-    def _animate_indeterminate(self):
-        if not self._indeterminate:
-            return
-        self._indeterminate_pos = (self._indeterminate_pos + 4) % 340
-        width = 80
-        x1 = self._indeterminate_pos
-        x2 = x1 + width
-        self.progress_bg.delete('ind')
-        self.progress_bg.create_rectangle(
-            x1, 0, min(x2, 340), 4,
-            fill=COLORS['accent'], outline='', tags='ind')
-        if x2 > 340:
-            self.progress_bg.create_rectangle(
-                0, 0, x2 - 340, 4,
-                fill=COLORS['accent'], outline='', tags='ind')
-        self.after(30, self._animate_indeterminate)
-
-    def on_status(self, msg):
-        self.status_var.set(msg)
-        self.update_idletasks()
-
-    def on_progress(self, pct, name):
-        if pct < 0:
-            if not self._indeterminate:
-                self._indeterminate = True
-                self._animate_indeterminate()
-        else:
-            self._indeterminate = False
-            self._progress_value = pct
-            fill_width = int(340 * pct / 100)
-            self.progress_bg.coords(self._progress_fill, 0, 0, fill_width, 4)
-        self.update_idletasks()
-
-    def _worker(self):
+    def worker():
         try:
-            download_and_update(
-                on_status=lambda msg: self.after(0, self.on_status, msg),
-                on_progress=lambda p, n: self.after(0, self.on_progress, p, n),
-            )
-            self.after(0, self.on_status, '正在加载音标数据...')
-            self.mapping = load_map_from_json_gz()
-        except Exception as e:
-            self._error = str(e)
-        finally:
-            self.after(0, self._on_done)
+            download_and_update(on_status=lambda text: splash.after(0, status.set, text))
+            result['mapping'] = load_map_from_json_gz()
+        except Exception as exc:
+            result['error'] = str(exc)
+        splash.after(0, splash.destroy)
 
-    def _on_done(self):
-        self.destroy()
-
-    def run(self):
-        t = threading.Thread(target=self._worker, daemon=True)
-        t.start()
-        self.mainloop()
-        return self.mapping, self._error
+    threading.Thread(target=worker, daemon=True).start()
+    splash.mainloop()
+    if result['error'] or result['mapping'] is None:
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror('启动失败', result['error'] or '无法加载音节数据。')
+        root.destroy()
+        raise SystemExit(1)
+    app = App(result['mapping'])
+    app.mainloop()
 
 
 def main():
-    splash = SplashScreen()
-    mapping, error = splash.run()
+    if '--version' in sys.argv:
+        print(f'{APP_NAME} {__version__}')
+        return
+    if '--legacy' in sys.argv:
+        run_legacy()
+        return
+    webview = _load_webview()
 
-    if error:
-        _fatal(f'启动失败:\n{error}')
-    if mapping is None:
-        _fatal('无法加载音节数据。\n请检查网络连接或确保数据文件存在。')
+    from web_api import WebApi, web_asset_path
 
-    app = App(mapping)
-    app.mainloop()
+    index_path = web_asset_path()
+    if not os.path.isfile(index_path):
+        _fatal(f'找不到界面文件：\n{index_path}')
+
+    api = WebApi()
+    window = webview.create_window(
+        APP_NAME,
+        url=index_path,
+        js_api=api,
+        width=1280,
+        height=780,
+        min_size=(960, 600),
+        background_color='#F4F6F8',
+        text_select=True,
+    )
+    api.set_window(window)
+    try:
+        webview.start(gui='edgechromium', debug='--debug-webview' in sys.argv)
+    except Exception as exc:
+        _fatal(f'HTML 界面启动失败：\n{exc}\n\n请确认系统已安装 Microsoft Edge WebView2 Runtime。')
 
 
 if __name__ == '__main__':

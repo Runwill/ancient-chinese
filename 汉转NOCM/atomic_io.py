@@ -43,3 +43,32 @@ def save_json_atomic(path, data, *, indent=None, newline=False):
             f.write('\n')
 
     write_text_atomic(path, _write)
+
+
+def write_bytes_atomic(path, content):
+    """Atomically write bytes through a flushed temporary file."""
+    directory = os.path.dirname(path) or '.'
+    os.makedirs(directory, exist_ok=True)
+    fd = None
+    tmp_path = None
+    try:
+        fd, tmp_path = tempfile.mkstemp(
+            prefix=os.path.basename(path) + '.', suffix='.tmp', dir=directory)
+        with os.fdopen(fd, 'wb') as f:
+            fd = None
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+        tmp_path = None
+    finally:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        if tmp_path is not None:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass

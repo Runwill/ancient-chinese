@@ -3,6 +3,7 @@
 import os
 import sys
 
+from app_version import get_app_dir
 from atomic_io import write_text_atomic
 
 
@@ -138,10 +139,7 @@ def _detect_system_theme():
         return 'dark'
 
 
-if getattr(sys, 'frozen', False):
-    _BASE_DIR = os.path.dirname(sys.executable)
-else:
-    _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_BASE_DIR = get_app_dir()
 
 _THEME_PREF_FILE = os.path.join(_BASE_DIR, '.theme_pref')
 

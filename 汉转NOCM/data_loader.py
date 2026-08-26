@@ -2,25 +2,39 @@
 
 import os
 import gzip
+import hashlib
 import json
 import io
 import urllib.request
 from datetime import datetime
+import re
 from typing import Dict, List, Any, Optional
 
+from app_version import get_app_dir
 from atomic_io import save_json_atomic
 
 
 def get_data_dir() -> str:
     """返回数据文件所在目录：打包为 exe 时取 exe 所在目录，否则取脚本目录。"""
-    import sys
-    if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(os.path.abspath(__file__))
+    return get_app_dir()
 
 
 BASE_JSON_GZ_URL = 'https://qwert-ly.github.io/xtext/base.json.gz'
 EXTRA_JSON_GZ_URL = 'https://qwert-ly.github.io/xtext/extra.json.gz'
+_DATA_UPDATE_LOG = 'data_update.log'
+_READING_CHANGE_EVENTS_FILE = 'reading_change_events.json'
+_DATA_CHANGE_HEADER = re.compile(
+    r'^\[(?P<timestamp>[^]]+)] (?P<filename>.+?) 更新 — 共 (?P<count>\d+) 处差异$')
+_DATA_CHANGE_ENTRY = re.compile(r'^  \[(?P<kind>新增|删除|修改)]\s*(?P<body>.*)$')
+_DATA_CHANGE_INDEX_CACHE = {'signature': None, 'items': []}
+_READING_CHANGE_CACHE = {'signature': None, 'events': {}}
+_DATA_CHANGE_FIELD_LABELS = {
+    'c': '音韵地位', 'm': '字头', 'd': '释义',
+    'z': '汉字', 'y': '音标',
+    '總出現次數': '总出现次数', '見西周': '见西周',
+    '少見詞出處': '少见词出处',
+    '推導中古音': '推导中古音', '推導普通話': '推导普通话',
+}
 
 
 def _local_path(filename: str) -> str:
@@ -131,13 +145,314 @@ def _log_diff(filename, diffs, status_fn):
     if not diffs:
         status_fn(f'[对比] {filename} 内容无实质变化')
         return
-    log_path = os.path.join(get_data_dir(), 'data_update.log')
+    log_path = os.path.join(get_data_dir(), _DATA_UPDATE_LOG)
     header = f'\n{"="*60}\n[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] {filename} 更新 — 共 {len([d for d in diffs if d.startswith("  [")])} 处差异\n{"="*60}'
     entry = header + '\n' + '\n'.join(diffs) + '\n'
     with open(log_path, 'a', encoding='utf-8') as f:
         f.write(entry)
     count = len([d for d in diffs if d.startswith('  [')])
     status_fn(f'[对比] {filename} 有 {count} 处差异，已记录到 data_update.log')
+
+
+def _data_change_log_path():
+    return os.path.join(get_data_dir(), _DATA_UPDATE_LOG)
+
+
+def _data_change_index():
+    """Build a compact byte-offset index without loading the log into RAM."""
+    path = _data_change_log_path()
+    try:
+        stat = os.stat(path)
+    except OSError:
+        return path, 0, []
+    signature = (path, stat.st_size, stat.st_mtime_ns)
+    if _DATA_CHANGE_INDEX_CACHE['signature'] == signature:
+        return path, stat.st_size, _DATA_CHANGE_INDEX_CACHE['items']
+
+    items = []
+    separator = b'=' * 60
+    previous = None
+    with open(path, 'rb') as file:
+        while True:
+            line_start = file.tell()
+            line = file.readline()
+            if not line:
+                break
+            if line.strip() != separator:
+                continue
+            header = file.readline().decode('utf-8', errors='replace').strip()
+            match = _DATA_CHANGE_HEADER.match(header)
+            if not match:
+                continue
+            closing = file.readline()
+            if closing.strip() != separator:
+                continue
+            if previous is not None:
+                previous['end'] = line_start
+            previous = {
+                'id': str(line_start),
+                'timestamp': match.group('timestamp'),
+                'filename': match.group('filename'),
+                'count': int(match.group('count')),
+                'start': file.tell(),
+                'end': stat.st_size,
+            }
+            items.append(previous)
+    _DATA_CHANGE_INDEX_CACHE['signature'] = signature
+    _DATA_CHANGE_INDEX_CACHE['items'] = items
+    return path, stat.st_size, items
+
+
+def get_data_change_batches(offset=0, limit=40):
+    """Return newest update batches while keeping the large log server-side."""
+    path, size, items = _data_change_index()
+    offset = max(0, int(offset or 0))
+    limit = max(1, min(100, int(limit or 40)))
+    newest = list(reversed(items))
+    page = newest[offset:offset + limit]
+    return {
+        'ok': True,
+        'exists': os.path.exists(path),
+        'file_size': size,
+        'total': len(newest),
+        'offset': offset,
+        'has_more': offset + len(page) < len(newest),
+        'items': [{key: item[key] for key in
+                   ('id', 'timestamp', 'filename', 'count')} for item in page],
+    }
+
+
+def _iter_data_change_entries(file, start, end):
+    file.seek(start)
+    current = None
+    while file.tell() < end:
+        line = file.readline()
+        if not line:
+            break
+        text = line.decode('utf-8', errors='replace').rstrip('\r\n')
+        match = _DATA_CHANGE_ENTRY.match(text)
+        if match:
+            if current is not None:
+                yield current
+            body = match.group('body').strip()
+            label, separator, summary = body.partition(':')
+            current = {
+                'kind': match.group('kind'),
+                'label': label.strip(),
+                'summary': summary.strip() if separator else '',
+                'details': [],
+            }
+        elif current is not None and text.strip():
+            current['details'].append(text.strip())
+    if current is not None:
+        yield current
+
+
+def _parse_data_change_json(text):
+    try:
+        return json.loads(text)
+    except (TypeError, json.JSONDecodeError):
+        return None
+
+
+def _structure_data_change_entry(entry):
+    """Turn raw old/new JSON into a concise field-level comparison."""
+    old_value = new_value = None
+    if entry['kind'] == '修改':
+        for detail in entry['details']:
+            if detail.startswith('旧:'):
+                old_value = _parse_data_change_json(detail[2:].strip())
+            elif detail.startswith('新:'):
+                new_value = _parse_data_change_json(detail[2:].strip())
+    elif entry['kind'] == '新增':
+        new_value = _parse_data_change_json(entry['summary'])
+    elif entry['kind'] == '删除':
+        old_value = _parse_data_change_json(entry['summary'])
+
+    if old_value is None and new_value is None:
+        return entry
+    old_record = old_value if isinstance(old_value, dict) else {}
+    new_record = new_value if isinstance(new_value, dict) else {}
+    if old_record or new_record:
+        keys = list(old_record)
+        keys.extend(key for key in new_record if key not in old_record)
+        changes = []
+        unchanged = 0
+        missing = object()
+        for key in keys:
+            old = old_record.get(key, missing)
+            new = new_record.get(key, missing)
+            if old is not missing and new is not missing and old == new:
+                unchanged += 1
+                continue
+            status = ('新增' if old is missing else
+                      '删除' if new is missing else '修改')
+            changes.append({
+                'field': _DATA_CHANGE_FIELD_LABELS.get(key, key),
+                'field_key': key,
+                'status': status,
+                'old': None if old is missing else old,
+                'new': None if new is missing else new,
+            })
+        identity = new_record or old_record
+        headword = identity.get('m') or identity.get('z')
+    else:
+        changes = [{
+            'field': '值', 'status': entry['kind'],
+            'old': old_value, 'new': new_value,
+        }]
+        unchanged = 0
+        headword = None
+    return {
+        **entry,
+        'display_label': (f'{headword} · {entry["label"]}'
+                          if headword else entry['label']),
+        'changes': changes,
+        'unchanged_count': unchanged,
+        'details': [],
+    }
+
+
+def _stable_change_event_id(batch, entry):
+    payload = json.dumps({
+        'timestamp': batch['timestamp'],
+        'filename': batch['filename'],
+        'kind': entry['kind'],
+        'label': entry['label'],
+        'summary': entry['summary'],
+        'details': entry['details'],
+    }, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()[:24]
+
+
+def _split_logged_phonetics(value):
+    return [item.strip() for item in str(value or '').split(',') if item.strip()]
+
+
+def _reading_change_event(batch, entry):
+    """Return a stable per-character reading event for a base-data entry."""
+    if batch.get('filename') != 'base.json.gz' or len(entry.get('label', '')) != 1:
+        return None
+    removed = []
+    added = []
+    summary = entry.get('summary', '')
+    if entry.get('kind') == '删除':
+        removed = _split_logged_phonetics(summary)
+    elif entry.get('kind') == '新增':
+        added = _split_logged_phonetics(summary)
+    elif entry.get('kind') == '修改':
+        for part in summary.split(';'):
+            part = part.strip()
+            if part.startswith('移除 '):
+                removed.extend(_split_logged_phonetics(part[3:]))
+            elif part.startswith('新增 '):
+                added.extend(_split_logged_phonetics(part[3:]))
+    if not removed and not added:
+        return None
+    return {
+        'id': _stable_change_event_id(batch, entry),
+        'batch_id': batch['id'],
+        'timestamp': batch['timestamp'],
+        'filename': batch['filename'],
+        'batch_count': batch['count'],
+        'kind': entry['kind'],
+        'char': entry['label'],
+        'summary': summary,
+        'removed': removed,
+        'added': added,
+    }
+
+
+def get_reading_change_events():
+    """Return base-reading changes indexed by character, oldest first."""
+    path, _size, batches = _data_change_index()
+    try:
+        stat = os.stat(path)
+        signature = (path, stat.st_size, stat.st_mtime_ns)
+    except OSError:
+        signature = (path, 0, 0)
+    if _READING_CHANGE_CACHE['signature'] == signature:
+        return _READING_CHANGE_CACHE['events']
+    cache_path = os.path.join(get_data_dir(), _READING_CHANGE_EVENTS_FILE)
+    try:
+        with open(cache_path, 'r', encoding='utf-8') as file:
+            persisted = json.load(file)
+        persisted_signature = persisted.get('signature') or {}
+        if (persisted_signature.get('size') == signature[1]
+                and persisted_signature.get('mtime_ns') == signature[2]
+                and isinstance(persisted.get('events'), dict)):
+            _READING_CHANGE_CACHE['signature'] = signature
+            _READING_CHANGE_CACHE['events'] = persisted['events']
+            return persisted['events']
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        pass
+    events = {}
+    if os.path.exists(path):
+        with open(path, 'rb') as file:
+            for batch in batches:
+                if batch.get('filename') != 'base.json.gz':
+                    continue
+                for entry in _iter_data_change_entries(
+                        file, batch['start'], batch['end']):
+                    event = _reading_change_event(batch, entry)
+                    if event:
+                        events.setdefault(event['char'], []).append(event)
+    _READING_CHANGE_CACHE['signature'] = signature
+    _READING_CHANGE_CACHE['events'] = events
+    try:
+        save_json_atomic(cache_path, {
+            'signature': {'size': signature[1], 'mtime_ns': signature[2]},
+            'events': events,
+        }, indent=1)
+    except OSError:
+        pass
+    return events
+
+
+def get_current_data_revision():
+    """Return the newest base-data change timestamp used by new cells."""
+    timestamps = [
+        event['timestamp']
+        for values in get_reading_change_events().values()
+        for event in values
+    ]
+    return max(timestamps, default='0000-00-00 00:00:00')
+
+
+def get_data_change_entries(batch_id, offset=0, limit=80, query=''):
+    """Read one page from a selected batch, optionally filtering its text."""
+    path, _size, items = _data_change_index()
+    batch = next((item for item in items if item['id'] == str(batch_id)), None)
+    if batch is None:
+        raise ValueError('数据变更批次不存在或日志已经更新')
+    offset = max(0, int(offset or 0))
+    limit = max(1, min(200, int(limit or 80)))
+    query = str(query or '').strip().casefold()
+    matched = []
+    total = 0
+    with open(path, 'rb') as file:
+        for entry in _iter_data_change_entries(
+                file, batch['start'], batch['end']):
+            haystack = ' '.join([
+                entry['kind'], entry['label'], entry['summary'],
+                *entry['details']]).casefold()
+            if query and query not in haystack:
+                continue
+            if offset <= total < offset + limit:
+                structured = _structure_data_change_entry(entry)
+                structured['event_id'] = _stable_change_event_id(batch, entry)
+                matched.append(structured)
+            total += 1
+    return {
+        'ok': True,
+        'batch': {key: batch[key] for key in
+                  ('id', 'timestamp', 'filename', 'count')},
+        'query': query,
+        'offset': offset,
+        'total': total,
+        'has_more': offset + len(matched) < total,
+        'items': matched,
+    }
 
 
 def _extract_changed_chars(old_data, new_data):
@@ -200,7 +515,7 @@ def clear_changed_char(ch: str):
 
 
 def download_and_update(on_status=None, on_progress=None):
-    """下载 base.json.gz 和 extra.json.gz 到数据目录，静默失败。
+    """下载数据文件并返回包含逐文件状态与错误的报告。
 
     on_status(msg):         状态文本回调
     on_progress(pct, name): 下载百分比回调 0-100，-1 表示未知大小
@@ -214,6 +529,7 @@ def download_and_update(on_status=None, on_progress=None):
         if on_progress:
             on_progress(pct, name)
 
+    report = {'files': [], 'errors': []}
     for url, filename in [
         (BASE_JSON_GZ_URL, 'base.json.gz'),
         (EXTRA_JSON_GZ_URL, 'extra.json.gz'),
@@ -223,6 +539,10 @@ def download_and_update(on_status=None, on_progress=None):
             _status(f'正在检查 {filename} ...')
             if not _needs_update(url, local_path):
                 _status(f'[跳过] {filename} 已是最新')
+                report['files'].append({
+                    'filename': filename, 'url': url,
+                    'path': local_path, 'status': 'current',
+                })
                 continue
 
             _status(f'正在下载 {filename} ...')
@@ -248,6 +568,9 @@ def download_and_update(on_status=None, on_progress=None):
 
                 data = b''.join(chunks)
 
+            if _load_gz_json(data) is None:
+                raise ValueError('下载内容不是有效的 gzip JSON 数据')
+
             # 对比新旧数据
             if os.path.exists(local_path):
                 old_data = _load_gz_json(local_path)
@@ -272,8 +595,26 @@ def download_and_update(on_status=None, on_progress=None):
                 os.utime(local_path, (remote_ts, remote_ts))
             _status(f'[完成] {filename} ({len(data)} bytes)')
             _progress(100, filename)
+            report['files'].append({
+                'filename': filename, 'url': url, 'path': local_path,
+                'status': 'downloaded', 'size': len(data),
+            })
         except Exception as e:
             _status(f'[跳过] {filename} 下载失败: {e}')
+            error = {
+                'filename': filename,
+                'url': url,
+                'path': local_path,
+                'type': type(e).__name__,
+                'message': str(e) or repr(e),
+            }
+            report['errors'].append(error)
+            report['files'].append({
+                'filename': filename, 'url': url,
+                'path': local_path, 'status': 'failed',
+            })
+    report['ok'] = not report['errors']
+    return report
 
 
 def load_map_from_json_gz() -> Optional[Dict[str, List[Dict[str, Any]]]]:

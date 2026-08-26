@@ -1,0 +1,8167 @@
+{
+ "signature": {
+  "size": 77729928,
+  "mtime_ns": 1787414112102632400
+ },
+ "events": {
+  "㶣": [
+   {
+    "id": "aa7a62bfc6f5bbfa85c9f4e3",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "㶣",
+    "summary": "移除 lˤam; 新增 slam",
+    "removed": [
+     "lˤam"
+    ],
+    "added": [
+     "slam"
+    ]
+   }
+  ],
+  "㽕": [
+   {
+    "id": "506e88f5a60b9a637aae0ed8",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "㽕",
+    "summary": "移除 liw; 新增 lu",
+    "removed": [
+     "liw"
+    ],
+    "added": [
+     "lu"
+    ]
+   }
+  ],
+  "䋣": [
+   {
+    "id": "9f235f310b369ff95bdc4d3a",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "䋣",
+    "summary": "移除 bˤar; 新增 bˤon",
+    "removed": [
+     "bˤar"
+    ],
+    "added": [
+     "bˤon"
+    ]
+   }
+  ],
+  "䍃": [
+   {
+    "id": "bdee0c172e56941aef47a709",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "䍃",
+    "summary": "移除 liw; 新增 lu",
+    "removed": [
+     "liw"
+    ],
+    "added": [
+     "lu"
+    ]
+   }
+  ],
+  "䑏": [
+   {
+    "id": "2386e7c089b93be755c34c0b",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "䑏",
+    "summary": "移除 gwran; 新增 gron",
+    "removed": [
+     "gwran"
+    ],
+    "added": [
+     "gron"
+    ]
+   }
+  ],
+  "䣙": [
+   {
+    "id": "c0fadea6cb59446709021349",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "䣙",
+    "summary": "移除 pʰˤəŋʔ; 新增 pʰˤəʔ",
+    "removed": [
+     "pʰˤəŋʔ"
+    ],
+    "added": [
+     "pʰˤəʔ"
+    ]
+   }
+  ],
+  "冑": [
+   {
+    "id": "c51a31855154ee0005d61b44",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "冑",
+    "summary": "移除 lriwh; 新增 lruh",
+    "removed": [
+     "lriwh"
+    ],
+    "added": [
+     "lruh"
+    ]
+   }
+  ],
+  "冘": [
+   {
+    "id": "16936701f7719a78319f4251",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "冘",
+    "summary": "移除 liw; 新增 lu",
+    "removed": [
+     "liw"
+    ],
+    "added": [
+     "lu"
+    ]
+   }
+  ],
+  "劊": [
+   {
+    "id": "dcb9b1ca431355364885e7c8",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "劊",
+    "summary": "移除 kˤot; 新增 kwˤat",
+    "removed": [
+     "kˤot"
+    ],
+    "added": [
+     "kwˤat"
+    ]
+   }
+  ],
+  "勝": [
+   {
+    "id": "c013c970a269f26ee21384fc",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "勝",
+    "summary": "移除 n̥əŋ",
+    "removed": [
+     "n̥əŋ"
+    ],
+    "added": []
+   }
+  ],
+  "勸": [
+   {
+    "id": "4fb3384a5570d26b83a7a581",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "勸",
+    "summary": "移除 kʰwanh; 新增 kʰonh",
+    "removed": [
+     "kʰwanh"
+    ],
+    "added": [
+     "kʰonh"
+    ]
+   }
+  ],
+  "叔": [
+   {
+    "id": "230bb102cb54a6fd7163e787",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "叔",
+    "summary": "新增 stuk",
+    "removed": [],
+    "added": [
+     "stuk"
+    ]
+   }
+  ],
+  "周": [
+   {
+    "id": "ae1263e9b0a4dd4ae787d23d",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "周",
+    "summary": "新增 tu",
+    "removed": [],
+    "added": [
+     "tu"
+    ]
+   }
+  ],
+  "喧": [
+   {
+    "id": "da9266dfa9c0cf3e0a811948",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "喧",
+    "summary": "移除 ẘan; 新增 hon",
+    "removed": [
+     "ẘan"
+    ],
+    "added": [
+     "hon"
+    ]
+   }
+  ],
+  "嗿": [
+   {
+    "id": "661144530eaa770904ca9453",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "嗿",
+    "summary": "移除 l̥ˤəmʔ; 新增 ŋ̊ˤrumʔ",
+    "removed": [
+     "l̥ˤəmʔ"
+    ],
+    "added": [
+     "ŋ̊ˤrumʔ"
+    ]
+   }
+  ],
+  "嚾": [
+   {
+    "id": "efa339fe38021efe44431f14",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "嚾",
+    "summary": "移除 ẘˤanh; 新增 hˤon",
+    "removed": [
+     "ẘˤanh"
+    ],
+    "added": [
+     "hˤon"
+    ]
+   }
+  ],
+  "地": [
+   {
+    "id": "5994fbaddfed181fcce602c0",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "地",
+    "summary": "移除 lˤaj; 新增 lˤajh",
+    "removed": [
+     "lˤaj"
+    ],
+    "added": [
+     "lˤajh"
+    ]
+   }
+  ],
+  "坻": [
+   {
+    "id": "d75e687b2d1619b404d0eaa0",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "坻",
+    "summary": "新增 dri",
+    "removed": [],
+    "added": [
+     "dri"
+    ]
+   }
+  ],
+  "埱": [
+   {
+    "id": "6f6ca859e289a964278f1ce7",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "埱",
+    "summary": "移除 stiwk; 新增 stuk",
+    "removed": [
+     "stiwk"
+    ],
+    "added": [
+     "stuk"
+    ]
+   }
+  ],
+  "妯": [
+   {
+    "id": "dfa74ab98127a24e871a147b",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "妯",
+    "summary": "移除 lriwk, l̥riw; 新增 lruk, l̥ru",
+    "removed": [
+     "lriwk",
+     "l̥riw"
+    ],
+    "added": [
+     "lruk",
+     "l̥ru"
+    ]
+   }
+  ],
+  "履": [
+   {
+    "id": "96ad770bb8b924a62eb4f0cd",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "履",
+    "summary": "移除 C.riʔ; 新增 riʔ",
+    "removed": [
+     "C.riʔ"
+    ],
+    "added": [
+     "riʔ"
+    ]
+   }
+  ],
+  "弲": [
+   {
+    "id": "7abff746fe70b41b8139df86",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "新增",
+    "char": "弲",
+    "summary": "ẘen",
+    "removed": [],
+    "added": [
+     "ẘen"
+    ]
+   }
+  ],
+  "律": [
+   {
+    "id": "aa51e2edaa3811f4e7a1b1c2",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "律",
+    "summary": "移除 rut; 新增 C.rut",
+    "removed": [
+     "rut"
+    ],
+    "added": [
+     "C.rut"
+    ]
+   }
+  ],
+  "徭": [
+   {
+    "id": "bede6bb738a54629bffc0bc2",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "徭",
+    "summary": "移除 lew; 新增 law",
+    "removed": [
+     "lew"
+    ],
+    "added": [
+     "law"
+    ]
+   }
+  ],
+  "怞": [
+   {
+    "id": "732a4eb45568e71dddcf48a2",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "怞",
+    "summary": "移除 lriw; 新增 lru",
+    "removed": [
+     "lriw"
+    ],
+    "added": [
+     "lru"
+    ]
+   }
+  ],
+  "恇": [
+   {
+    "id": "5a26a2fb098ac33d1fced500",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "删除",
+    "char": "恇",
+    "summary": "kʰwaŋ",
+    "removed": [
+     "kʰwaŋ"
+    ],
+    "added": []
+   }
+  ],
+  "惔": [
+   {
+    "id": "40b95c4df1f809937c70fb91",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "惔",
+    "summary": "新增 dˤamh",
+    "removed": [],
+    "added": [
+     "dˤamh"
+    ]
+   }
+  ],
+  "愖": [
+   {
+    "id": "22dfcd47386a225d522d7da7",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "愖",
+    "summary": "移除 tˤum; 新增 tˤəm",
+    "removed": [
+     "tˤum"
+    ],
+    "added": [
+     "tˤəm"
+    ]
+   }
+  ],
+  "懽": [
+   {
+    "id": "f34b1aaf22d847527bfe1b4f",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "懽",
+    "summary": "移除 kwˤanh, ẘˤar; 新增 hˤon, kˤonh",
+    "removed": [
+     "kwˤanh",
+     "ẘˤar"
+    ],
+    "added": [
+     "hˤon",
+     "kˤonh"
+    ]
+   }
+  ],
+  "捩": [
+   {
+    "id": "dc57a57ef7ea9f322b087a8b",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "新增",
+    "char": "捩",
+    "summary": "rˤəs",
+    "removed": [],
+    "added": [
+     "rˤəs"
+    ]
+   }
+  ],
+  "探": [
+   {
+    "id": "88042c6a6bf876de90ae67ec",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "探",
+    "summary": "移除 l̥ˤəm; 新增 l̥ˤum",
+    "removed": [
+     "l̥ˤəm"
+    ],
+    "added": [
+     "l̥ˤum"
+    ]
+   }
+  ],
+  "搰": [
+   {
+    "id": "828af0618fc07c5bdfe2fb49",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "搰",
+    "summary": "移除 kʰwˤət; 新增 kʰˤut",
+    "removed": [
+     "kʰwˤət"
+    ],
+    "added": [
+     "kʰˤut"
+    ]
+   },
+   {
+    "id": "67ec0ad7e0520cc8f97aeb03",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "搰",
+    "summary": "移除 wˤət; 新增 gˤut",
+    "removed": [
+     "wˤət"
+    ],
+    "added": [
+     "gˤut"
+    ]
+   }
+  ],
+  "攔": [
+   {
+    "id": "08ca781d3206ad0f849c239f",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "新增",
+    "char": "攔",
+    "summary": "C.rˤan",
+    "removed": [],
+    "added": [
+     "C.rˤan"
+    ]
+   }
+  ],
+  "攸": [
+   {
+    "id": "0bd7f2f86c09297440f98b91",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "攸",
+    "summary": "移除 liw; 新增 ju",
+    "removed": [
+     "liw"
+    ],
+    "added": [
+     "ju"
+    ]
+   },
+   {
+    "id": "97962697f737a36cca4615a9",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "攸",
+    "summary": "新增 liw",
+    "removed": [],
+    "added": [
+     "liw"
+    ]
+   }
+  ],
+  "敬": [
+   {
+    "id": "f0a87d5268cb4c808bb79c5b",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "敬",
+    "summary": "新增 kreŋ",
+    "removed": [],
+    "added": [
+     "kreŋ"
+    ]
+   }
+  ],
+  "斿": [
+   {
+    "id": "64e544e81e8b3edbd52a2686",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "斿",
+    "summary": "移除 ju; 新增 lu",
+    "removed": [
+     "ju"
+    ],
+    "added": [
+     "lu"
+    ]
+   }
+  ],
+  "杝": [
+   {
+    "id": "b53bca82a646fa0e2749c69f",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "杝",
+    "summary": "新增 lrajʔ",
+    "removed": [],
+    "added": [
+     "lrajʔ"
+    ]
+   }
+  ],
+  "柚": [
+   {
+    "id": "1015792f9666c2fe2d435e71",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "柚",
+    "summary": "移除 liwh, lriwk; 新增 lruk, luh",
+    "removed": [
+     "liwh",
+     "lriwk"
+    ],
+    "added": [
+     "lruk",
+     "luh"
+    ]
+   }
+  ],
+  "橚": [
+   {
+    "id": "847985e2524b1683ddf8c3fc",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "橚",
+    "summary": "移除 sˤiw; 新增 tsʰiw",
+    "removed": [
+     "sˤiw"
+    ],
+    "added": [
+     "tsʰiw"
+    ]
+   }
+  ],
+  "櫾": [
+   {
+    "id": "7e860b7146bba03de0f95ab9",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "櫾",
+    "summary": "移除 liw; 新增 lu",
+    "removed": [
+     "liw"
+    ],
+    "added": [
+     "lu"
+    ]
+   }
+  ],
+  "權": [
+   {
+    "id": "dcdd12f71c6f6fdc576d7bc5",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "權",
+    "summary": "移除 gwran; 新增 gron",
+    "removed": [
+     "gwran"
+    ],
+    "added": [
+     "gron"
+    ]
+   }
+  ],
+  "歡": [
+   {
+    "id": "1751f5c5cd7b33bb4821f2d1",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "歡",
+    "summary": "移除 ẘˤar; 新增 hˤon",
+    "removed": [
+     "ẘˤar"
+    ],
+    "added": [
+     "hˤon"
+    ]
+   }
+  ],
+  "殍": [
+   {
+    "id": "585d3a336532e4dc5099f580",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "殍",
+    "summary": "移除 brewʔ; 新增 bewʔ",
+    "removed": [
+     "brewʔ"
+    ],
+    "added": [
+     "bewʔ"
+    ]
+   }
+  ],
+  "渙": [
+   {
+    "id": "9cf8200263e19113a7dd52a9",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "渙",
+    "summary": "新增 ẘˤanh",
+    "removed": [],
+    "added": [
+     "ẘˤanh"
+    ]
+   }
+  ],
+  "湛": [
+   {
+    "id": "5a1f8de51de169308865dfcb",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "湛",
+    "summary": "移除 dˤrum, tˤum; 新增 drum, dˤrumʔ, dˤrəmʔ",
+    "removed": [
+     "dˤrum",
+     "tˤum"
+    ],
+    "added": [
+     "drum",
+     "dˤrumʔ",
+     "dˤrəmʔ"
+    ]
+   }
+  ],
+  "滺": [
+   {
+    "id": "2c34a1411a9143217e83489c",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "滺",
+    "summary": "移除 liw; 新增 lu",
+    "removed": [
+     "liw"
+    ],
+    "added": [
+     "lu"
+    ]
+   }
+  ],
+  "漙": [
+   {
+    "id": "99aa2afb8c36d0eea5b1d397",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "漙",
+    "summary": "移除 dˤon; 新增 donʔ",
+    "removed": [
+     "dˤon"
+    ],
+    "added": [
+     "donʔ"
+    ]
+   }
+  ],
+  "濟": [
+   {
+    "id": "72eaf91f397c6fb226f3bebc",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "濟",
+    "summary": "移除 tsˤəj; 新增 tsˤəjh",
+    "removed": [
+     "tsˤəj"
+    ],
+    "added": [
+     "tsˤəjh"
+    ]
+   }
+  ],
+  "濡": [
+   {
+    "id": "eeea5c604baeb28a001a3678",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "濡",
+    "summary": "移除 nˤon",
+    "removed": [
+     "nˤon"
+    ],
+    "added": []
+   },
+   {
+    "id": "f5a4a2faf0377f2b0458f4d1",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "濡",
+    "summary": "新增 nə",
+    "removed": [],
+    "added": [
+     "nə"
+    ]
+   }
+  ],
+  "灌": [
+   {
+    "id": "66cb022bf096f057e011b8c5",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "灌",
+    "summary": "移除 kwˤanh",
+    "removed": [
+     "kwˤanh"
+    ],
+    "added": []
+   }
+  ],
+  "狖": [
+   {
+    "id": "c687e772563060e98fa00f94",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "狖",
+    "summary": "移除 liwh; 新增 luh",
+    "removed": [
+     "liwh"
+    ],
+    "added": [
+     "luh"
+    ]
+   }
+  ],
+  "猵": [
+   {
+    "id": "43ba7765edcc0c16fe372c92",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "猵",
+    "summary": "移除 pʰˤen; 新增 pʰen",
+    "removed": [
+     "pʰˤen"
+    ],
+    "added": [
+     "pʰen"
+    ]
+   }
+  ],
+  "獾": [
+   {
+    "id": "04cad2e8b8704435a080b2b6",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "獾",
+    "summary": "移除 ẘˤan; 新增 hˤon",
+    "removed": [
+     "ẘˤan"
+    ],
+    "added": [
+     "hˤon"
+    ]
+   }
+  ],
+  "瑱": [
+   {
+    "id": "6763b09d639698cc0166e751",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "瑱",
+    "summary": "移除 tʰˤiŋ; 新增 tʰˤiŋh",
+    "removed": [
+     "tʰˤiŋ"
+    ],
+    "added": [
+     "tʰˤiŋh"
+    ]
+   }
+  ],
+  "瓘": [
+   {
+    "id": "57d155cae7f1c554d583e880",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "瓘",
+    "summary": "移除 kwˤanh; 新增 kˤonh",
+    "removed": [
+     "kwˤanh"
+    ],
+    "added": [
+     "kˤonh"
+    ]
+   }
+  ],
+  "由": [
+   {
+    "id": "f6e4c339923b24d5b79378af",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "由",
+    "summary": "移除 liw",
+    "removed": [
+     "liw"
+    ],
+    "added": []
+   }
+  ],
+  "病": [
+   {
+    "id": "ddad7800c7b1cafe235d29cf",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "病",
+    "summary": "新增 braŋ",
+    "removed": [],
+    "added": [
+     "braŋ"
+    ]
+   }
+  ],
+  "痍": [
+   {
+    "id": "11817c930067699757d99799",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "痍",
+    "summary": "移除 li; 新增 ləj",
+    "removed": [
+     "li"
+    ],
+    "added": [
+     "ləj"
+    ]
+   }
+  ],
+  "穭": [
+   {
+    "id": "d7948ebd89cfa053bc7f451d",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "删除",
+    "char": "穭",
+    "summary": "raʔ",
+    "removed": [
+     "raʔ"
+    ],
+    "added": []
+   }
+  ],
+  "籀": [
+   {
+    "id": "c8651a6068a480de6a5fdf80",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "籀",
+    "summary": "移除 lriwh; 新增 lruh",
+    "removed": [
+     "lriwh"
+    ],
+    "added": [
+     "lruh"
+    ]
+   }
+  ],
+  "絺": [
+   {
+    "id": "2b6a598f1135fa735a06d96d",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "絺",
+    "summary": "移除 tʰri; 新增 tʰrəj",
+    "removed": [
+     "tʰri"
+    ],
+    "added": [
+     "tʰrəj"
+    ]
+   },
+   {
+    "id": "5cab302724c0c467553d8519",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "絺",
+    "summary": "移除 tʰrəj; 新增 tʰri",
+    "removed": [
+     "tʰrəj"
+    ],
+    "added": [
+     "tʰri"
+    ]
+   }
+  ],
+  "繁": [
+   {
+    "id": "0dc3b445a41a81c00446b898",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "繁",
+    "summary": "移除 bˤar; 新增 bˤon",
+    "removed": [
+     "bˤar"
+    ],
+    "added": [
+     "bˤon"
+    ]
+   }
+  ],
+  "繇": [
+   {
+    "id": "59f245c23ed5d64da8de551a",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "繇",
+    "summary": "移除 liw, lriwh; 新增 lruh, lu",
+    "removed": [
+     "liw",
+     "lriwh"
+    ],
+    "added": [
+     "lruh",
+     "lu"
+    ]
+   }
+  ],
+  "罐": [
+   {
+    "id": "e105771f16c8445e6450b686",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "罐",
+    "summary": "移除 kwˤanh; 新增 kˤonh",
+    "removed": [
+     "kwˤanh"
+    ],
+    "added": [
+     "kˤonh"
+    ]
+   }
+  ],
+  "翟": [
+   {
+    "id": "06fc13d90f4141aab3792730",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "翟",
+    "summary": "新增 lˤek",
+    "removed": [],
+    "added": [
+     "lˤek"
+    ]
+   }
+  ],
+  "翠": [
+   {
+    "id": "a3ddbfb2f95261c4242fc0f1",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "翠",
+    "summary": "新增 tsʰus",
+    "removed": [],
+    "added": [
+     "tsʰus"
+    ]
+   }
+  ],
+  "耽": [
+   {
+    "id": "587b7e928ad64abc85335d16",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "耽",
+    "summary": "移除 tˤum; 新增 tˤəm",
+    "removed": [
+     "tˤum"
+    ],
+    "added": [
+     "tˤəm"
+    ]
+   },
+   {
+    "id": "b8c7dbcf4712f0f5bb8d3f40",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "耽",
+    "summary": "新增 tˤum",
+    "removed": [],
+    "added": [
+     "tˤum"
+    ]
+   }
+  ],
+  "胄": [
+   {
+    "id": "c4061ab31d6cb264b87b42f9",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "胄",
+    "summary": "移除 lriwh; 新增 lruh",
+    "removed": [
+     "lriwh"
+    ],
+    "added": [
+     "lruh"
+    ]
+   }
+  ],
+  "脪": [
+   {
+    "id": "5bf9eb08c8010665c8412e68",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "脪",
+    "summary": "移除 tʰri; 新增 tʰrəj",
+    "removed": [
+     "tʰri"
+    ],
+    "added": [
+     "tʰrəj"
+    ]
+   },
+   {
+    "id": "9e959105102ba0b69815c9b8",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "脪",
+    "summary": "移除 tʰrəj; 新增 tʰri",
+    "removed": [
+     "tʰrəj"
+    ],
+    "added": [
+     "tʰri"
+    ]
+   }
+  ],
+  "膴": [
+   {
+    "id": "a644403829a3abb64ad30c92",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "膴",
+    "summary": "移除 m̥ˤa; 新增 m̥aʔ",
+    "removed": [
+     "m̥ˤa"
+    ],
+    "added": [
+     "m̥aʔ"
+    ]
+   }
+  ],
+  "舳": [
+   {
+    "id": "48a82c5055c6d3c5350e668d",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "舳",
+    "summary": "移除 lriwk; 新增 lruk",
+    "removed": [
+     "lriwk"
+    ],
+    "added": [
+     "lruk"
+    ]
+   }
+  ],
+  "莞": [
+   {
+    "id": "5df4d4f69156ec0134e88bdf",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "莞",
+    "summary": "新增 gˤon",
+    "removed": [],
+    "added": [
+     "gˤon"
+    ]
+   }
+  ],
+  "菽": [
+   {
+    "id": "753ee0fc43f261f385e381d3",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "菽",
+    "summary": "移除 stiwk; 新增 stuk",
+    "removed": [
+     "stiwk"
+    ],
+    "added": [
+     "stuk"
+    ]
+   }
+  ],
+  "萑": [
+   {
+    "id": "dcf09f7263c3ac38e044a8a8",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "萑",
+    "summary": "移除 gwˤan; 新增 gˤon",
+    "removed": [
+     "gwˤan"
+    ],
+    "added": [
+     "gˤon"
+    ]
+   }
+  ],
+  "蓇": [
+   {
+    "id": "89182f079806cd934cde2a35",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "蓇",
+    "summary": "移除 kwˤət; 新增 kˤut",
+    "removed": [
+     "kwˤət"
+    ],
+    "added": [
+     "kˤut"
+    ]
+   }
+  ],
+  "虇": [
+   {
+    "id": "ddd24ce55145901a2734590f",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "虇",
+    "summary": "移除 kʰwanʔ; 新增 kʰonʔ",
+    "removed": [
+     "kʰwanʔ"
+    ],
+    "added": [
+     "kʰonʔ"
+    ]
+   }
+  ],
+  "蠸": [
+   {
+    "id": "d5aa61562a1c01d418aef370",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "蠸",
+    "summary": "移除 gwran; 新增 gron",
+    "removed": [
+     "gwran"
+    ],
+    "added": [
+     "gron"
+    ]
+   }
+  ],
+  "觀": [
+   {
+    "id": "633ce3bce08558273afd0243",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "觀",
+    "summary": "移除 kwˤan, kwˤanh; 新增 kˤon, kˤonh",
+    "removed": [
+     "kwˤan",
+     "kwˤanh"
+    ],
+    "added": [
+     "kˤon",
+     "kˤonh"
+    ]
+   }
+  ],
+  "觟": [
+   {
+    "id": "7a05fef48a1179357b028471",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "觟",
+    "summary": "移除 ŋˤreh",
+    "removed": [
+     "ŋˤreh"
+    ],
+    "added": []
+   }
+  ],
+  "諠": [
+   {
+    "id": "599a9cff6ee35a4d95c58d32",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "諠",
+    "summary": "移除 ẘan; 新增 hon",
+    "removed": [
+     "ẘan"
+    ],
+    "added": [
+     "hon"
+    ]
+   }
+  ],
+  "讙": [
+   {
+    "id": "364c05041b05a39943c0452b",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "讙",
+    "summary": "移除 ẘan, ẘˤan; 新增 hon, hˤon",
+    "removed": [
+     "ẘan",
+     "ẘˤan"
+    ],
+    "added": [
+     "hon",
+     "hˤon"
+    ]
+   }
+  ],
+  "讜": [
+   {
+    "id": "def9ae0f44f536ad3def3643",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "新增",
+    "char": "讜",
+    "summary": "tˤaŋʔ",
+    "removed": [],
+    "added": [
+     "tˤaŋʔ"
+    ]
+   }
+  ],
+  "貁": [
+   {
+    "id": "0786a3f2e54639c0df8e198d",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "貁",
+    "summary": "移除 liwh; 新增 luh",
+    "removed": [
+     "liwh"
+    ],
+    "added": [
+     "luh"
+    ]
+   }
+  ],
+  "貛": [
+   {
+    "id": "bb52c73dd897210a29f7c42f",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "貛",
+    "summary": "移除 ẘˤan; 新增 hˤon",
+    "removed": [
+     "ẘˤan"
+    ],
+    "added": [
+     "hˤon"
+    ]
+   }
+  ],
+  "赳": [
+   {
+    "id": "c8551cf102cfc4044e756cdb",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "赳",
+    "summary": "移除 kiw; 新增 kiwʔ",
+    "removed": [
+     "kiw"
+    ],
+    "added": [
+     "kiwʔ"
+    ]
+   }
+  ],
+  "軓": [
+   {
+    "id": "4edea1577aa16da06aee5be3",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "軓",
+    "summary": "新增 bamʔ",
+    "removed": [],
+    "added": [
+     "bamʔ"
+    ]
+   }
+  ],
+  "逐": [
+   {
+    "id": "5cabcdae99af2a61812e5143",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "逐",
+    "summary": "移除 lriwh, lriwk; 新增 lruh, lruk",
+    "removed": [
+     "lriwh",
+     "lriwk"
+    ],
+    "added": [
+     "lruh",
+     "lruk"
+    ]
+   }
+  ],
+  "郗": [
+   {
+    "id": "7776ee6cd53ae7ba0f41defa",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "郗",
+    "summary": "移除 tʰri; 新增 tʰrəj",
+    "removed": [
+     "tʰri"
+    ],
+    "added": [
+     "tʰrəj"
+    ]
+   },
+   {
+    "id": "386ba9e6e376ea8bb5f14627",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "郗",
+    "summary": "移除 tʰrəj; 新增 tʰri",
+    "removed": [
+     "tʰrəj"
+    ],
+    "added": [
+     "tʰri"
+    ]
+   }
+  ],
+  "酄": [
+   {
+    "id": "96f7ab7af2268fc08e1a1576",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "酄",
+    "summary": "移除 ẘˤan; 新增 hˤon",
+    "removed": [
+     "ẘˤan"
+    ],
+    "added": [
+     "hˤon"
+    ]
+   }
+  ],
+  "釗": [
+   {
+    "id": "99b98681804143d3948a1f97",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "釗",
+    "summary": "新增 kˤiw",
+    "removed": [],
+    "added": [
+     "kˤiw"
+    ]
+   }
+  ],
+  "鉆": [
+   {
+    "id": "8aab69466337a075da91cd08",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "鉆",
+    "summary": "移除 tʰˤep; 新增 trim",
+    "removed": [
+     "tʰˤep"
+    ],
+    "added": [
+     "trim"
+    ]
+   }
+  ],
+  "阺": [
+   {
+    "id": "a46a0550885e7b96de9a2b93",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "阺",
+    "summary": "移除 drəj; 新增 dri",
+    "removed": [
+     "drəj"
+    ],
+    "added": [
+     "dri"
+    ]
+   }
+  ],
+  "階": [
+   {
+    "id": "a830bc1d89bc9a4f936f3ff4",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "階",
+    "summary": "移除 kˤri; 新增 kˤrəj",
+    "removed": [
+     "kˤri"
+    ],
+    "added": [
+     "kˤrəj"
+    ]
+   }
+  ],
+  "雈": [
+   {
+    "id": "b382477e6c24d7ccf513462a",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "雈",
+    "summary": "移除 gwˤan; 新增 gˤon",
+    "removed": [
+     "gwˤan"
+    ],
+    "added": [
+     "gˤon"
+    ]
+   }
+  ],
+  "雚": [
+   {
+    "id": "c4d071bed195fdfa4d0b6daa",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "雚",
+    "summary": "移除 gwˤan; 新增 gˤon",
+    "removed": [
+     "gwˤan"
+    ],
+    "added": [
+     "gˤon"
+    ]
+   }
+  ],
+  "顴": [
+   {
+    "id": "6ac36ebfc4b2592f6767a75d",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "顴",
+    "summary": "移除 gwran; 新增 gron",
+    "removed": [
+     "gwran"
+    ],
+    "added": [
+     "gron"
+    ]
+   }
+  ],
+  "館": [
+   {
+    "id": "cc29779a2845de8c25462f09",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "館",
+    "summary": "移除 kˤonh; 新增 kwˤanh",
+    "removed": [
+     "kˤonh"
+    ],
+    "added": [
+     "kwˤanh"
+    ]
+   }
+  ],
+  "馨": [
+   {
+    "id": "c5b6763890fca5d1b9329e4a",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "馨",
+    "summary": "移除 hˤeŋ; 新增 l̥ˤeŋ",
+    "removed": [
+     "hˤeŋ"
+    ],
+    "added": [
+     "l̥ˤeŋ"
+    ]
+   }
+  ],
+  "驩": [
+   {
+    "id": "8f84022656a3f645ee88503f",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "驩",
+    "summary": "移除 ẘˤan; 新增 hˤon",
+    "removed": [
+     "ẘˤan"
+    ],
+    "added": [
+     "hˤon"
+    ]
+   }
+  ],
+  "骨": [
+   {
+    "id": "df1820683e78b016e7cf1cc4",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "骨",
+    "summary": "移除 kwˤət; 新增 kˤut",
+    "removed": [
+     "kwˤət"
+    ],
+    "added": [
+     "kˤut"
+    ]
+   }
+  ],
+  "髢": [
+   {
+    "id": "a85811d6583ef306cdeaeeb1",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "髢",
+    "summary": "移除 lˤeh; 新增 lˤajh",
+    "removed": [
+     "lˤeh"
+    ],
+    "added": [
+     "lˤajh"
+    ]
+   }
+  ],
+  "鮈": [
+   {
+    "id": "04fa92345df1fa7cd30d1f56",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "新增",
+    "char": "鮈",
+    "summary": "go",
+    "removed": [],
+    "added": [
+     "go"
+    ]
+   }
+  ],
+  "鮛": [
+   {
+    "id": "b33281ad941cf010db1c7657",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "鮛",
+    "summary": "移除 stiwk; 新增 stuk",
+    "removed": [
+     "stiwk"
+    ],
+    "added": [
+     "stuk"
+    ]
+   }
+  ],
+  "鱁": [
+   {
+    "id": "de93013f04f780450c60e421",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "鱁",
+    "summary": "移除 lriwk; 新增 lruk",
+    "removed": [
+     "lriwk"
+    ],
+    "added": [
+     "lruk"
+    ]
+   }
+  ],
+  "鴅": [
+   {
+    "id": "d34a9a0ffa6e3ae23a5f4eae",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "鴅",
+    "summary": "移除 ẘˤan; 新增 hˤon",
+    "removed": [
+     "ẘˤan"
+    ],
+    "added": [
+     "hˤon"
+    ]
+   }
+  ],
+  "鴟": [
+   {
+    "id": "442af5bd4ef00395a198a67e",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "鴟",
+    "summary": "移除 tʰi; 新增 tʰəj",
+    "removed": [
+     "tʰi"
+    ],
+    "added": [
+     "tʰəj"
+    ]
+   }
+  ],
+  "鶻": [
+   {
+    "id": "0600482f86df31cf643919bc",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "鶻",
+    "summary": "移除 kwˤət; 新增 kˤut",
+    "removed": [
+     "kwˤət"
+    ],
+    "added": [
+     "kˤut"
+    ]
+   }
+  ],
+  "鸛": [
+   {
+    "id": "73dafea997a660a9967aead1",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "鸛",
+    "summary": "移除 kwˤanh; 新增 kˤonh",
+    "removed": [
+     "kwˤanh"
+    ],
+    "added": [
+     "kˤonh"
+    ]
+   }
+  ],
+  "黧": [
+   {
+    "id": "e576af944fa9cffb8c784d96",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "黧",
+    "summary": "移除 rˤəj; 新增 rˤi",
+    "removed": [
+     "rˤəj"
+    ],
+    "added": [
+     "rˤi"
+    ]
+   }
+  ],
+  "鼬": [
+   {
+    "id": "a5836483211a5ca2d6855797",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "鼬",
+    "summary": "移除 liwh; 新增 luh",
+    "removed": [
+     "liwh"
+    ],
+    "added": [
+     "luh"
+    ]
+   }
+  ],
+  "𠂄": [
+   {
+    "id": "b63be94cc6476867c28201fc",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "𠂄",
+    "summary": "移除 ẘˤan; 新增 hˤon",
+    "removed": [
+     "ẘˤan"
+    ],
+    "added": [
+     "hˤon"
+    ]
+   }
+  ],
+  "𣧶": [
+   {
+    "id": "ff3b2d02f436c334013dd816",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "𣧶",
+    "summary": "移除 brewʔ; 新增 bewʔ",
+    "removed": [
+     "brewʔ"
+    ],
+    "added": [
+     "bewʔ"
+    ]
+   }
+  ],
+  "𥈾": [
+   {
+    "id": "f207a12ed8b4005a676941de",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "新增",
+    "char": "𥈾",
+    "summary": "ẘit",
+    "removed": [],
+    "added": [
+     "ẘit"
+    ]
+   }
+  ],
+  "𦆀": [
+   {
+    "id": "f01e63c2ab5d760984bbb6be",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "新增",
+    "char": "𦆀",
+    "summary": "slanʔ",
+    "removed": [],
+    "added": [
+     "slanʔ"
+    ]
+   }
+  ],
+  "𩿊": [
+   {
+    "id": "8e1b268058b30a612bfea8bb",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "𩿊",
+    "summary": "移除 ẘˤan; 新增 hˤon",
+    "removed": [
+     "ẘˤan"
+    ],
+    "added": [
+     "hˤon"
+    ]
+   }
+  ],
+  "𩿨": [
+   {
+    "id": "f0695fa7b7371d3c375774c5",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "修改",
+    "char": "𩿨",
+    "summary": "移除 tʰi; 新增 tʰəj",
+    "removed": [
+     "tʰi"
+    ],
+    "added": [
+     "tʰəj"
+    ]
+   }
+  ],
+  "𪗉": [
+   {
+    "id": "f09af027bfdc8b9ec6de6d0c",
+    "batch_id": "2",
+    "timestamp": "2026-04-21 22:08:59",
+    "filename": "base.json.gz",
+    "batch_count": 117,
+    "kind": "删除",
+    "char": "𪗉",
+    "summary": "tsəj",
+    "removed": [
+     "tsəj"
+    ],
+    "added": []
+   }
+  ],
+  "㽥": [
+   {
+    "id": "c5a57031baed224c48f2ba0f",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "新增",
+    "char": "㽥",
+    "summary": "nu",
+    "removed": [],
+    "added": [
+     "nu"
+    ]
+   }
+  ],
+  "䱻": [
+   {
+    "id": "ddac47cba9db3d48b1df136b",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "䱻",
+    "summary": "移除 gwˤrət; 新增 gˤrut",
+    "removed": [
+     "gwˤrət"
+    ],
+    "added": [
+     "gˤrut"
+    ]
+   }
+  ],
+  "䲖": [
+   {
+    "id": "4564cc30e744d22e13fd4ab2",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "新增",
+    "char": "䲖",
+    "summary": "dru",
+    "removed": [],
+    "added": [
+     "dru"
+    ]
+   }
+  ],
+  "伋": [
+   {
+    "id": "1ff17fb4ac2edc3d326e4765",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "伋",
+    "summary": "移除 kəp; 新增 krəp",
+    "removed": [
+     "kəp"
+    ],
+    "added": [
+     "krəp"
+    ]
+   }
+  ],
+  "兩": [
+   {
+    "id": "1234b44f90c659e6b35ffacd",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "兩",
+    "summary": "移除 raŋʔ; 新增 C.raŋʔ",
+    "removed": [
+     "raŋʔ"
+    ],
+    "added": [
+     "C.raŋʔ"
+    ]
+   }
+  ],
+  "勼": [
+   {
+    "id": "05df7b72edaa30fd54a8bf2a",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "新增",
+    "char": "勼",
+    "summary": "ku",
+    "removed": [],
+    "added": [
+     "ku"
+    ]
+   }
+  ],
+  "厓": [
+   {
+    "id": "d3a6d183e05e0c61847e51b0",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "厓",
+    "summary": "移除 ŋˤre; 新增 ŋre",
+    "removed": [
+     "ŋˤre"
+    ],
+    "added": [
+     "ŋre"
+    ]
+   }
+  ],
+  "反": [
+   {
+    "id": "a14d522b36373cd7630b5af7",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "反",
+    "summary": "新增 banh",
+    "removed": [],
+    "added": [
+     "banh"
+    ]
+   }
+  ],
+  "口": [
+   {
+    "id": "d1ef4f2adc40c7a5cd736610",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "口",
+    "summary": "移除 kʰˤroʔ; 新增 kʰˤoʔ",
+    "removed": [
+     "kʰˤroʔ"
+    ],
+    "added": [
+     "kʰˤoʔ"
+    ]
+   }
+  ],
+  "呫": [
+   {
+    "id": "d7612320daba5486a8c666ec",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "新增",
+    "char": "呫",
+    "summary": "tʰˤep",
+    "removed": [],
+    "added": [
+     "tʰˤep"
+    ]
+   }
+  ],
+  "壘": [
+   {
+    "id": "b68ae5b41317417419ce3f94",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "壘",
+    "summary": "新增 ruj",
+    "removed": [],
+    "added": [
+     "ruj"
+    ]
+   }
+  ],
+  "壼": [
+   {
+    "id": "a56c3d2820cb16ab8f4c6de6",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "壼",
+    "summary": "移除 kʰˤunʔ; 新增 kʰwˤənʔ",
+    "removed": [
+     "kʰˤunʔ"
+    ],
+    "added": [
+     "kʰwˤənʔ"
+    ]
+   }
+  ],
+  "婭": [
+   {
+    "id": "6db491e8e87846e152125d51",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "新增",
+    "char": "婭",
+    "summary": "ʔˤrah",
+    "removed": [],
+    "added": [
+     "ʔˤrah"
+    ]
+   }
+  ],
+  "崖": [
+   {
+    "id": "9e7ea2fd116bfee8ebc8c400",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "崖",
+    "summary": "移除 ŋˤre; 新增 ŋre",
+    "removed": [
+     "ŋˤre"
+    ],
+    "added": [
+     "ŋre"
+    ]
+   }
+  ],
+  "巘": [
+   {
+    "id": "11223d45607159087af750d5",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "巘",
+    "summary": "移除 ŋar; 新增 ŋarʔ",
+    "removed": [
+     "ŋar"
+    ],
+    "added": [
+     "ŋarʔ"
+    ]
+   }
+  ],
+  "建": [
+   {
+    "id": "9e443f2d6a9a500cbcebc000",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "建",
+    "summary": "移除 kar; 新增 karh",
+    "removed": [
+     "kar"
+    ],
+    "added": [
+     "karh"
+    ]
+   }
+  ],
+  "廼": [
+   {
+    "id": "24edc7647c4214cd43f20964",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "新增",
+    "char": "廼",
+    "summary": "nˤəʔ",
+    "removed": [],
+    "added": [
+     "nˤəʔ"
+    ]
+   }
+  ],
+  "急": [
+   {
+    "id": "813d4b05dae80cea2a45bc4d",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "急",
+    "summary": "移除 kəp; 新增 krəp",
+    "removed": [
+     "kəp"
+    ],
+    "added": [
+     "krəp"
+    ]
+   }
+  ],
+  "悊": [
+   {
+    "id": "1c5d917d0f46fb87b9c3e7b2",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "新增",
+    "char": "悊",
+    "summary": "tret",
+    "removed": [],
+    "added": [
+     "tret"
+    ]
+   }
+  ],
+  "愴": [
+   {
+    "id": "1fa5cd70cadb75ef95cb64c2",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "愴",
+    "summary": "新增 tsʰraŋh",
+    "removed": [],
+    "added": [
+     "tsʰraŋh"
+    ]
+   }
+  ],
+  "慢": [
+   {
+    "id": "0dc8a03fd01822424fc54202",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "慢",
+    "summary": "移除 mˤranʔ",
+    "removed": [
+     "mˤranʔ"
+    ],
+    "added": []
+   }
+  ],
+  "戚": [
+   {
+    "id": "13dda539492cf0ab1424b2a4",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "戚",
+    "summary": "移除 tsuk; 新增 tsiwk",
+    "removed": [
+     "tsuk"
+    ],
+    "added": [
+     "tsiwk"
+    ]
+   }
+  ],
+  "抇": [
+   {
+    "id": "cc3795b224a05c80e22a3b64",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "抇",
+    "summary": "移除 kwˤət, wˤət; 新增 gˤut, kˤut",
+    "removed": [
+     "kwˤət",
+     "wˤət"
+    ],
+    "added": [
+     "gˤut",
+     "kˤut"
+    ]
+   }
+  ],
+  "旰": [
+   {
+    "id": "372428915fcb5f96e079d7a4",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "旰",
+    "summary": "移除 gˤanh; 新增 kˤanh",
+    "removed": [
+     "gˤanh"
+    ],
+    "added": [
+     "kˤanh"
+    ]
+   }
+  ],
+  "暈": [
+   {
+    "id": "111b0aab947ed39632a85f0b",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "暈",
+    "summary": "移除 wənh; 新增 kunh",
+    "removed": [
+     "wənh"
+    ],
+    "added": [
+     "kunh"
+    ]
+   }
+  ],
+  "曡": [
+   {
+    "id": "24932b0052fd9c9263d2d121",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "曡",
+    "summary": "移除 lˤəp; 新增 lˤip",
+    "removed": [
+     "lˤəp"
+    ],
+    "added": [
+     "lˤip"
+    ]
+   }
+  ],
+  "梌": [
+   {
+    "id": "63a61c304957f3d262f765db",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "删除",
+    "char": "梌",
+    "summary": "lˤra",
+    "removed": [
+     "lˤra"
+    ],
+    "added": []
+   }
+  ],
+  "櫟": [
+   {
+    "id": "4a72de3ed0cbc4336a0e48dd",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "櫟",
+    "summary": "新增 rˤek",
+    "removed": [],
+    "added": [
+     "rˤek"
+    ]
+   }
+  ],
+  "歆": [
+   {
+    "id": "4eea84bedf9fb975c7bc6cdd",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "歆",
+    "summary": "移除 ŋ̊um",
+    "removed": [
+     "ŋ̊um"
+    ],
+    "added": []
+   }
+  ],
+  "毉": [
+   {
+    "id": "fe574a78515b4d8daf4138c3",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "新增",
+    "char": "毉",
+    "summary": "ʔə",
+    "removed": [],
+    "added": [
+     "ʔə"
+    ]
+   }
+  ],
+  "汕": [
+   {
+    "id": "ca42c3a28c8399c0c3e2c3ed",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "汕",
+    "summary": "新增 san",
+    "removed": [],
+    "added": [
+     "san"
+    ]
+   }
+  ],
+  "汩": [
+   {
+    "id": "74d22bb4b8e0e28d13b20898",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "汩",
+    "summary": "移除 gwˤət, kwˤət; 新增 gˤut, kˤut",
+    "removed": [
+     "gwˤət",
+     "kwˤət"
+    ],
+    "added": [
+     "gˤut",
+     "kˤut"
+    ]
+   },
+   {
+    "id": "94ab50fb3f111725655f007a",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "汩",
+    "summary": "移除 wrət",
+    "removed": [
+     "wrət"
+    ],
+    "added": []
+   }
+  ],
+  "泱": [
+   {
+    "id": "69562b3242bea5dd8eadd906",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "泱",
+    "summary": "移除 ʔˤaŋʔ; 新增 ʔaŋ",
+    "removed": [
+     "ʔˤaŋʔ"
+    ],
+    "added": [
+     "ʔaŋ"
+    ]
+   }
+  ],
+  "洩": [
+   {
+    "id": "f6c4b5b01f0f32136b6129f1",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "洩",
+    "summary": "新增 slas",
+    "removed": [],
+    "added": [
+     "slas"
+    ]
+   }
+  ],
+  "流": [
+   {
+    "id": "d598aba8308755699cd73899",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "流",
+    "summary": "移除 ru; 新增 C.ru",
+    "removed": [
+     "ru"
+    ],
+    "added": [
+     "C.ru"
+    ]
+   }
+  ],
+  "涯": [
+   {
+    "id": "4c3a7f0acb5bf4330825f3ad",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "涯",
+    "summary": "移除 ŋˤre; 新增 ŋre",
+    "removed": [
+     "ŋˤre"
+    ],
+    "added": [
+     "ŋre"
+    ]
+   }
+  ],
+  "滑": [
+   {
+    "id": "2fdbe725f65b36f1239f93a9",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "滑",
+    "summary": "移除 gwˤrət, kwˤət; 新增 gˤrut, kˤut",
+    "removed": [
+     "gwˤrət",
+     "kwˤət"
+    ],
+    "added": [
+     "gˤrut",
+     "kˤut"
+    ]
+   }
+  ],
+  "潘": [
+   {
+    "id": "6ac1faaa25b087e7931a8d1e",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "潘",
+    "summary": "新增 pʰar",
+    "removed": [],
+    "added": [
+     "pʰar"
+    ]
+   }
+  ],
+  "猾": [
+   {
+    "id": "e05d68b7a12f3b1f4cfbce22",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "猾",
+    "summary": "移除 gwˤrət; 新增 gˤrut",
+    "removed": [
+     "gwˤrət"
+    ],
+    "added": [
+     "gˤrut"
+    ]
+   }
+  ],
+  "甗": [
+   {
+    "id": "6ee7d0d3e29cd427cf7ac129",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "甗",
+    "summary": "移除 ŋarʔ; 新增 ŋar",
+    "removed": [
+     "ŋarʔ"
+    ],
+    "added": [
+     "ŋar"
+    ]
+   }
+  ],
+  "留": [
+   {
+    "id": "d1e5c5e090888538fb5c5039",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "留",
+    "summary": "移除 ru, ruh; 新增 C.ru, C.ruh",
+    "removed": [
+     "ru",
+     "ruh"
+    ],
+    "added": [
+     "C.ru",
+     "C.ruh"
+    ]
+   }
+  ],
+  "疊": [
+   {
+    "id": "5920dd3a01bd32ea2bb07abd",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "疊",
+    "summary": "移除 lˤəp; 新增 lˤip",
+    "removed": [
+     "lˤəp"
+    ],
+    "added": [
+     "lˤip"
+    ]
+   }
+  ],
+  "疼": [
+   {
+    "id": "295912db1cc0efa7b62ee8a1",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "新增",
+    "char": "疼",
+    "summary": "lˤuŋ",
+    "removed": [],
+    "added": [
+     "lˤuŋ"
+    ]
+   }
+  ],
+  "痋": [
+   {
+    "id": "3e51a6f0be4ef196c8334b8e",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "新增",
+    "char": "痋",
+    "summary": "lˤuŋ",
+    "removed": [],
+    "added": [
+     "lˤuŋ"
+    ]
+   }
+  ],
+  "盲": [
+   {
+    "id": "dd12bc8cfefc1ec451d5f14f",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "盲",
+    "summary": "移除 mˤaŋ; 新增 mˤraŋ",
+    "removed": [
+     "mˤaŋ"
+    ],
+    "added": [
+     "mˤraŋ"
+    ]
+   }
+  ],
+  "禔": [
+   {
+    "id": "2a76b58e01833b9241c07240",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "禔",
+    "summary": "移除 te; 新增 de",
+    "removed": [
+     "te"
+    ],
+    "added": [
+     "de"
+    ]
+   }
+  ],
+  "紓": [
+   {
+    "id": "976976e2a6a6890f208cc9a8",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "紓",
+    "summary": "移除 slaʔ; 新增 mlaʔ",
+    "removed": [
+     "slaʔ"
+    ],
+    "added": [
+     "mlaʔ"
+    ]
+   }
+  ],
+  "緉": [
+   {
+    "id": "c09cf3aac76e4ef8f0be9ec5",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "緉",
+    "summary": "移除 raŋʔ; 新增 C.raŋh",
+    "removed": [
+     "raŋʔ"
+    ],
+    "added": [
+     "C.raŋh"
+    ]
+   }
+  ],
+  "緷": [
+   {
+    "id": "9778f2ae3fa3cfd8f4ae7029",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "緷",
+    "summary": "移除 kwˤənʔ; 新增 kˤunʔ",
+    "removed": [
+     "kwˤənʔ"
+    ],
+    "added": [
+     "kˤunʔ"
+    ]
+   }
+  ],
+  "習": [
+   {
+    "id": "a48afd8c4fa1b0b823307a14",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "習",
+    "summary": "新增 slip",
+    "removed": [],
+    "added": [
+     "slip"
+    ]
+   }
+  ],
+  "脛": [
+   {
+    "id": "d3164c0fce602ff0e9d0ff6d",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "脛",
+    "summary": "移除 gˤeŋh; 新增 gˤeŋʔ",
+    "removed": [
+     "gˤeŋh"
+    ],
+    "added": [
+     "gˤeŋʔ"
+    ]
+   }
+  ],
+  "脣": [
+   {
+    "id": "8e9adced01330bc40d82a417",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "脣",
+    "summary": "新增 dun",
+    "removed": [],
+    "added": [
+     "dun"
+    ]
+   }
+  ],
+  "芥": [
+   {
+    "id": "cff3f5cb764cb1a580465951",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "芥",
+    "summary": "新增 kˤras",
+    "removed": [],
+    "added": [
+     "kˤras"
+    ]
+   }
+  ],
+  "莐": [
+   {
+    "id": "21557f5a7a7225cad1a60cbf",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "莐",
+    "summary": "移除 drəm; 新增 drum",
+    "removed": [
+     "drəm"
+    ],
+    "added": [
+     "drum"
+    ]
+   }
+  ],
+  "蒚": [
+   {
+    "id": "32b5caac58901ed112384872",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "蒚",
+    "summary": "移除 C.rˤek; 新增 rˤek",
+    "removed": [
+     "C.rˤek"
+    ],
+    "added": [
+     "rˤek"
+    ]
+   }
+  ],
+  "螖": [
+   {
+    "id": "682a45cf5c6c20ee7d26c4f6",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "螖",
+    "summary": "移除 gwˤrət; 新增 gˤrut",
+    "removed": [
+     "gwˤrət"
+    ],
+    "added": [
+     "gˤrut"
+    ]
+   }
+  ],
+  "觙": [
+   {
+    "id": "e202b17b6d8fefe49aee5fa5",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "觙",
+    "summary": "移除 kəp; 新增 krəp",
+    "removed": [
+     "kəp"
+    ],
+    "added": [
+     "krəp"
+    ]
+   }
+  ],
+  "諓": [
+   {
+    "id": "27f634e1452a293695d83663",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "諓",
+    "summary": "移除 dzanʔ; 新增 dzenʔ",
+    "removed": [
+     "dzanʔ"
+    ],
+    "added": [
+     "dzenʔ"
+    ]
+   }
+  ],
+  "諡": [
+   {
+    "id": "dd5d9688b04295e60365c896",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "諡",
+    "summary": "移除 mləs; 新增 mlih",
+    "removed": [
+     "mləs"
+    ],
+    "added": [
+     "mlih"
+    ]
+   }
+  ],
+  "謚": [
+   {
+    "id": "92958682acf369e160bb6448",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "謚",
+    "summary": "移除 mləs; 新增 mlih",
+    "removed": [
+     "mləs"
+    ],
+    "added": [
+     "mlih"
+    ]
+   }
+  ],
+  "趞": [
+   {
+    "id": "bf4bbb86177e2e72a6b40a23",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "新增",
+    "char": "趞",
+    "summary": "tsʰak",
+    "removed": [],
+    "added": [
+     "tsʰak"
+    ]
+   }
+  ],
+  "踒": [
+   {
+    "id": "e12007489492d3aadd36faa6",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "踒",
+    "summary": "移除 ʔojh; 新增 ʔˤojh",
+    "removed": [
+     "ʔojh"
+    ],
+    "added": [
+     "ʔˤojh"
+    ]
+   }
+  ],
+  "軿": [
+   {
+    "id": "8e222227f1afebb45b9871fb",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "軿",
+    "summary": "移除 bˤeŋʔ; 新增 bˤeŋ",
+    "removed": [
+     "bˤeŋʔ"
+    ],
+    "added": [
+     "bˤeŋ"
+    ]
+   }
+  ],
+  "輛": [
+   {
+    "id": "525faceb933dc018ee226c86",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "輛",
+    "summary": "移除 raŋʔ; 新增 C.raŋh",
+    "removed": [
+     "raŋʔ"
+    ],
+    "added": [
+     "C.raŋh"
+    ]
+   }
+  ],
+  "輪": [
+   {
+    "id": "92f3678d5e9b5b3745f86e1f",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "輪",
+    "summary": "移除 C.run; 新增 run",
+    "removed": [
+     "C.run"
+    ],
+    "added": [
+     "run"
+    ]
+   }
+  ],
+  "酈": [
+   {
+    "id": "24b2fcb53625fdf065e29e3c",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "酈",
+    "summary": "移除 C.rˤek; 新增 rˤek",
+    "removed": [
+     "C.rˤek"
+    ],
+    "added": [
+     "rˤek"
+    ]
+   }
+  ],
+  "隈": [
+   {
+    "id": "7ea9257a741207f63d29e71e",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "隈",
+    "summary": "移除 ʔuj; 新增 ʔˤuj",
+    "removed": [
+     "ʔuj"
+    ],
+    "added": [
+     "ʔˤuj"
+    ]
+   }
+  ],
+  "隸": [
+   {
+    "id": "6096e60797c029231c6c23d6",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "隸",
+    "summary": "移除 C.rˤes; 新增 C.rˤeh",
+    "removed": [
+     "C.rˤes"
+    ],
+    "added": [
+     "C.rˤeh"
+    ]
+   }
+  ],
+  "鬆": [
+   {
+    "id": "c340dbabe1d022271634c56b",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "删除",
+    "char": "鬆",
+    "summary": "sjoŋ",
+    "removed": [
+     "sjoŋ"
+    ],
+    "added": []
+   }
+  ],
+  "鬌": [
+   {
+    "id": "3f208a029be0c425f9b1f289",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "修改",
+    "char": "鬌",
+    "summary": "移除 lˤojʔ; 新增 lroj",
+    "removed": [
+     "lˤojʔ"
+    ],
+    "added": [
+     "lroj"
+    ]
+   }
+  ],
+  "鶐": [
+   {
+    "id": "88d94426e882091075ecb928",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "新增",
+    "char": "鶐",
+    "summary": "mlut",
+    "removed": [],
+    "added": [
+     "mlut"
+    ]
+   }
+  ],
+  "𣥹": [
+   {
+    "id": "4ce08dd70557033387bb755d",
+    "batch_id": "24063463",
+    "timestamp": "2026-05-23 03:17:04",
+    "filename": "base.json.gz",
+    "batch_count": 77,
+    "kind": "删除",
+    "char": "𣥹",
+    "summary": "tʰiwk",
+    "removed": [
+     "tʰiwk"
+    ],
+    "added": []
+   }
+  ],
+  "㚜": [
+   {
+    "id": "01136d2d15c8464874a53191",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "㚜",
+    "summary": "wrək",
+    "removed": [],
+    "added": [
+     "wrək"
+    ]
+   }
+  ],
+  "㨷": [
+   {
+    "id": "5cdf656a804c40ce620f3652",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "㨷",
+    "summary": "kənʔ",
+    "removed": [],
+    "added": [
+     "kənʔ"
+    ]
+   }
+  ],
+  "䫶": [
+   {
+    "id": "8cd80b185987c3e9883f75e3",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "删除",
+    "char": "䫶",
+    "summary": "ban",
+    "removed": [
+     "ban"
+    ],
+    "added": []
+   }
+  ],
+  "令": [
+   {
+    "id": "fb772d5dd585617fd6f9bae2",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "令",
+    "summary": "移除 C.reŋh",
+    "removed": [
+     "C.reŋh"
+    ],
+    "added": []
+   }
+  ],
+  "伎": [
+   {
+    "id": "61abcf923c348a50320280aa",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "伎",
+    "summary": "移除 ge; 新增 gre",
+    "removed": [
+     "ge"
+    ],
+    "added": [
+     "gre"
+    ]
+   }
+  ],
+  "侊": [
+   {
+    "id": "99cee194dcea95bd7508193f",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "侊",
+    "summary": "kwˤraŋʔ",
+    "removed": [],
+    "added": [
+     "kwˤraŋʔ"
+    ]
+   }
+  ],
+  "侐": [
+   {
+    "id": "514d102b94655823b2b0b6b6",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "侐",
+    "summary": "移除 ẘrik; 新增 lik",
+    "removed": [
+     "ẘrik"
+    ],
+    "added": [
+     "lik"
+    ]
+   }
+  ],
+  "倫": [
+   {
+    "id": "2b8d84ea604dbdd29c2f799f",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "倫",
+    "summary": "移除 run; 新增 C.run",
+    "removed": [
+     "run"
+    ],
+    "added": [
+     "C.run"
+    ]
+   }
+  ],
+  "傃": [
+   {
+    "id": "5443e901e586bfb33a7c8258",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "傃",
+    "summary": "移除 sˤah; 新增 ŋ̊ˤah",
+    "removed": [
+     "sˤah"
+    ],
+    "added": [
+     "ŋ̊ˤah"
+    ]
+   }
+  ],
+  "冓": [
+   {
+    "id": "4822eee3817d0ed90a02d051",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "冓",
+    "summary": "移除 kˤroh; 新增 kˤrok",
+    "removed": [
+     "kˤroh"
+    ],
+    "added": [
+     "kˤrok"
+    ]
+   }
+  ],
+  "化": [
+   {
+    "id": "0b78e776b5a5c35555027b5a",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "化",
+    "summary": "新增 ẘˤrajh",
+    "removed": [],
+    "added": [
+     "ẘˤrajh"
+    ]
+   }
+  ],
+  "命": [
+   {
+    "id": "568173d6b28701cc2db94783",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "命",
+    "summary": "移除 mreŋ, mreŋh; 新增 mriŋh",
+    "removed": [
+     "mreŋ",
+     "mreŋh"
+    ],
+    "added": [
+     "mriŋh"
+    ]
+   }
+  ],
+  "噃": [
+   {
+    "id": "620eff9e1f3d077dc6f721cd",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "噃",
+    "summary": "pʰan",
+    "removed": [],
+    "added": [
+     "pʰan"
+    ]
+   }
+  ],
+  "囑": [
+   {
+    "id": "f58be03b6b62fde1268fd19b",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "囑",
+    "summary": "tok",
+    "removed": [],
+    "added": [
+     "tok"
+    ]
+   }
+  ],
+  "埩": [
+   {
+    "id": "e75b7c9a605a5e216ec5ffe1",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "删除",
+    "char": "埩",
+    "summary": "tsˤreŋ",
+    "removed": [
+     "tsˤreŋ"
+    ],
+    "added": []
+   }
+  ],
+  "娌": [
+   {
+    "id": "448eb84b6369eab7b2d93f0c",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "娌",
+    "summary": "rəʔ",
+    "removed": [],
+    "added": [
+     "rəʔ"
+    ]
+   }
+  ],
+  "嫧": [
+   {
+    "id": "7f5ba54d0882d2236ac52d7b",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "嫧",
+    "summary": "tsʰˤrek",
+    "removed": [],
+    "added": [
+     "tsʰˤrek"
+    ]
+   }
+  ],
+  "嵒": [
+   {
+    "id": "6df16a50722426ed0b008710",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "嵒",
+    "summary": "移除 ŋˤram; 新增 ŋˤrəm",
+    "removed": [
+     "ŋˤram"
+    ],
+    "added": [
+     "ŋˤrəm"
+    ]
+   }
+  ],
+  "彭": [
+   {
+    "id": "ca3cca1c4e9fabf49f344e70",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "彭",
+    "summary": "移除 bˤaŋ; 新增 pˤaŋ",
+    "removed": [
+     "bˤaŋ"
+    ],
+    "added": [
+     "pˤaŋ"
+    ]
+   }
+  ],
+  "折": [
+   {
+    "id": "caeb48fba56c2844ebd36759",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "折",
+    "summary": "移除 dˤe; 新增 dˤeh",
+    "removed": [
+     "dˤe"
+    ],
+    "added": [
+     "dˤeh"
+    ]
+   }
+  ],
+  "掕": [
+   {
+    "id": "5e979ac7b6ce81aad17eb00c",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "掕",
+    "summary": "rəŋ",
+    "removed": [],
+    "added": [
+     "rəŋ"
+    ]
+   }
+  ],
+  "揤": [
+   {
+    "id": "eb487e30d89831c3fd805ba6",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "揤",
+    "summary": "tsik",
+    "removed": [],
+    "added": [
+     "tsik"
+    ]
+   }
+  ],
+  "撩": [
+   {
+    "id": "d5fc2a22a3e3443cbda4019e",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "撩",
+    "summary": "rˤew",
+    "removed": [],
+    "added": [
+     "rˤew"
+    ]
+   }
+  ],
+  "方": [
+   {
+    "id": "286ff59e9d0a293bc54348fd",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "方",
+    "summary": "新增 baŋ",
+    "removed": [],
+    "added": [
+     "baŋ"
+    ]
+   }
+  ],
+  "棌": [
+   {
+    "id": "6e7dc3bc2c8285f9f59dbd65",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "棌",
+    "summary": "tsʰˤəh",
+    "removed": [],
+    "added": [
+     "tsʰˤəh"
+    ]
+   }
+  ],
+  "汪": [
+   {
+    "id": "558b0237e1597afcd40c8554",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "汪",
+    "summary": "新增 ʔwaŋʔ",
+    "removed": [],
+    "added": [
+     "ʔwaŋʔ"
+    ]
+   }
+  ],
+  "涑": [
+   {
+    "id": "5db6ab840be38cf11ee32aad",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "涑",
+    "summary": "新增 sˤroh",
+    "removed": [],
+    "added": [
+     "sˤroh"
+    ]
+   }
+  ],
+  "淖": [
+   {
+    "id": "add56f62b56983d2e4d0913d",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "淖",
+    "summary": "新增 tʰawk",
+    "removed": [],
+    "added": [
+     "tʰawk"
+    ]
+   }
+  ],
+  "湘": [
+   {
+    "id": "61a94ceecb547e37318a6538",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "湘",
+    "summary": "移除 slaŋ; 新增 l̥aŋ",
+    "removed": [
+     "slaŋ"
+    ],
+    "added": [
+     "l̥aŋ"
+    ]
+   }
+  ],
+  "灋": [
+   {
+    "id": "80fb2b8638e35c0b29a95b21",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "灋",
+    "summary": "pap",
+    "removed": [],
+    "added": [
+     "pap"
+    ]
+   }
+  ],
+  "熿": [
+   {
+    "id": "8ccc376d78890ab2a3118f77",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "熿",
+    "summary": "移除 wˤaŋ; 新增 gwˤaŋ",
+    "removed": [
+     "wˤaŋ"
+    ],
+    "added": [
+     "gwˤaŋ"
+    ]
+   }
+  ],
+  "爲": [
+   {
+    "id": "a2cc489de744a838a8a10d60",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "爲",
+    "summary": "新增 wajh",
+    "removed": [],
+    "added": [
+     "wajh"
+    ]
+   }
+  ],
+  "犝": [
+   {
+    "id": "915e0ea4129ce3383a061a41",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "犝",
+    "summary": "移除 lˤoŋ; 新增 dˤoŋ",
+    "removed": [
+     "lˤoŋ"
+    ],
+    "added": [
+     "dˤoŋ"
+    ]
+   }
+  ],
+  "癖": [
+   {
+    "id": "42ea6622b6771b3c329079b3",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "癖",
+    "summary": "pʰek",
+    "removed": [],
+    "added": [
+     "pʰek"
+    ]
+   }
+  ],
+  "盎": [
+   {
+    "id": "40156623619a44e9e37e25ec",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "盎",
+    "summary": "移除 ʔˤaŋʔ; 新增 ʔˤaŋh",
+    "removed": [
+     "ʔˤaŋʔ"
+    ],
+    "added": [
+     "ʔˤaŋh"
+    ]
+   }
+  ],
+  "睇": [
+   {
+    "id": "1d0a829ddd313769034d3031",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "睇",
+    "summary": "移除 lˤih; 新增 lˤəjh",
+    "removed": [
+     "lˤih"
+    ],
+    "added": [
+     "lˤəjh"
+    ]
+   }
+  ],
+  "瞂": [
+   {
+    "id": "16ce17c1988964fba4f6927b",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "瞂",
+    "summary": "移除 bat; 新增 bot",
+    "removed": [
+     "bat"
+    ],
+    "added": [
+     "bot"
+    ]
+   }
+  ],
+  "禸": [
+   {
+    "id": "79b2e5320fcff119fc4301d2",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "删除",
+    "char": "禸",
+    "summary": "nruʔ",
+    "removed": [
+     "nruʔ"
+    ],
+    "added": []
+   }
+  ],
+  "箾": [
+   {
+    "id": "b60123428a09d8903ef444c0",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "箾",
+    "summary": "移除 sˤew; 新增 sˤiw",
+    "removed": [
+     "sˤew"
+    ],
+    "added": [
+     "sˤiw"
+    ]
+   }
+  ],
+  "糅": [
+   {
+    "id": "2347defb81c15e808e1eaf75",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "糅",
+    "summary": "移除 nruh; 新增 nruʔ",
+    "removed": [
+     "nruh"
+    ],
+    "added": [
+     "nruʔ"
+    ]
+   }
+  ],
+  "綷": [
+   {
+    "id": "f060c641685cfe2e8da1fd26",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "綷",
+    "summary": "tsˤus",
+    "removed": [],
+    "added": [
+     "tsˤus"
+    ]
+   }
+  ],
+  "綸": [
+   {
+    "id": "9ce504fe3dcbc0fb67e8a4d4",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "綸",
+    "summary": "移除 run; 新增 C.run",
+    "removed": [
+     "run"
+    ],
+    "added": [
+     "C.run"
+    ]
+   }
+  ],
+  "臒": [
+   {
+    "id": "e36cf3d766fde35f04ff1368",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "臒",
+    "summary": "ʔwˤak",
+    "removed": [],
+    "added": [
+     "ʔwˤak"
+    ]
+   }
+  ],
+  "舜": [
+   {
+    "id": "533c4add55972cee19a3272f",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "舜",
+    "summary": "移除 l̥unh; 新增 stunh",
+    "removed": [
+     "l̥unh"
+    ],
+    "added": [
+     "stunh"
+    ]
+   }
+  ],
+  "萯": [
+   {
+    "id": "fea7e3269a46b97692576e65",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "萯",
+    "summary": "新增 bˤəʔ",
+    "removed": [],
+    "added": [
+     "bˤəʔ"
+    ]
+   }
+  ],
+  "蛓": [
+   {
+    "id": "f80d4189b9a13f7a78417e3a",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "蛓",
+    "summary": "tsʰəh",
+    "removed": [],
+    "added": [
+     "tsʰəh"
+    ]
+   }
+  ],
+  "螈": [
+   {
+    "id": "6c79debbe42ac3a31ea1071f",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "螈",
+    "summary": "移除 ŋon; 新增 ŋˤon",
+    "removed": [
+     "ŋon"
+    ],
+    "added": [
+     "ŋˤon"
+    ]
+   }
+  ],
+  "衹": [
+   {
+    "id": "0750cf62c426b6c3c797a869",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "衹",
+    "summary": "te",
+    "removed": [],
+    "added": [
+     "te"
+    ]
+   }
+  ],
+  "認": [
+   {
+    "id": "d86b099efede79a0a3122da4",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "認",
+    "summary": "移除 niŋh; 新增 nənh",
+    "removed": [
+     "niŋh"
+    ],
+    "added": [
+     "nənh"
+    ]
+   }
+  ],
+  "豸": [
+   {
+    "id": "74fb435826c1940f7593fb40",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "豸",
+    "summary": "移除 lˤreʔ; 新增 lreʔ",
+    "removed": [
+     "lˤreʔ"
+    ],
+    "added": [
+     "lreʔ"
+    ]
+   }
+  ],
+  "貨": [
+   {
+    "id": "1c6e1f8d385727f762044cd1",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "貨",
+    "summary": "移除 ẘˤaj; 新增 ẘˤajh",
+    "removed": [
+     "ẘˤaj"
+    ],
+    "added": [
+     "ẘˤajh"
+    ]
+   }
+  ],
+  "跨": [
+   {
+    "id": "6daf78261742d551e1e3c08d",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "跨",
+    "summary": "移除 kʰwˤra; 新增 kʰwˤrah",
+    "removed": [
+     "kʰwˤra"
+    ],
+    "added": [
+     "kʰwˤrah"
+    ]
+   }
+  ],
+  "蹁": [
+   {
+    "id": "fb1f10e2f86fd7050b4ceefb",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "蹁",
+    "summary": "bˤen",
+    "removed": [],
+    "added": [
+     "bˤen"
+    ]
+   }
+  ],
+  "輢": [
+   {
+    "id": "504b7c31e5c40622ccb95894",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "輢",
+    "summary": "ʔajʔ",
+    "removed": [],
+    "added": [
+     "ʔajʔ"
+    ]
+   }
+  ],
+  "鈠": [
+   {
+    "id": "2774b401fa5ae71178a9d1d3",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "鈠",
+    "summary": "wek",
+    "removed": [],
+    "added": [
+     "wek"
+    ]
+   }
+  ],
+  "鈲": [
+   {
+    "id": "b6888f06f64feeba5f4c6f90",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "鈲",
+    "summary": "kwˤa",
+    "removed": [],
+    "added": [
+     "kwˤa"
+    ]
+   }
+  ],
+  "鐅": [
+   {
+    "id": "68a155228a5adda243667c54",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "鐅",
+    "summary": "pʰˤet",
+    "removed": [],
+    "added": [
+     "pʰˤet"
+    ]
+   }
+  ],
+  "餽": [
+   {
+    "id": "5d50d5ef8c281eeca7f280e6",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "餽",
+    "summary": "移除 grujh; 新增 gwrəjh",
+    "removed": [
+     "grujh"
+    ],
+    "added": [
+     "gwrəjh"
+    ]
+   },
+   {
+    "id": "c76d4c032ceaae81ebad7e37",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "餽",
+    "summary": "移除 kujh",
+    "removed": [
+     "kujh"
+    ],
+    "added": []
+   }
+  ],
+  "饋": [
+   {
+    "id": "1ab629a38015e3f4f506ec66",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "饋",
+    "summary": "移除 grujh; 新增 gwrəjh",
+    "removed": [
+     "grujh"
+    ],
+    "added": [
+     "gwrəjh"
+    ]
+   }
+  ],
+  "騺": [
+   {
+    "id": "145e555c68851b61e4410cfe",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "騺",
+    "summary": "tris",
+    "removed": [],
+    "added": [
+     "tris"
+    ]
+   }
+  ],
+  "髦": [
+   {
+    "id": "9b8dcc6f6bcf2dae264ed9ca",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "髦",
+    "summary": "移除 mˤaw",
+    "removed": [
+     "mˤaw"
+    ],
+    "added": []
+   }
+  ],
+  "鮇": [
+   {
+    "id": "83bb86b50dfdbbf20d791aab",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "鮇",
+    "summary": "məs",
+    "removed": [],
+    "added": [
+     "məs"
+    ]
+   }
+  ],
+  "鰓": [
+   {
+    "id": "9e9b4d297146b84356997ad3",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "鰓",
+    "summary": "sˤə",
+    "removed": [],
+    "added": [
+     "sˤə"
+    ]
+   }
+  ],
+  "鼁": [
+   {
+    "id": "2e9e3933d8d743b6ba133253",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "修改",
+    "char": "鼁",
+    "summary": "移除 ruk; 新增 kʰah",
+    "removed": [
+     "ruk"
+    ],
+    "added": [
+     "kʰah"
+    ]
+   }
+  ],
+  "𠧙": [
+   {
+    "id": "1a74369677682021140211dd",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "𠧙",
+    "summary": "dawh",
+    "removed": [],
+    "added": [
+     "dawh"
+    ]
+   }
+  ],
+  "𤛑": [
+   {
+    "id": "9ffe6aee997eb19773eb561c",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "𤛑",
+    "summary": "loŋ",
+    "removed": [],
+    "added": [
+     "loŋ"
+    ]
+   }
+  ],
+  "𩤊": [
+   {
+    "id": "b21efbb99af063338a664e1e",
+    "batch_id": "36653362",
+    "timestamp": "2026-06-24 20:50:44",
+    "filename": "base.json.gz",
+    "batch_count": 69,
+    "kind": "新增",
+    "char": "𩤊",
+    "summary": "dzanh",
+    "removed": [],
+    "added": [
+     "dzanh"
+    ]
+   }
+  ],
+  "㶼": [
+   {
+    "id": "2f554cb66d1aa16cbb2e022a",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "㶼",
+    "summary": "ʔˤə",
+    "removed": [],
+    "added": [
+     "ʔˤə"
+    ]
+   }
+  ],
+  "㹌": [
+   {
+    "id": "7ce5075ac86e06cf4cad5816",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "㹌",
+    "summary": "ŋ̊ranʔ",
+    "removed": [],
+    "added": [
+     "ŋ̊ranʔ"
+    ]
+   }
+  ],
+  "䀮": [
+   {
+    "id": "687d4e1f1bd85791994a0a07",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "䀮",
+    "summary": "移除 mˤaŋ; 新增 m̥ˤaŋ",
+    "removed": [
+     "mˤaŋ"
+    ],
+    "added": [
+     "m̥ˤaŋ"
+    ]
+   }
+  ],
+  "䍫": [
+   {
+    "id": "84ed6fc009b19399a3dce522",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "䍫",
+    "summary": "l̥aj",
+    "removed": [],
+    "added": [
+     "l̥aj"
+    ]
+   }
+  ],
+  "䍸": [
+   {
+    "id": "16efeeeccd617099381f6ba1",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "䍸",
+    "summary": "pˤak",
+    "removed": [],
+    "added": [
+     "pˤak"
+    ]
+   }
+  ],
+  "䎔": [
+   {
+    "id": "f8d018bd3901404272c0f4d4",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "䎔",
+    "summary": "pʰa",
+    "removed": [],
+    "added": [
+     "pʰa"
+    ]
+   }
+  ],
+  "䭁": [
+   {
+    "id": "65311261ae85808a2c27e0f5",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "䭁",
+    "summary": "tes",
+    "removed": [],
+    "added": [
+     "tes"
+    ]
+   }
+  ],
+  "䶎": [
+   {
+    "id": "19906d0768ad77f7737412e5",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "䶎",
+    "summary": "hˤrəp",
+    "removed": [],
+    "added": [
+     "hˤrəp"
+    ]
+   }
+  ],
+  "佌": [
+   {
+    "id": "73278e048c131d05fbea9eed",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "佌",
+    "summary": "移除 seʔ; 新增 tsʰeʔ",
+    "removed": [
+     "seʔ"
+    ],
+    "added": [
+     "tsʰeʔ"
+    ]
+   }
+  ],
+  "假": [
+   {
+    "id": "e84e5d23bc5816cc5fbd5ab6",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "假",
+    "summary": "移除 kˤrak",
+    "removed": [
+     "kˤrak"
+    ],
+    "added": []
+   }
+  ],
+  "偶": [
+   {
+    "id": "0395ea15423b73476c2aba62",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "偶",
+    "summary": "移除 ŋˤoʔ; 新增 ŋˤroʔ",
+    "removed": [
+     "ŋˤoʔ"
+    ],
+    "added": [
+     "ŋˤroʔ"
+    ]
+   }
+  ],
+  "偽": [
+   {
+    "id": "9f6c04321c71242232c15301",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "偽",
+    "summary": "移除 ŋwaj; 新增 ŋwajh",
+    "removed": [
+     "ŋwaj"
+    ],
+    "added": [
+     "ŋwajh"
+    ]
+   }
+  ],
+  "僞": [
+   {
+    "id": "8daa3a48c0bf24614e08c231",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "僞",
+    "summary": "移除 ŋwaj; 新增 ŋwajh",
+    "removed": [
+     "ŋwaj"
+    ],
+    "added": [
+     "ŋwajh"
+    ]
+   }
+  ],
+  "僟": [
+   {
+    "id": "e95d82a7b0eaf9886bc64fdf",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "僟",
+    "summary": "kəj",
+    "removed": [],
+    "added": [
+     "kəj"
+    ]
+   }
+  ],
+  "創": [
+   {
+    "id": "18cac7ae6dc65bec72395f77",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "創",
+    "summary": "新增 tsʰraŋh",
+    "removed": [],
+    "added": [
+     "tsʰraŋh"
+    ]
+   }
+  ],
+  "句": [
+   {
+    "id": "433dd71bb5da3a953c0ed55d",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "句",
+    "summary": "新增 go",
+    "removed": [],
+    "added": [
+     "go"
+    ]
+   }
+  ],
+  "吒": [
+   {
+    "id": "af1b2880ae21d1717ffbb01c",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "吒",
+    "summary": "移除 tˤrah; 新增 tʰak",
+    "removed": [
+     "tˤrah"
+    ],
+    "added": [
+     "tʰak"
+    ]
+   }
+  ],
+  "咋": [
+   {
+    "id": "2b5bad04aa5357767a00c05d",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "咋",
+    "summary": "新增 tsˤrak",
+    "removed": [],
+    "added": [
+     "tsˤrak"
+    ]
+   }
+  ],
+  "喎": [
+   {
+    "id": "44986382b195dcaefa98e5cc",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "喎",
+    "summary": "kʰwˤraj",
+    "removed": [],
+    "added": [
+     "kʰwˤraj"
+    ]
+   }
+  ],
+  "噊": [
+   {
+    "id": "1a327ca1c2c4ea0b93b33fc1",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "噊",
+    "summary": "移除 wik; 新增 wit",
+    "removed": [
+     "wik"
+    ],
+    "added": [
+     "wit"
+    ]
+   }
+  ],
+  "圓": [
+   {
+    "id": "7cd65069ba3cdad07f683c83",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "圓",
+    "summary": "移除 wran; 新增 wren",
+    "removed": [
+     "wran"
+    ],
+    "added": [
+     "wren"
+    ]
+   }
+  ],
+  "圜": [
+   {
+    "id": "c5a687d5409aecc9318a04ea",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "圜",
+    "summary": "移除 wran; 新增 wren",
+    "removed": [
+     "wran"
+    ],
+    "added": [
+     "wren"
+    ]
+   }
+  ],
+  "奘": [
+   {
+    "id": "835d02a82f55dd29ab0299b9",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "奘",
+    "summary": "移除 dzˤaŋ; 新增 dzˤaŋʔ",
+    "removed": [
+     "dzˤaŋ"
+    ],
+    "added": [
+     "dzˤaŋʔ"
+    ]
+   }
+  ],
+  "娗": [
+   {
+    "id": "1095f5ed61ced9c9914cd498",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "娗",
+    "summary": "移除 lˤeŋ; 新增 lˤeŋʔ",
+    "removed": [
+     "lˤeŋ"
+    ],
+    "added": [
+     "lˤeŋʔ"
+    ]
+   }
+  ],
+  "寓": [
+   {
+    "id": "3b36ded9f40b47671fb9af86",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "寓",
+    "summary": "新增 ŋoh",
+    "removed": [],
+    "added": [
+     "ŋoh"
+    ]
+   }
+  ],
+  "幡": [
+   {
+    "id": "cb9ed5f22499b7cded2f3588",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "幡",
+    "summary": "新增 pʰar",
+    "removed": [],
+    "added": [
+     "pʰar"
+    ]
+   }
+  ],
+  "慮": [
+   {
+    "id": "5895ede90331ab2e977c1b89",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "慮",
+    "summary": "移除 ra, rah; 新增 C.ra, C.rah",
+    "removed": [
+     "ra",
+     "rah"
+    ],
+    "added": [
+     "C.ra",
+     "C.rah"
+    ]
+   }
+  ],
+  "憰": [
+   {
+    "id": "583f8b2891884798bfafa897",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "憰",
+    "summary": "移除 kwˤik; 新增 kwˤit",
+    "removed": [
+     "kwˤik"
+    ],
+    "added": [
+     "kwˤit"
+    ]
+   }
+  ],
+  "懀": [
+   {
+    "id": "09b1281f4753a5221a8e29e6",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "懀",
+    "summary": "ʔwˤas",
+    "removed": [],
+    "added": [
+     "ʔwˤas"
+    ]
+   }
+  ],
+  "捨": [
+   {
+    "id": "844f9a695bec0e9c32b9bab3",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "捨",
+    "summary": "新增 l̥aʔ",
+    "removed": [],
+    "added": [
+     "l̥aʔ"
+    ]
+   },
+   {
+    "id": "bc27bb3efd799dbe3dbd91e3",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "捨",
+    "summary": "移除 l̥ah, l̥aʔ; 新增 l̥iah, l̥iaʔ",
+    "removed": [
+     "l̥ah",
+     "l̥aʔ"
+    ],
+    "added": [
+     "l̥iah",
+     "l̥iaʔ"
+    ]
+   }
+  ],
+  "捫": [
+   {
+    "id": "7b53e6dc28f411588effb5d7",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "捫",
+    "summary": "移除 mˤun; 新增 mˤən",
+    "removed": [
+     "mˤun"
+    ],
+    "added": [
+     "mˤən"
+    ]
+   }
+  ],
+  "搖": [
+   {
+    "id": "8914971a4b5c4574f5579db0",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "搖",
+    "summary": "新增 lawh",
+    "removed": [],
+    "added": [
+     "lawh"
+    ]
+   }
+  ],
+  "枉": [
+   {
+    "id": "966fb26d768cb47366943e97",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "枉",
+    "summary": "移除 ʔwaŋʔ; 新增 ʔwaŋ",
+    "removed": [
+     "ʔwaŋʔ"
+    ],
+    "added": [
+     "ʔwaŋ"
+    ]
+   }
+  ],
+  "棷": [
+   {
+    "id": "b2babf4f1b47c3695647da2a",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "棷",
+    "summary": "移除 sroʔ; 新增 sˤoʔ",
+    "removed": [
+     "sroʔ"
+    ],
+    "added": [
+     "sˤoʔ"
+    ]
+   }
+  ],
+  "橘": [
+   {
+    "id": "c2d1fdf3e8a8a23e84f963f5",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "橘",
+    "summary": "移除 kwik; 新增 kwit",
+    "removed": [
+     "kwik"
+    ],
+    "added": [
+     "kwit"
+    ]
+   }
+  ],
+  "歁": [
+   {
+    "id": "d7b692f85e75771e61f43e8c",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "歁",
+    "summary": "kʰˤəmʔ",
+    "removed": [],
+    "added": [
+     "kʰˤəmʔ"
+    ]
+   }
+  ],
+  "汾": [
+   {
+    "id": "099db7dd3c3c28e03aaa9e80",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "汾",
+    "summary": "新增 bən",
+    "removed": [],
+    "added": [
+     "bən"
+    ]
+   }
+  ],
+  "沬": [
+   {
+    "id": "d250b204a03df8272fdf0a28",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "沬",
+    "summary": "新增 m̥ˤəs",
+    "removed": [],
+    "added": [
+     "m̥ˤəs"
+    ]
+   }
+  ],
+  "洝": [
+   {
+    "id": "d11e4cc51785acf937bb7657",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "删除",
+    "char": "洝",
+    "summary": "ʔˤat",
+    "removed": [
+     "ʔˤat"
+    ],
+    "added": []
+   }
+  ],
+  "漕": [
+   {
+    "id": "522d9c11ca76c3c8cb3f384b",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "漕",
+    "summary": "新增 dzˤuh",
+    "removed": [],
+    "added": [
+     "dzˤuh"
+    ]
+   }
+  ],
+  "潏": [
+   {
+    "id": "3974a18049777552fe5432cc",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "潏",
+    "summary": "移除 kwˤik, wik; 新增 kwˤit, wit",
+    "removed": [
+     "kwˤik",
+     "wik"
+    ],
+    "added": [
+     "kwˤit",
+     "wit"
+    ]
+   }
+  ],
+  "灑": [
+   {
+    "id": "12b09828b3702d44d6f2cd85",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "灑",
+    "summary": "移除 sreʔ; 新增 sre",
+    "removed": [
+     "sreʔ"
+    ],
+    "added": [
+     "sre"
+    ]
+   }
+  ],
+  "焜": [
+   {
+    "id": "dc9ce46b58189561f3b5d789",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "焜",
+    "summary": "移除 gˤunh; 新增 gˤunʔ",
+    "removed": [
+     "gˤunh"
+    ],
+    "added": [
+     "gˤunʔ"
+    ]
+   }
+  ],
+  "猼": [
+   {
+    "id": "a1ee1c2f171bb0a4aeec526c",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "删除",
+    "char": "猼",
+    "summary": "pˤak",
+    "removed": [
+     "pˤak"
+    ],
+    "added": []
+   }
+  ],
+  "珧": [
+   {
+    "id": "5d9107af3e6f0ff6c82f9709",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "珧",
+    "summary": "移除 lew; 新增 law",
+    "removed": [
+     "lew"
+    ],
+    "added": [
+     "law"
+    ]
+   }
+  ],
+  "當": [
+   {
+    "id": "8b420c52d41a6859491f2ee8",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "當",
+    "summary": "移除 tˤaŋh",
+    "removed": [
+     "tˤaŋh"
+    ],
+    "added": []
+   }
+  ],
+  "癥": [
+   {
+    "id": "b2caecdd814e81c6f836028c",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "癥",
+    "summary": "trəŋ",
+    "removed": [],
+    "added": [
+     "trəŋ"
+    ]
+   }
+  ],
+  "盨": [
+   {
+    "id": "864f7a1b652c9a16d6a52607",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "盨",
+    "summary": "移除 sˤroʔ; 新增 sroʔ",
+    "removed": [
+     "sˤroʔ"
+    ],
+    "added": [
+     "sroʔ"
+    ]
+   }
+  ],
+  "矞": [
+   {
+    "id": "60cb019193ba1aa1a9787ceb",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "矞",
+    "summary": "移除 wˤik; 新增 kwˤit",
+    "removed": [
+     "wˤik"
+    ],
+    "added": [
+     "kwˤit"
+    ]
+   }
+  ],
+  "磑": [
+   {
+    "id": "d65bf1cdb6e679fcfa62d8d7",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "磑",
+    "summary": "移除 ŋˤəj; 新增 ŋəj",
+    "removed": [
+     "ŋˤəj"
+    ],
+    "added": [
+     "ŋəj"
+    ]
+   }
+  ],
+  "窏": [
+   {
+    "id": "5a844a1e90f656e25c8ed6bf",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "删除",
+    "char": "窏",
+    "summary": "ʔwˤa",
+    "removed": [
+     "ʔwˤa"
+    ],
+    "added": []
+   }
+  ],
+  "笭": [
+   {
+    "id": "173305efabc1707fc73e84b4",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "笭",
+    "summary": "rˤeŋ",
+    "removed": [],
+    "added": [
+     "rˤeŋ"
+    ]
+   }
+  ],
+  "簹": [
+   {
+    "id": "b9d15f033f75f62648cef46c",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "簹",
+    "summary": "tˤaŋ",
+    "removed": [],
+    "added": [
+     "tˤaŋ"
+    ]
+   }
+  ],
+  "紅": [
+   {
+    "id": "08bcad22d2dbe3f4c20167bb",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "紅",
+    "summary": "新增 kˤoŋ",
+    "removed": [],
+    "added": [
+     "kˤoŋ"
+    ]
+   }
+  ],
+  "紕": [
+   {
+    "id": "528209d73776a2ce2e812764",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "紕",
+    "summary": "新增 pʰi",
+    "removed": [],
+    "added": [
+     "pʰi"
+    ]
+   }
+  ],
+  "紟": [
+   {
+    "id": "e492c230143e69d4b12bb83f",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "紟",
+    "summary": "移除 gəmh; 新增 gumh",
+    "removed": [
+     "gəmh"
+    ],
+    "added": [
+     "gumh"
+    ]
+   }
+  ],
+  "絓": [
+   {
+    "id": "d30c0fe0f094086b5cb587be",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "絓",
+    "summary": "新增 gwˤreh",
+    "removed": [],
+    "added": [
+     "gwˤreh"
+    ]
+   }
+  ],
+  "絮": [
+   {
+    "id": "753879b137e1153078c4bc0d",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "絮",
+    "summary": "移除 n̥ra; 新增 n̥rah",
+    "removed": [
+     "n̥ra"
+    ],
+    "added": [
+     "n̥rah"
+    ]
+   }
+  ],
+  "緅": [
+   {
+    "id": "a7a3d56a90f0a9b53cca1fa4",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "緅",
+    "summary": "移除 tsˤro; 新增 tsˤo",
+    "removed": [
+     "tsˤro"
+    ],
+    "added": [
+     "tsˤo"
+    ]
+   }
+  ],
+  "繘": [
+   {
+    "id": "b5d0e1848b1081796ac18ae9",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "繘",
+    "summary": "移除 kwik; 新增 kwit",
+    "removed": [
+     "kwik"
+    ],
+    "added": [
+     "kwit"
+    ]
+   }
+  ],
+  "纑": [
+   {
+    "id": "d6b06b7813c4aabea6735055",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "纑",
+    "summary": "移除 C.rˤa; 新增 rˤa",
+    "removed": [
+     "C.rˤa"
+    ],
+    "added": [
+     "rˤa"
+    ]
+   }
+  ],
+  "缿": [
+   {
+    "id": "26340e2a590c2f3cda7e6949",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "缿",
+    "summary": "移除 gˤroʔ; 新增 gˤroŋʔ",
+    "removed": [
+     "gˤroʔ"
+    ],
+    "added": [
+     "gˤroŋʔ"
+    ]
+   }
+  ],
+  "義": [
+   {
+    "id": "08094b11e867b91e3a64ca9e",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "義",
+    "summary": "新增 ŋajh",
+    "removed": [],
+    "added": [
+     "ŋajh"
+    ]
+   }
+  ],
+  "耦": [
+   {
+    "id": "6704caeede4d08bcee213317",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "耦",
+    "summary": "移除 ŋˤoʔ; 新增 ŋˤroʔ",
+    "removed": [
+     "ŋˤoʔ"
+    ],
+    "added": [
+     "ŋˤroʔ"
+    ]
+   }
+  ],
+  "胛": [
+   {
+    "id": "fae8a45ef462dc09751df17b",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "胛",
+    "summary": "kˤrap",
+    "removed": [],
+    "added": [
+     "kˤrap"
+    ]
+   }
+  ],
+  "芵": [
+   {
+    "id": "de80c6f57d01b0ada88f09b8",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "芵",
+    "summary": "移除 kwˤik; 新增 kwˤit",
+    "removed": [
+     "kwˤik"
+    ],
+    "added": [
+     "kwˤit"
+    ]
+   }
+  ],
+  "葫": [
+   {
+    "id": "12f728c90ff65ca16b601d74",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "删除",
+    "char": "葫",
+    "summary": "gˤa",
+    "removed": [
+     "gˤa"
+    ],
+    "added": []
+   }
+  ],
+  "葷": [
+   {
+    "id": "9654686a7045b8b8343a24f3",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "葷",
+    "summary": "移除 ẘən; 新增 hun",
+    "removed": [
+     "ẘən"
+    ],
+    "added": [
+     "hun"
+    ]
+   }
+  ],
+  "蒔": [
+   {
+    "id": "a9f7a116b583c55eab5d2e09",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "蒔",
+    "summary": "移除 də; 新增 dəh",
+    "removed": [
+     "də"
+    ],
+    "added": [
+     "dəh"
+    ]
+   }
+  ],
+  "藕": [
+   {
+    "id": "a658444f434857454da66aa1",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "藕",
+    "summary": "移除 ŋˤoʔ; 新增 ŋˤroʔ",
+    "removed": [
+     "ŋˤoʔ"
+    ],
+    "added": [
+     "ŋˤroʔ"
+    ]
+   }
+  ],
+  "藪": [
+   {
+    "id": "1654f0924d3aec12a3937403",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "藪",
+    "summary": "移除 sroʔ; 新增 sˤoʔ",
+    "removed": [
+     "sroʔ"
+    ],
+    "added": [
+     "sˤoʔ"
+    ]
+   }
+  ],
+  "蘼": [
+   {
+    "id": "273c47a705f6dc847788c836",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "蘼",
+    "summary": "移除 majʔ; 新增 mri",
+    "removed": [
+     "majʔ"
+    ],
+    "added": [
+     "mri"
+    ]
+   }
+  ],
+  "袖": [
+   {
+    "id": "eb5f3cb407758903c9c59fac",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "袖",
+    "summary": "移除 sluʔ; 新增 sluh",
+    "removed": [
+     "sluʔ"
+    ],
+    "added": [
+     "sluh"
+    ]
+   }
+  ],
+  "觗": [
+   {
+    "id": "928759dbe9bfdbe6dcc448dc",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "觗",
+    "summary": "移除 keh; 新增 ke",
+    "removed": [
+     "keh"
+    ],
+    "added": [
+     "ke"
+    ]
+   }
+  ],
+  "觶": [
+   {
+    "id": "13ed84b24cf970c5ecd46fac",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "觶",
+    "summary": "移除 tanh; 新增 tˤanʔ",
+    "removed": [
+     "tanh"
+    ],
+    "added": [
+     "tˤanʔ"
+    ]
+   }
+  ],
+  "觼": [
+   {
+    "id": "7d7db51f8b8ce465fdb89f1b",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "觼",
+    "summary": "移除 kwˤik; 新增 kwˤit",
+    "removed": [
+     "kwˤik"
+    ],
+    "added": [
+     "kwˤit"
+    ]
+   }
+  ],
+  "譎": [
+   {
+    "id": "646bc3c1b90e0774659edc79",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "譎",
+    "summary": "移除 kwˤik; 新增 kwˤit",
+    "removed": [
+     "kwˤik"
+    ],
+    "added": [
+     "kwˤit"
+    ]
+   }
+  ],
+  "豤": [
+   {
+    "id": "66e670531db2081d6e63d39c",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "豤",
+    "summary": "新增 kʰˤən",
+    "removed": [],
+    "added": [
+     "kʰˤən"
+    ]
+   }
+  ],
+  "赮": [
+   {
+    "id": "c02e897c7ab351f4097fa5f7",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "赮",
+    "summary": "gˤra",
+    "removed": [],
+    "added": [
+     "gˤra"
+    ]
+   }
+  ],
+  "趽": [
+   {
+    "id": "efe46d974161b8a39d6972f3",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "趽",
+    "summary": "paŋ",
+    "removed": [],
+    "added": [
+     "paŋ"
+    ]
+   }
+  ],
+  "軻": [
+   {
+    "id": "1215646717159ae9afeb3447",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "軻",
+    "summary": "移除 kʰˤajʔ; 新增 kʰˤaj",
+    "removed": [
+     "kʰˤajʔ"
+    ],
+    "added": [
+     "kʰˤaj"
+    ]
+   }
+  ],
+  "遹": [
+   {
+    "id": "0ad9312dd0e4f4030bcf5d02",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "遹",
+    "summary": "移除 wik; 新增 wit",
+    "removed": [
+     "wik"
+    ],
+    "added": [
+     "wit"
+    ]
+   }
+  ],
+  "邧": [
+   {
+    "id": "2f4ed43a3128a4f1a207a253",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "邧",
+    "summary": "移除 ŋonʔ; 新增 ŋon",
+    "removed": [
+     "ŋonʔ"
+    ],
+    "added": [
+     "ŋon"
+    ]
+   }
+  ],
+  "郈": [
+   {
+    "id": "a6fd6f2786610ae1151e608c",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "郈",
+    "summary": "移除 gˤoʔ; 新增 gˤroʔ",
+    "removed": [
+     "gˤoʔ"
+    ],
+    "added": [
+     "gˤroʔ"
+    ]
+   }
+  ],
+  "鉘": [
+   {
+    "id": "fb416170b7fd2fcc23a7e209",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "鉘",
+    "summary": "but",
+    "removed": [],
+    "added": [
+     "but"
+    ]
+   }
+  ],
+  "錠": [
+   {
+    "id": "9c340dc57d9fcefdf0ab8bd7",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "錠",
+    "summary": "tˤeŋh",
+    "removed": [],
+    "added": [
+     "tˤeŋh"
+    ]
+   }
+  ],
+  "鐍": [
+   {
+    "id": "b32e43f5c594c5e31359d49f",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "鐍",
+    "summary": "移除 kwˤik; 新增 kwˤit",
+    "removed": [
+     "kwˤik"
+    ],
+    "added": [
+     "kwˤit"
+    ]
+   }
+  ],
+  "鑞": [
+   {
+    "id": "03225c197f23993756eefa2b",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "鑞",
+    "summary": "rˤap",
+    "removed": [],
+    "added": [
+     "rˤap"
+    ]
+   }
+  ],
+  "霤": [
+   {
+    "id": "83c1fec49d32384f3c3fc13c",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "霤",
+    "summary": "移除 ru; 新增 ruh",
+    "removed": [
+     "ru"
+    ],
+    "added": [
+     "ruh"
+    ]
+   }
+  ],
+  "駏": [
+   {
+    "id": "781b0a1a8e6ab36984183aae",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "駏",
+    "summary": "gaʔ",
+    "removed": [],
+    "added": [
+     "gaʔ"
+    ]
+   }
+  ],
+  "騜": [
+   {
+    "id": "ab27dcd72bcb4c1a38910164",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "騜",
+    "summary": "移除 wˤaŋ; 新增 waŋ",
+    "removed": [
+     "wˤaŋ"
+    ],
+    "added": [
+     "waŋ"
+    ]
+   }
+  ],
+  "驈": [
+   {
+    "id": "6e54b5d43f35f92809221f32",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "驈",
+    "summary": "移除 wik; 新增 wit",
+    "removed": [
+     "wik"
+    ],
+    "added": [
+     "wit"
+    ]
+   }
+  ],
+  "驉": [
+   {
+    "id": "b02e47eb6b4356717a23f95b",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "驉",
+    "summary": "ha",
+    "removed": [],
+    "added": [
+     "ha"
+    ]
+   }
+  ],
+  "鬋": [
+   {
+    "id": "5ddc3ceba5d8e7781e483200",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "鬋",
+    "summary": "移除 tsenʔ; 新增 tsenh",
+    "removed": [
+     "tsenʔ"
+    ],
+    "added": [
+     "tsenh"
+    ]
+   }
+  ],
+  "鬐": [
+   {
+    "id": "aeba302e670e4c20d3b1a7a1",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "鬐",
+    "summary": "移除 gri; 新增 gi",
+    "removed": [
+     "gri"
+    ],
+    "added": [
+     "gi"
+    ]
+   }
+  ],
+  "鯫": [
+   {
+    "id": "21ddd6baa019620c0dd2077d",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "鯫",
+    "summary": "移除 tsʰˤro; 新增 tsʰˤroʔ",
+    "removed": [
+     "tsʰˤro"
+    ],
+    "added": [
+     "tsʰˤroʔ"
+    ]
+   }
+  ],
+  "鰭": [
+   {
+    "id": "39bc40210fdb4246bdc7f7c1",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "鰭",
+    "summary": "移除 gri; 新增 gi",
+    "removed": [
+     "gri"
+    ],
+    "added": [
+     "gi"
+    ]
+   }
+  ],
+  "鱊": [
+   {
+    "id": "3699c70f84184dc861eaded8",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "鱊",
+    "summary": "移除 wik; 新增 wit",
+    "removed": [
+     "wik"
+    ],
+    "added": [
+     "wit"
+    ]
+   }
+  ],
+  "鴂": [
+   {
+    "id": "d8dca9be36960174f62e5d74",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "鴂",
+    "summary": "移除 kwˤik; 新增 kwˤit",
+    "removed": [
+     "kwˤik"
+    ],
+    "added": [
+     "kwˤit"
+    ]
+   }
+  ],
+  "鴃": [
+   {
+    "id": "bdbe889b3abff9facf332568",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "鴃",
+    "summary": "移除 kwˤik; 新增 kwˤit",
+    "removed": [
+     "kwˤik"
+    ],
+    "added": [
+     "kwˤit"
+    ]
+   }
+  ],
+  "鷮": [
+   {
+    "id": "d1c58b4839a8373b9eabe0e0",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "鷮",
+    "summary": "移除 kaw; 新增 kawh",
+    "removed": [
+     "kaw"
+    ],
+    "added": [
+     "kawh"
+    ]
+   }
+  ],
+  "鷸": [
+   {
+    "id": "f126b892ac5e9d59313095ea",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "鷸",
+    "summary": "移除 wik; 新增 wit",
+    "removed": [
+     "wik"
+    ],
+    "added": [
+     "wit"
+    ]
+   }
+  ],
+  "黹": [
+   {
+    "id": "21681947b91b8c2e5fea6ccc",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "黹",
+    "summary": "移除 triʔ; 新增 trəjʔ",
+    "removed": [
+     "triʔ"
+    ],
+    "added": [
+     "trəjʔ"
+    ]
+   }
+  ],
+  "𠈈": [
+   {
+    "id": "c0510a7ca505ba7191ba9fb0",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "𠈈",
+    "summary": "移除 seʔ; 新增 tsʰeʔ",
+    "removed": [
+     "seʔ"
+    ],
+    "added": [
+     "tsʰeʔ"
+    ]
+   }
+  ],
+  "𡛟": [
+   {
+    "id": "f345f3f85b503b827dc21192",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "𡛟",
+    "summary": "wat",
+    "removed": [],
+    "added": [
+     "wat"
+    ]
+   }
+  ],
+  "𤻲": [
+   {
+    "id": "572580c96846d225cd806c2f",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "𤻲",
+    "summary": "rewh",
+    "removed": [],
+    "added": [
+     "rewh"
+    ]
+   }
+  ],
+  "𧆐": [
+   {
+    "id": "415455f8023c719bc0c8af7c",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "修改",
+    "char": "𧆐",
+    "summary": "移除 kˤəmʔ; 新增 kˤəmh",
+    "removed": [
+     "kˤəmʔ"
+    ],
+    "added": [
+     "kˤəmh"
+    ]
+   }
+  ],
+  "𨸰": [
+   {
+    "id": "4d3b18fba7d847b2e2b27f7f",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "新增",
+    "char": "𨸰",
+    "summary": "kuk",
+    "removed": [],
+    "added": [
+     "kuk"
+    ]
+   }
+  ],
+  "𩋄": [
+   {
+    "id": "82bec14aff1c5aa78baa9f0c",
+    "batch_id": "49116921",
+    "timestamp": "2026-07-23 04:01:55",
+    "filename": "base.json.gz",
+    "batch_count": 110,
+    "kind": "删除",
+    "char": "𩋄",
+    "summary": "tsʰˤroʔ",
+    "removed": [
+     "tsʰˤroʔ"
+    ],
+    "added": []
+   }
+  ],
+  "㥛": [
+   {
+    "id": "14416f89d6d867c95bdf82d2",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "新增",
+    "char": "㥛",
+    "summary": "kək",
+    "removed": [],
+    "added": [
+     "kək"
+    ]
+   }
+  ],
+  "㴬": [
+   {
+    "id": "1b8de3c0836e0a037202f943",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "㴬",
+    "summary": "移除 slah; 新增 sliah",
+    "removed": [
+     "slah"
+    ],
+    "added": [
+     "sliah"
+    ]
+   }
+  ],
+  "㹎": [
+   {
+    "id": "307ac9992e343060a16ee868",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "删除",
+    "char": "㹎",
+    "summary": "ruj",
+    "removed": [
+     "ruj"
+    ],
+    "added": []
+   }
+  ],
+  "䋼": [
+   {
+    "id": "78cba0b414ae08e3be9c45be",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "新增",
+    "char": "䋼",
+    "summary": "l̥ˤeŋ",
+    "removed": [],
+    "added": [
+     "l̥ˤeŋ"
+    ]
+   }
+  ],
+  "䍵": [
+   {
+    "id": "147037d783c2fa84f0362a4d",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "删除",
+    "char": "䍵",
+    "summary": "tsˤreŋ",
+    "removed": [
+     "tsˤreŋ"
+    ],
+    "added": []
+   }
+  ],
+  "䠶": [
+   {
+    "id": "7448a148e0035af4612256a3",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "䠶",
+    "summary": "移除 mlah; 新增 mliah",
+    "removed": [
+     "mlah"
+    ],
+    "added": [
+     "mliah"
+    ]
+   }
+  ],
+  "且": [
+   {
+    "id": "0a9bf5f0a20ab1a17f02d172",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "且",
+    "summary": "移除 tsʰaʔ; 新增 tsʰiaʔ",
+    "removed": [
+     "tsʰaʔ"
+    ],
+    "added": [
+     "tsʰiaʔ"
+    ]
+   }
+  ],
+  "仿": [
+   {
+    "id": "9c91480489f9f9d1ed2e74dd",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "仿",
+    "summary": "新增 bˤaŋ",
+    "removed": [],
+    "added": [
+     "bˤaŋ"
+    ]
+   }
+  ],
+  "佁": [
+   {
+    "id": "ab08f9d4d19752ea10b40169",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "佁",
+    "summary": "新增 sləʔ",
+    "removed": [],
+    "added": [
+     "sləʔ"
+    ]
+   }
+  ],
+  "借": [
+   {
+    "id": "a4601e5d196c22bfbf2e46e2",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "借",
+    "summary": "移除 tsah; 新增 tsiah",
+    "removed": [
+     "tsah"
+    ],
+    "added": [
+     "tsiah"
+    ]
+   }
+  ],
+  "冏": [
+   {
+    "id": "eb1a6a0751bba12eb84af94d",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "冏",
+    "summary": "移除 n̥ep; 新增 step",
+    "removed": [
+     "n̥ep"
+    ],
+    "added": [
+     "step"
+    ]
+   }
+  ],
+  "冶": [
+   {
+    "id": "03bf92a2b85c1eb8ed93cd92",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "冶",
+    "summary": "移除 jaʔ; 新增 jiaʔ",
+    "removed": [
+     "jaʔ"
+    ],
+    "added": [
+     "jiaʔ"
+    ]
+   }
+  ],
+  "勰": [
+   {
+    "id": "9be6dc4c11c9ba481ddd27eb",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "勰",
+    "summary": "移除 gˤep; 新增 gˤip",
+    "removed": [
+     "gˤep"
+    ],
+    "added": [
+     "gˤip"
+    ]
+   }
+  ],
+  "協": [
+   {
+    "id": "de62a01768b20b71da08cb2e",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "協",
+    "summary": "移除 gˤep; 新增 gˤip",
+    "removed": [
+     "gˤep"
+    ],
+    "added": [
+     "gˤip"
+    ]
+   }
+  ],
+  "叶": [
+   {
+    "id": "1d43cfae865491af1577452e",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "叶",
+    "summary": "移除 gˤep; 新增 gˤip",
+    "removed": [
+     "gˤep"
+    ],
+    "added": [
+     "gˤip"
+    ]
+   }
+  ],
+  "吏": [
+   {
+    "id": "7344b5476609f035dfe1627c",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "吏",
+    "summary": "移除 rəʔ; 新增 rəh",
+    "removed": [
+     "rəʔ"
+    ],
+    "added": [
+     "rəh"
+    ]
+   }
+  ],
+  "咀": [
+   {
+    "id": "7f478c9735bbc017eff5b45a",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "咀",
+    "summary": "移除 tsaʔ; 新增 tsiaʔ",
+    "removed": [
+     "tsaʔ"
+    ],
+    "added": [
+     "tsiaʔ"
+    ]
+   }
+  ],
+  "唶": [
+   {
+    "id": "803fe98a04d6823a4bde2d2c",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "唶",
+    "summary": "移除 tsah; 新增 tsˤrak",
+    "removed": [
+     "tsah"
+    ],
+    "added": [
+     "tsˤrak"
+    ]
+   }
+  ],
+  "嗟": [
+   {
+    "id": "611628aad395c5552e564a23",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "嗟",
+    "summary": "移除 tsaj; 新增 tsia",
+    "removed": [
+     "tsaj"
+    ],
+    "added": [
+     "tsia"
+    ]
+   }
+  ],
+  "囧": [
+   {
+    "id": "7815a5864c37acfea47fa7bb",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "囧",
+    "summary": "移除 n̥ep; 新增 step",
+    "removed": [
+     "n̥ep"
+    ],
+    "added": [
+     "step"
+    ]
+   }
+  ],
+  "堵": [
+   {
+    "id": "b05655e0a9545f3a98d4e0b5",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "堵",
+    "summary": "移除 taʔ; 新增 tiaʔ",
+    "removed": [
+     "taʔ"
+    ],
+    "added": [
+     "tiaʔ"
+    ]
+   }
+  ],
+  "塯": [
+   {
+    "id": "326191420b0d8ef00ed0d832",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "塯",
+    "summary": "移除 ruh; 新增 C.ruh",
+    "removed": [
+     "ruh"
+    ],
+    "added": [
+     "C.ruh"
+    ]
+   }
+  ],
+  "壄": [
+   {
+    "id": "08bd582a3f20f17909ce6eb4",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "壄",
+    "summary": "移除 laʔ; 新增 liaʔ",
+    "removed": [
+     "laʔ"
+    ],
+    "added": [
+     "liaʔ"
+    ]
+   }
+  ],
+  "夜": [
+   {
+    "id": "b4506faec557a4e705fe3554",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "夜",
+    "summary": "移除 jah; 新增 jiah",
+    "removed": [
+     "jah"
+    ],
+    "added": [
+     "jiah"
+    ]
+   }
+  ],
+  "奓": [
+   {
+    "id": "f773980bb8adc052b719578e",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "奓",
+    "summary": "移除 sta; 新增 stia",
+    "removed": [
+     "sta"
+    ],
+    "added": [
+     "stia"
+    ]
+   }
+  ],
+  "奢": [
+   {
+    "id": "15d7ae7023f41878fffc3524",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "奢",
+    "summary": "移除 sta; 新增 stia",
+    "removed": [
+     "sta"
+    ],
+    "added": [
+     "stia"
+    ]
+   }
+  ],
+  "寫": [
+   {
+    "id": "4e28125d85db706c42b694dc",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "寫",
+    "summary": "移除 slaʔ; 新增 sliaʔ",
+    "removed": [
+     "slaʔ"
+    ],
+    "added": [
+     "sliaʔ"
+    ]
+   }
+  ],
+  "射": [
+   {
+    "id": "e77d19127abec594c1f21e47",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "射",
+    "summary": "移除 lah, mlah; 新增 liah, mliah",
+    "removed": [
+     "lah",
+     "mlah"
+    ],
+    "added": [
+     "liah",
+     "mliah"
+    ]
+   }
+  ],
+  "怚": [
+   {
+    "id": "e23afc2d4c2ee968904487d3",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "新增",
+    "char": "怚",
+    "summary": "tsah",
+    "removed": [],
+    "added": [
+     "tsah"
+    ]
+   }
+  ],
+  "攱": [
+   {
+    "id": "06299f9f2431d5c128ce6bdd",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "新增",
+    "char": "攱",
+    "summary": "kreʔ",
+    "removed": [],
+    "added": [
+     "kreʔ"
+    ]
+   }
+  ],
+  "攲": [
+   {
+    "id": "dff82e6e8c032becf11cc313",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "删除",
+    "char": "攲",
+    "summary": "kaj",
+    "removed": [
+     "kaj"
+    ],
+    "added": []
+   }
+  ],
+  "敻": [
+   {
+    "id": "66ad7ffed3a46706d8252adc",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "敻",
+    "summary": "移除 ẘˤiŋ; 新增 ẘˤinh",
+    "removed": [
+     "ẘˤiŋ"
+    ],
+    "added": [
+     "ẘˤinh"
+    ]
+   }
+  ],
+  "斜": [
+   {
+    "id": "0bfe2b0cb4298c55b8844811",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "斜",
+    "summary": "移除 sja; 新增 sjia",
+    "removed": [
+     "sja"
+    ],
+    "added": [
+     "sjia"
+    ]
+   }
+  ],
+  "斷": [
+   {
+    "id": "0db06eaa1faf96e86e9afd52",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "斷",
+    "summary": "新增 dˤonh",
+    "removed": [],
+    "added": [
+     "dˤonh"
+    ]
+   }
+  ],
+  "旛": [
+   {
+    "id": "cf58933f50ae513cab975959",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "旛",
+    "summary": "移除 bar; 新增 pˤar",
+    "removed": [
+     "bar"
+    ],
+    "added": [
+     "pˤar"
+    ]
+   }
+  ],
+  "柘": [
+   {
+    "id": "78eeb6a573e70cd8a94caa03",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "柘",
+    "summary": "移除 tah; 新增 tiah",
+    "removed": [
+     "tah"
+    ],
+    "added": [
+     "tiah"
+    ]
+   }
+  ],
+  "榭": [
+   {
+    "id": "8b8e51cd65bf97adcd97d88e",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "榭",
+    "summary": "移除 slah; 新增 sliah",
+    "removed": [
+     "slah"
+    ],
+    "added": [
+     "sliah"
+    ]
+   }
+  ],
+  "段": [
+   {
+    "id": "b605b963a1e281d066c3dd0e",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "段",
+    "summary": "新增 dˤonh",
+    "removed": [],
+    "added": [
+     "dˤonh"
+    ]
+   }
+  ],
+  "浟": [
+   {
+    "id": "5c04d9cb603a66e7ca061a4a",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "浟",
+    "summary": "移除 liw; 新增 lu",
+    "removed": [
+     "liw"
+    ],
+    "added": [
+     "lu"
+    ]
+   }
+  ],
+  "涻": [
+   {
+    "id": "b4cf3c944519861306a5757f",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "涻",
+    "summary": "移除 l̥ah; 新增 l̥iah",
+    "removed": [
+     "l̥ah"
+    ],
+    "added": [
+     "l̥iah"
+    ]
+   }
+  ],
+  "瀉": [
+   {
+    "id": "e1164416ac5a122cc5bfe217",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "瀉",
+    "summary": "移除 slaʔ; 新增 sliaʔ",
+    "removed": [
+     "slaʔ"
+    ],
+    "added": [
+     "sliaʔ"
+    ]
+   }
+  ],
+  "灺": [
+   {
+    "id": "830765af60f88cb69c33fff8",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "灺",
+    "summary": "移除 slajʔ; 新增 sliajʔ",
+    "removed": [
+     "slajʔ"
+    ],
+    "added": [
+     "sliajʔ"
+    ]
+   }
+  ],
+  "炙": [
+   {
+    "id": "5f698ad8e2c439bfcf1eb014",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "炙",
+    "summary": "移除 tah; 新增 tiah",
+    "removed": [
+     "tah"
+    ],
+    "added": [
+     "tiah"
+    ]
+   }
+  ],
+  "熹": [
+   {
+    "id": "81c5b250ead26e42ee18e674",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "新增",
+    "char": "熹",
+    "summary": "hə",
+    "removed": [],
+    "added": [
+     "hə"
+    ]
+   }
+  ],
+  "琊": [
+   {
+    "id": "1c503fe06928d8dee0611757",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "琊",
+    "summary": "移除 ja; 新增 jia",
+    "removed": [
+     "ja"
+    ],
+    "added": [
+     "jia"
+    ]
+   }
+  ],
+  "瑘": [
+   {
+    "id": "0e206bd61d9ad49a219e7e67",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "瑘",
+    "summary": "移除 ja; 新增 jia",
+    "removed": [
+     "ja"
+    ],
+    "added": [
+     "jia"
+    ]
+   }
+  ],
+  "瘥": [
+   {
+    "id": "dea4ae011420ea232bf1b68c",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "瘥",
+    "summary": "移除 tsa; 新增 tsia, tsʰˤrajh",
+    "removed": [
+     "tsa"
+    ],
+    "added": [
+     "tsia",
+     "tsʰˤrajh"
+    ]
+   }
+  ],
+  "盞": [
+   {
+    "id": "f57a5c2d8d4824e3641a73fd",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "盞",
+    "summary": "移除 dzranʔ; 新增 tsranʔ",
+    "removed": [
+     "dzranʔ"
+    ],
+    "added": [
+     "tsranʔ"
+    ]
+   }
+  ],
+  "礴": [
+   {
+    "id": "aa2f425638be13558dc21f9b",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "新增",
+    "char": "礴",
+    "summary": "bˤak",
+    "removed": [],
+    "added": [
+     "bˤak"
+    ]
+   }
+  ],
+  "社": [
+   {
+    "id": "7cea90b6af7595ef1a4278b7",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "社",
+    "summary": "移除 daʔ; 新增 diaʔ",
+    "removed": [
+     "daʔ"
+    ],
+    "added": [
+     "diaʔ"
+    ]
+   }
+  ],
+  "紨": [
+   {
+    "id": "346496c867187d5e57f69904",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "删除",
+    "char": "紨",
+    "summary": "pʰo",
+    "removed": [
+     "pʰo"
+    ],
+    "added": []
+   }
+  ],
+  "絎": [
+   {
+    "id": "3c6d31cde1d8a2a1c38eea6c",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "删除",
+    "char": "絎",
+    "summary": "gˤraŋh",
+    "removed": [
+     "gˤraŋh"
+    ],
+    "added": []
+   }
+  ],
+  "綖": [
+   {
+    "id": "ed30d1b98631d6a56784a5e7",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "綖",
+    "summary": "移除 lan; 新增 lanh",
+    "removed": [
+     "lan"
+    ],
+    "added": [
+     "lanh"
+    ]
+   }
+  ],
+  "繜": [
+   {
+    "id": "45fb6e3dc3ea86355b85436c",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "繜",
+    "summary": "新增 tsˤun",
+    "removed": [],
+    "added": [
+     "tsˤun"
+    ]
+   }
+  ],
+  "罝": [
+   {
+    "id": "182d788021a1df8860874cc4",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "罝",
+    "summary": "移除 tsa; 新增 tsia",
+    "removed": [
+     "tsa"
+    ],
+    "added": [
+     "tsia"
+    ]
+   }
+  ],
+  "者": [
+   {
+    "id": "d0fe47f3c3e801c5da394dac",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "者",
+    "summary": "移除 taʔ; 新增 tiaʔ",
+    "removed": [
+     "taʔ"
+    ],
+    "added": [
+     "tiaʔ"
+    ]
+   }
+  ],
+  "耒": [
+   {
+    "id": "3c18354600c68a4a04460c75",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "耒",
+    "summary": "移除 ruj; 新增 rˤujh",
+    "removed": [
+     "ruj"
+    ],
+    "added": [
+     "rˤujh"
+    ]
+   }
+  ],
+  "耶": [
+   {
+    "id": "c317549acf07e88d087857a2",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "耶",
+    "summary": "移除 ja; 新增 jia",
+    "removed": [
+     "ja"
+    ],
+    "added": [
+     "jia"
+    ]
+   }
+  ],
+  "臩": [
+   {
+    "id": "c28735a8aca0664f66e3b68e",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "臩",
+    "summary": "移除 n̥ep; 新增 step",
+    "removed": [
+     "n̥ep"
+    ],
+    "added": [
+     "step"
+    ]
+   }
+  ],
+  "舍": [
+   {
+    "id": "7f0f024e568e21890a03fd6e",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "舍",
+    "summary": "移除 l̥ah, l̥aʔ; 新增 l̥iah, l̥iaʔ",
+    "removed": [
+     "l̥ah",
+     "l̥aʔ"
+    ],
+    "added": [
+     "l̥iah",
+     "l̥iaʔ"
+    ]
+   }
+  ],
+  "舎": [
+   {
+    "id": "bd6b95126bea9e3c67e04b29",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "舎",
+    "summary": "移除 l̥ah; 新增 l̥iah",
+    "removed": [
+     "l̥ah"
+    ],
+    "added": [
+     "l̥iah"
+    ]
+   }
+  ],
+  "艖": [
+   {
+    "id": "eba87c699ee5f7d69bc0951b",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "删除",
+    "char": "艖",
+    "summary": "tsʰˤraj",
+    "removed": [
+     "tsʰˤraj"
+    ],
+    "added": []
+   }
+  ],
+  "蔗": [
+   {
+    "id": "1a267098e34f66a0ae60f32a",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "蔗",
+    "summary": "移除 tah; 新增 tiah",
+    "removed": [
+     "tah"
+    ],
+    "added": [
+     "tiah"
+    ]
+   }
+  ],
+  "藉": [
+   {
+    "id": "7e40ca61cd03d687c06296cf",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "藉",
+    "summary": "移除 dzah; 新增 dziah",
+    "removed": [
+     "dzah"
+    ],
+    "added": [
+     "dziah"
+    ]
+   }
+  ],
+  "藨": [
+   {
+    "id": "cc3471c6700cbe5587e21a90",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "藨",
+    "summary": "移除 brawʔ; 新增 bawʔ",
+    "removed": [
+     "brawʔ"
+    ],
+    "added": [
+     "bawʔ"
+    ]
+   }
+  ],
+  "藾": [
+   {
+    "id": "67260318c87fad5d7db9cea4",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "藾",
+    "summary": "移除 rˤas; 新增 C.rˤas",
+    "removed": [
+     "rˤas"
+    ],
+    "added": [
+     "C.rˤas"
+    ]
+   }
+  ],
+  "蘦": [
+   {
+    "id": "b0e1b7b9103d57ae5aee262d",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "蘦",
+    "summary": "移除 rˤeŋ; 新增 rˤiŋ",
+    "removed": [
+     "rˤeŋ"
+    ],
+    "added": [
+     "rˤiŋ"
+    ]
+   }
+  ],
+  "虵": [
+   {
+    "id": "d23e1498a777875567421289",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "虵",
+    "summary": "移除 mlaj; 新增 mliaj",
+    "removed": [
+     "mlaj"
+    ],
+    "added": [
+     "mliaj"
+    ]
+   }
+  ],
+  "蛇": [
+   {
+    "id": "d6d1bbb848c38d49e0a2a602",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "蛇",
+    "summary": "移除 mlaj; 新增 mliaj",
+    "removed": [
+     "mlaj"
+    ],
+    "added": [
+     "mliaj"
+    ]
+   }
+  ],
+  "蟅": [
+   {
+    "id": "c7f88e98f7112985a497e20d",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "蟅",
+    "summary": "移除 tah; 新增 tiah",
+    "removed": [
+     "tah"
+    ],
+    "added": [
+     "tiah"
+    ]
+   }
+  ],
+  "衺": [
+   {
+    "id": "34de25daa43ea78f7e5ec239",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "衺",
+    "summary": "移除 sja; 新增 sjia",
+    "removed": [
+     "sja"
+    ],
+    "added": [
+     "sjia"
+    ]
+   }
+  ],
+  "詣": [
+   {
+    "id": "95210850ab17dc5596b52bd7",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "詣",
+    "summary": "移除 ŋˤis; 新增 ŋˤih",
+    "removed": [
+     "ŋˤis"
+    ],
+    "added": [
+     "ŋˤih"
+    ]
+   }
+  ],
+  "謝": [
+   {
+    "id": "bc6205f08d17b40ddc0b7122",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "謝",
+    "summary": "移除 slah; 新增 sliah",
+    "removed": [
+     "slah"
+    ],
+    "added": [
+     "sliah"
+    ]
+   }
+  ],
+  "賒": [
+   {
+    "id": "f5a8459401db86787873e0ab",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "賒",
+    "summary": "移除 l̥a; 新增 l̥ia",
+    "removed": [
+     "l̥a"
+    ],
+    "added": [
+     "l̥ia"
+    ]
+   }
+  ],
+  "贋": [
+   {
+    "id": "5cdaeb5958a052aff92f5662",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "新增",
+    "char": "贋",
+    "summary": "ŋˤranh",
+    "removed": [],
+    "added": [
+     "ŋˤranh"
+    ]
+   }
+  ],
+  "赦": [
+   {
+    "id": "dafeda692b4d04f043043e37",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "赦",
+    "summary": "移除 jah, n̥ah; 新增 jiah, n̥iah",
+    "removed": [
+     "jah",
+     "n̥ah"
+    ],
+    "added": [
+     "jiah",
+     "n̥iah"
+    ]
+   }
+  ],
+  "赭": [
+   {
+    "id": "7afc6f6413e17357a28969b0",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "赭",
+    "summary": "移除 taʔ; 新增 tiaʔ",
+    "removed": [
+     "taʔ"
+    ],
+    "added": [
+     "tiaʔ"
+    ]
+   }
+  ],
+  "車": [
+   {
+    "id": "acd8c243d04923bed54c4dc9",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "車",
+    "summary": "移除 j̊a; 新增 j̊ia",
+    "removed": [
+     "j̊a"
+    ],
+    "added": [
+     "j̊ia"
+    ]
+   }
+  ],
+  "輣": [
+   {
+    "id": "77caaa1f5ff1efd07908156a",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "新增",
+    "char": "輣",
+    "summary": "bˤrəŋ",
+    "removed": [],
+    "added": [
+     "bˤrəŋ"
+    ]
+   }
+  ],
+  "遇": [
+   {
+    "id": "e453bb5b95531f00177514d7",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "遇",
+    "summary": "移除 ŋoh; 新增 ŋroh",
+    "removed": [
+     "ŋoh"
+    ],
+    "added": [
+     "ŋroh"
+    ]
+   }
+  ],
+  "遮": [
+   {
+    "id": "f18b413621d44b811c8854e7",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "遮",
+    "summary": "移除 ta; 新增 tia",
+    "removed": [
+     "ta"
+    ],
+    "added": [
+     "tia"
+    ]
+   }
+  ],
+  "邪": [
+   {
+    "id": "ecad8918b5861135d369f93e",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "邪",
+    "summary": "移除 ja, sja; 新增 jia, sjia",
+    "removed": [
+     "ja",
+     "sja"
+    ],
+    "added": [
+     "jia",
+     "sjia"
+    ]
+   }
+  ],
+  "郅": [
+   {
+    "id": "2ae6bbcdbb055fde6ffb374a",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "郅",
+    "summary": "移除 tis; 新增 tih",
+    "removed": [
+     "tis"
+    ],
+    "added": [
+     "tih"
+    ]
+   }
+  ],
+  "野": [
+   {
+    "id": "b7fec48e49aa6a7ce4739b8f",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "野",
+    "summary": "移除 laʔ; 新增 liaʔ",
+    "removed": [
+     "laʔ"
+    ],
+    "added": [
+     "liaʔ"
+    ]
+   }
+  ],
+  "鈕": [
+   {
+    "id": "c24e4e1f5b38ce449516e8cb",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "删除",
+    "char": "鈕",
+    "summary": "nruʔ",
+    "removed": [
+     "nruʔ"
+    ],
+    "added": []
+   }
+  ],
+  "鋣": [
+   {
+    "id": "cd3cdb0e398cb6da5021ea99",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "鋣",
+    "summary": "移除 ja; 新增 jia",
+    "removed": [
+     "ja"
+    ],
+    "added": [
+     "jia"
+    ]
+   }
+  ],
+  "鎁": [
+   {
+    "id": "66f5ea6802ba2191a927f079",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "鎁",
+    "summary": "移除 ja; 新增 jia",
+    "removed": [
+     "ja"
+    ],
+    "added": [
+     "jia"
+    ]
+   }
+  ],
+  "閼": [
+   {
+    "id": "3e8dfd48897d76d6bff1ba6f",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "閼",
+    "summary": "移除 ʔran; 新增 ʔan",
+    "removed": [
+     "ʔran"
+    ],
+    "added": [
+     "ʔan"
+    ]
+   }
+  ],
+  "騇": [
+   {
+    "id": "03e833fdc1e159ac1f87979f",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "騇",
+    "summary": "移除 l̥ah; 新增 l̥iah",
+    "removed": [
+     "l̥ah"
+    ],
+    "added": [
+     "l̥iah"
+    ]
+   }
+  ],
+  "鬍": [
+   {
+    "id": "8fef360c400f42ac17678b38",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "删除",
+    "char": "鬍",
+    "summary": "gˤa",
+    "removed": [
+     "gˤa"
+    ],
+    "added": []
+   }
+  ],
+  "鵺": [
+   {
+    "id": "c46b4d40c63e19ad915098b3",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "鵺",
+    "summary": "移除 jah; 新增 jiah",
+    "removed": [
+     "jah"
+    ],
+    "added": [
+     "jiah"
+    ]
+   }
+  ],
+  "鷓": [
+   {
+    "id": "f8db871713c4a33d72be7fc5",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "鷓",
+    "summary": "移除 tah; 新增 tiah",
+    "removed": [
+     "tah"
+    ],
+    "added": [
+     "tiah"
+    ]
+   }
+  ],
+  "𢱋": [
+   {
+    "id": "08ec5357e8c0f65f97bb0245",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "𢱋",
+    "summary": "移除 tah; 新增 tiah",
+    "removed": [
+     "tah"
+    ],
+    "added": [
+     "tiah"
+    ]
+   }
+  ],
+  "𤄶": [
+   {
+    "id": "c583431a13d41c8615d7c899",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "新增",
+    "char": "𤄶",
+    "summary": "lawk",
+    "removed": [],
+    "added": [
+     "lawk"
+    ]
+   }
+  ],
+  "𥰠": [
+   {
+    "id": "e4b5b679829e988ef1a58a7b",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "新增",
+    "char": "𥰠",
+    "summary": "C.raʔ",
+    "removed": [],
+    "added": [
+     "C.raʔ"
+    ]
+   }
+  ],
+  "𨲠": [
+   {
+    "id": "5631b8c2981da8ab6beb6206",
+    "batch_id": "63201908",
+    "timestamp": "2026-08-22 23:55:03",
+    "filename": "base.json.gz",
+    "batch_count": 98,
+    "kind": "修改",
+    "char": "𨲠",
+    "summary": "移除 tsaj; 新增 tsia",
+    "removed": [
+     "tsaj"
+    ],
+    "added": [
+     "tsia"
+    ]
+   }
+  ]
+ }
+}

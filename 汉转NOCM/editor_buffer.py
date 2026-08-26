@@ -8,8 +8,9 @@ from constants import MAX_UNDO
 class EditorBuffer:
     """管理编辑器的文本缓冲区和撤回/重做栈。"""
 
-    def __init__(self, mapping):
+    def __init__(self, mapping, data_revision='0000-00-00 00:00:00'):
         self.mapping = mapping
+        self.data_revision = data_revision
         self.buffer = [[]]
         self.cell_info = [[]]
         self.cur_line = 0
@@ -38,7 +39,7 @@ class EditorBuffer:
     def _snapshot(self):
         return (
             [row[:] for row in self.buffer],
-            [[d.copy() for d in row] for row in self.cell_info],
+            copy.deepcopy(self.cell_info),
             self.cur_line,
             self.cur_col,
         )
@@ -84,6 +85,8 @@ class EditorBuffer:
             'is_poly': is_poly,
             'selected': 'none',
             'manual_hl': False,
+            'data_revision': self.data_revision,
+            'update_reviews': {},
         }
 
     # ── 缓冲区编辑 ────────────────────────────────

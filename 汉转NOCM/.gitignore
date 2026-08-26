@@ -1,0 +1,14 @@
+# Local user state and generated release metadata.
+.scheme_pref
+.ui_state.json
+backups/
+build_version_info.txt
+.android-tools/
+.android-sdk/
+android/.gradle/
+android/local.properties
+android/app/build/
+*.jks
+*.keystore
+release-signing.env.ps1
+汉转NOCM-*.spec

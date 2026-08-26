@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>汉字转 NOCM 音标</title>
+  <script>document.documentElement.dataset.theme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';</script>
+  <link rel="stylesheet" href="styles.css?v=0.12.6">
+</head>
+<body>
+  <div id="startup" class="startup">
+    <div class="startup-mark">漢</div>
+    <h1>汉字转 NOCM 音标</h1>
+    <span id="startup-version" class="startup-version"></span>
+    <p id="startup-message">正在准备数据...</p>
+    <div class="progress"><span id="startup-progress"></span></div>
+    <pre id="startup-details" class="startup-details hidden"></pre>
+    <div class="startup-actions">
+      <button id="startup-retry" class="button primary hidden">重试</button>
+      <button id="startup-copy-error" class="button hidden">复制错误报告</button>
+    </div>
+  </div>
+
+  <main id="app" class="app hidden">
+    <header class="topbar">
+      <div class="brand">
+        <strong>汉字转 NOCM 音标</strong>
+        <span id="document-title">未命名文稿</span>
+        <span id="save-state" class="save-state">已自动保存</span>
+      </div>
+      <nav class="toolbar" aria-label="主要操作">
+        <button class="icon-button mobile-only" id="mobile-library-button" title="文稿库" aria-label="文稿库"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3Z"></path></svg></button>
+        <button class="icon-button" id="search-button" title="查找 (Ctrl+F)" aria-label="查找"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></button>
+        <button class="icon-button" id="undo-button" title="撤回 (Ctrl+Z)" aria-label="撤回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg></button>
+        <button class="icon-button" id="redo-button" title="重做 (Ctrl+Y)" aria-label="重做"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"></path><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path></svg></button>
+        <span class="toolbar-divider"></span>
+        <button class="button" id="highlight-button">高亮</button>
+        <button class="button" id="batch-button">批量</button>
+        <button class="button" id="save-button">保存</button>
+        <button class="icon-button" id="restart-button" title="重启应用" aria-label="重启应用"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"></path><path d="M21 3v5h-5"></path></svg></button>
+        <button class="icon-button" id="theme-button" title="切换主题" aria-label="切换主题"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-1.1-.2-2.1-.5-3A7 7 0 0 1 12 3Z"></path></svg></button>
+        <button class="icon-button" id="help-button" title="关于与维护" aria-label="关于与维护"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.8 9a2.4 2.4 0 0 1 4.6 1c0 1.8-2.4 2-2.4 3.6"></path><path d="M12 17h.01"></path></svg></button>
+        <button class="icon-button mobile-only" id="mobile-inspector-button" title="读音信息" aria-label="读音信息"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5"></path><path d="M12 8h.01"></path></svg></button>
+        <button class="button primary" id="export-button">导出</button>
+      </nav>
+    </header>
+
+    <section id="searchbar" class="searchbar hidden">
+      <input id="search-input" type="search" placeholder="查找汉字或音标" autocomplete="off">
+      <input id="replace-input" type="text" placeholder="替换为" autocomplete="off">
+      <div class="segmented" id="search-scope">
+        <button data-value="all" class="active">全部</button>
+        <button data-value="char">汉字</button>
+        <button data-value="phon">音标</button>
+      </div>
+      <span id="search-count" class="muted"></span>
+      <span class="flex-spacer"></span>
+      <button class="button" id="replace-one">替换</button>
+      <button class="button" id="replace-all">全部替换</button>
+      <button class="icon-button small" id="search-prev" title="上一个" aria-label="上一个">↑</button>
+      <button class="icon-button small" id="search-next" title="下一个" aria-label="下一个">↓</button>
+      <button class="icon-button small" id="search-close" title="关闭查找" aria-label="关闭查找"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
+    </section>
+
+    <section id="highlight-mode-banner" class="highlight-mode-banner hidden" role="status" aria-live="polite">
+      <span class="highlight-mode-copy"><i aria-hidden="true"></i><strong>高亮模式</strong><span>点击正文切换标记</span><b id="highlight-mode-count">0</b></span>
+      <button type="button" id="exit-highlight-mode" class="button">退出 <kbd>Esc</kbd></button>
+    </section>
+
+    <div class="workspace">
+      <aside class="draft-sidebar">
+        <div class="sidebar-heading">
+          <strong>文稿库</strong>
+          <div class="heading-actions">
+            <button id="new-folder-button" class="icon-button small" title="新建文件夹" aria-label="新建文件夹"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3Z"></path><path d="M12 11v5M9.5 13.5h5"></path></svg></button>
+            <button id="new-draft-button" class="icon-button small accent" title="新建文稿" aria-label="新建文稿"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h10l4 4v14H5Z"></path><path d="M14 3v5h5M12 11v6M9 14h6"></path></svg></button>
+          </div>
+        </div>
+        <div id="draft-tree" class="draft-tree"></div>
+      </aside>
+
+      <section class="editor-shell">
+        <div id="editor-scroll" class="editor-scroll">
+          <div id="empty-editor" class="empty-editor">
+            <strong>开始输入正文</strong>
+            <span>读音会在文字下方自动显示</span>
+          </div>
+          <div id="editor" class="editor" tabindex="0" aria-label="正文编辑器"></div>
+          <textarea id="input-capture" class="input-capture" aria-hidden="true"></textarea>
+        </div>
+        <footer class="statusbar">
+          <span id="cursor-status">第 1 行，第 1 列</span>
+          <span id="selection-status"></span>
+          <span class="flex-spacer"></span>
+          <span id="autosave-status">自动保存已开启</span>
+        </footer>
+      </section>
+
+      <div class="inspector-shell">
+        <div id="inspector-resizer" class="inspector-resizer" title="拖动调整侧栏宽度"></div>
+        <aside id="inspector" class="inspector"></aside>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+
+  <dialog id="prompt-dialog" class="dialog compact-dialog">
+    <form method="dialog">
+      <header><h2 id="prompt-title">请输入</h2><button value="cancel" class="icon-button small" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
+      <label id="prompt-label" for="prompt-input">名称</label>
+      <input id="prompt-input" class="text-input" autocomplete="off">
+      <footer>
+        <button value="cancel" class="button">取消</button>
+        <button id="prompt-confirm" value="default" class="button primary">确定</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="confirm-dialog" class="dialog compact-dialog">
+    <form method="dialog">
+      <header><h2 id="confirm-title">请确认</h2><button value="cancel" class="icon-button small" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
+      <p id="confirm-message"></p>
+      <footer>
+        <button value="cancel" class="button">取消</button>
+        <button id="confirm-ok" value="default" class="button danger">确定</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="reading-conflict-dialog" class="dialog compact-dialog">
+    <form method="dialog">
+      <header><h2>确认替换读音</h2><button value="cancel" class="icon-button small" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
+      <p id="reading-conflict-message"></p>
+      <footer>
+        <button value="cancel" class="button">取消应用</button>
+        <button value="skip" class="button">跳过此处</button>
+        <button value="replace" class="button primary">替换此处</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="export-dialog" class="dialog export-dialog">
+    <form method="dialog">
+      <header>
+        <div><span class="eyebrow">输出</span><h2>导出文本</h2></div>
+        <button value="cancel" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
+      </header>
+      <div class="export-controls">
+        <div class="segmented" id="export-mode">
+          <button type="button" data-value="phon" class="active">NOCM</button>
+          <button type="button" data-value="suno">Suno</button>
+          <button type="button" data-value="raw">原文</button>
+          <button type="button" data-value="both">全部</button>
+        </div>
+        <select id="export-scheme" class="select" hidden></select>
+        <button type="button" id="open-scheme-picker" class="scheme-picker-trigger">
+          <span><strong id="selected-scheme-name">选择方案</strong></span>
+        </button>
+        <button type="button" id="edit-scheme-button" class="button">编辑方案</button>
+        <div class="export-checks">
+          <label class="check-control"><input id="punct-split" type="checkbox"><span>把标点转换为换行</span></label>
+          <label class="check-control"><input id="clean-line-breaks" type="checkbox"><span>清除无效换行</span></label>
+          <label class="check-control"><input id="ignore-bracket-control-lines" type="checkbox"><span>忽略方括号控制行</span></label>
+          <label class="check-control" data-suno-only><input id="remove-pharyngeal" type="checkbox"><span>删除所有咽化</span></label>
+          <label class="check-control" data-debug-only data-suno-only><input id="remove-tones" type="checkbox"><span>删除所有声调</span></label>
+          <label class="check-control" data-suno-only><input id="remove-glottal-tone" type="checkbox"><span>删除喉塞音声调</span></label>
+          <label class="check-control" data-suno-only><input id="extra-h-voiceless-sonorant" type="checkbox"><span>清响音前额外加 h</span></label>
+          <label class="check-control" data-debug-only data-suno-only><input id="entry-before-glottal" type="checkbox"><span>喉塞音前的 p/t/k 入声改为上声</span></label>
+          <label class="check-control" data-debug-only data-suno-only><input id="departing-before-glottal" type="checkbox"><span>喉塞音前的去声改为上声</span></label>
+        </div>
+      </div>
+      <textarea id="export-output" class="export-output" spellcheck="false"></textarea>
+      <footer>
+        <button value="cancel" class="button">关闭</button>
+        <button type="button" id="open-image-export-button" class="button">导出图片</button>
+        <button type="button" id="copy-export-button" class="button primary">复制全部</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="scheme-picker-dialog" class="dialog scheme-picker-dialog">
+    <div class="dialog-layout">
+      <header>
+        <h2>选择方案</h2>
+        <div class="scheme-header-actions">
+          <div id="scheme-picker-filter" class="segmented compact" aria-label="方案状态">
+            <button type="button" data-scheme-filter="active" class="active">可用</button>
+            <button type="button" data-scheme-filter="archived">已归档</button>
+          </div>
+          <button type="button" id="import-scheme-picker" class="button">导入方案</button>
+          <button type="button" id="close-scheme-picker" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
+        </div>
+      </header>
+      <div class="scheme-picker-body">
+        <section class="scheme-picker-list-panel" aria-label="方案列表">
+          <div id="scheme-picker-list" class="scheme-picker-list"></div>
+        </section>
+      </div>
+      <footer>
+        <button type="button" id="use-picked-scheme" class="button primary">使用此方案</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <dialog id="image-export-dialog" class="dialog image-export-dialog">
+    <div class="dialog-layout">
+      <header>
+        <div><span class="eyebrow">正文成图</span><h2>选择保留的行</h2></div>
+        <button id="close-image-export" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
+      </header>
+      <div class="image-export-body">
+        <aside class="image-line-panel">
+          <div class="image-line-heading">
+            <div>
+              <strong id="image-export-summary">准备正文</strong>
+              <span><code>[...]</code> 内容已自动移除</span>
+            </div>
+            <div class="image-line-actions">
+              <button type="button" id="image-select-all" class="button">全部保留</button>
+              <button type="button" id="image-clear-all" class="button">全部隐藏</button>
+            </div>
+          </div>
+          <div id="image-line-list" class="image-line-list"></div>
+        </aside>
+        <section class="image-preview-panel" aria-label="图片预览">
+          <div class="image-preview-note">
+            <span><i></i><span id="image-preview-status">样式与正文编辑器一致</span></span>
+            <span id="image-preview-meta">字符 + 音标 · PNG · 自适应宽度</span>
+          </div>
+          <div id="image-canvas-stage" class="image-canvas-stage">
+            <canvas id="image-export-canvas" width="1600" height="500"></canvas>
+          </div>
+        </section>
+      </div>
+      <footer>
+        <button type="button" id="cancel-image-export" class="button">关闭</button>
+        <button type="button" id="copy-image-export" class="button">复制图片</button>
+        <button type="button" id="save-image-export" class="button primary">保存 PNG</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <dialog id="scheme-dialog" class="dialog scheme-dialog">
+    <div class="scheme-layout">
+      <header>
+        <div><span class="eyebrow">转写配置</span><h2>方案编辑器</h2></div>
+        <div class="scheme-header-actions">
+          <button id="scheme-undo" class="icon-button" title="撤回 (Ctrl+Z)" aria-label="撤回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg></button>
+          <button id="scheme-redo" class="icon-button" title="重做 (Ctrl+Y)" aria-label="重做"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"></path><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path></svg></button>
+          <button id="import-scheme-button" class="button">导入</button>
+          <button id="export-scheme-button" class="button">导出</button>
+          <button id="clone-scheme-button" class="button">另存副本</button>
+          <span id="scheme-save-status" class="scheme-save-status" role="status" aria-live="polite"></span>
+          <button id="save-scheme-button" class="button primary">保存方案</button>
+          <button id="close-scheme-button" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
+        </div>
+      </header>
+      <section class="scheme-meta">
+        <label>方案 ID<input id="scheme-id" class="text-input"></label>
+        <label>显示名称<input id="scheme-name" class="text-input"></label>
+        <label class="wide">备注<input id="scheme-description" class="text-input"></label>
+      </section>
+      <nav id="scheme-tabs" class="tabs">
+        <button data-tab="options" class="active">选项</button>
+        <button data-tab="maps">映射表</button>
+        <button data-tab="rules">替换规则</button>
+        <button data-tab="tools">校验与预览</button>
+      </nav>
+      <div id="scheme-content" class="scheme-content"></div>
+    </div>
+  </dialog>
+
+  <dialog id="lookup-dialog" class="dialog compact-dialog lookup-dialog">
+    <form method="dialog">
+      <header><h2>选择映射项拼接</h2><button value="cancel" class="icon-button small" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
+      <label>取值字段
+        <select id="lookup-field" class="select"><option value="target">输出</option><option value="source">NOCM 项</option><option value="label">中文说明</option></select>
+      </label>
+      <div id="lookup-parts" class="lookup-parts"></div>
+      <button type="button" id="add-lookup-part" class="button">新增项</button>
+      <div class="lookup-preview"><span>预览</span><output id="lookup-preview"></output></div>
+      <footer><button value="cancel" class="button">取消</button><button value="default" class="button primary">确定</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="history-dialog" class="dialog history-dialog">
+    <div class="dialog-layout">
+      <header><div><span class="eyebrow">文稿保护</span><h2>历史版本</h2></div><button id="close-history" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
+      <div id="history-list" class="history-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="batch-dialog" class="dialog batch-dialog">
+    <div class="dialog-layout">
+      <header><div><span class="eyebrow">正文工具</span><h2>批量处理多音字</h2></div><button id="close-batch" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
+      <div id="batch-list" class="batch-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="maintenance-dialog" class="dialog maintenance-dialog">
+    <div class="dialog-layout">
+      <header class="maintenance-header">
+        <div class="maintenance-identity"><strong>汉转 NOCM</strong><span id="about-version"></span></div>
+        <nav id="maintenance-tabs" class="maintenance-tabs" aria-label="应用页面">
+          <button data-tab="about" class="active">关于</button>
+          <button data-tab="guide">说明</button>
+          <button data-tab="backup">备份</button>
+          <button data-tab="data-changes">数据变更</button>
+          <button data-tab="diagnostics">诊断</button>
+          <button data-tab="shortcuts">快捷键</button>
+        </nav>
+        <button id="close-maintenance" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
+      </header>
+      <div id="maintenance-content" class="maintenance-content"></div>
+    </div>
+  </dialog>
+
+  <script src="app.js?v=0.12.6"></script>
+</body>
+</html>

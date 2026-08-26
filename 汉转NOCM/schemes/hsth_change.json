@@ -1,10 +1,37 @@
 {
-  "id": "arb_e",
-  "name": "阿文簡單弱化",
-  "description": "260723",
+  "id": "hsth_change",
+  "name": "清响音修改",
+  "description": "260803",
   "options": {
     "improve_pharyngeal": true,
-    "improve_syllable": false
+    "improve_syllable": true,
+    "english_voiced_stops": true
+  },
+  "option_definitions": {
+    "english_voiced_stops": {
+      "label": "浊塞音拼写",
+      "description": "鼻音诱导：mб / nд / ŋг；英美：б / ντ / γκ（沿用“颤音修改”方案）。",
+      "off_label": "鼻音诱导",
+      "on_label": "英美",
+      "when_false": {
+        "maps": {
+          "onset": {
+            "b": "mб",
+            "d": "nд",
+            "g": "ŋг"
+          }
+        }
+      },
+      "when_true": {
+        "maps": {
+          "onset": {
+            "b": "б",
+            "d": "ντ",
+            "g": "γκ"
+          }
+        }
+      }
+    }
   },
   "parse_order": {
     "tone": [
@@ -209,20 +236,20 @@
       "s": "s",
       "th": "тһ",
       "t": "д",
-      "d": "ντ",
+      "d": "nд",
       "ph": "พ",
       "p": "b",
-      "b": "б",
+      "b": "mб",
       "kh": "кһ",
       "k": "г",
-      "g": "γκ",
+      "g": "ŋг",
       "m̥": "hm",
       "m": "m",
       "n̥": "hn",
       "n": "n",
-      "r̥": "ῥ",
-      "r": "р",
-      "C.r": "р",
+      "r̥": "hร",
+      "r": "ร",
+      "C.r": "ร",
       "l̥": "hl",
       "l": "л",
       "ŋ̊": "hง",
@@ -233,9 +260,9 @@
       "w": "و"
     },
     "glide": {
-      "r": "р",
-      "ˤr": "ـغـр",
-      "lˤ": "lع",
+      "r": "ร",
+      "ˤr": "รـغـ",
+      "lˤ": "lـغـ",
       "l": "л",
       "wˤ": "ـوـغـ",
       "w": "w",
@@ -270,54 +297,29 @@
         "h"
       ]
     ],
-    "residual_preprocess": [
-      [
-        "qhˤe",
-        "qhe"
-      ]
-    ],
+    "residual_preprocess": [],
     "residual_replace": [],
-    "pharyngeal_relax": [
-      [
-        "عр",
-        "р"
-      ],
-      [
-        "عr",
-        "r"
-      ],
-      [
-        "ขع",
-        "ข"
-      ],
-      [
-        "عი",
-        "ი"
-      ]
-    ],
+    "pharyngeal_relax": [],
     "syllable_relax": [
       [
-        "ɢw",
-        "gw"
-      ],
-      [
-        "mq",
-        "q"
-      ],
-      [
-        "kph",
-        "khw"
-      ],
-      [
-        "wr",
-        "wˤ"
+        {
+          "type": "map_concat",
+          "field": "target",
+          "parts": [
+            [
+              "coda",
+              "m"
+            ],
+            [
+              "tone",
+              "ʔ"
+            ]
+          ]
+        },
+        "m"
       ]
     ],
     "post_replace": [
-      [
-        "sр",
-        "σρ"
-      ],
       [
         "кw",
         "кв"
@@ -339,16 +341,43 @@
         "औ"
       ],
       [
-        "дع",
-        "ط"
+        {
+          "type": "map_concat",
+          "field": "target",
+          "parts": [
+            [
+              "nucleus",
+              "ə"
+            ],
+            [
+              "coda",
+              "j"
+            ]
+          ]
+        },
+        "əй"
       ],
       [
-        "дع",
-        "د"
+        {
+          "type": "map_concat",
+          "field": "target",
+          "parts": [
+            [
+              "onset",
+              "kh"
+            ],
+            [
+              "glide",
+              "w"
+            ]
+          ]
+        },
+        "ขว"
       ]
     ]
   },
   "schema_version": 2,
   "migrated_by": "0.9.0",
-  "app_version": "0.9.0"
+  "app_version": "0.11.4",
+  "created_at": "2026-08-04T13:41:41.819277+00:00"
 }
