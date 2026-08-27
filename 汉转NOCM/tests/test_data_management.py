@@ -540,9 +540,18 @@ class SchemeToolTests(unittest.TestCase):
     def test_scheme_editor_exposes_manual_mapping_and_rule_order(self):
         script = Path('web/app.js').read_text(encoding='utf-8')
         self.assertIn('data-move-map', script)
-        self.assertIn('data-sort-map', script)
         self.assertIn('data-move-rule', script)
-        self.assertIn('data-sort-rule', script)
+        self.assertNotIn('data-sort-map', script)
+        self.assertNotIn('data-sort-rule', script)
+
+    def test_renaming_mapping_item_preserves_its_table_position(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        rename_block = script.split("if (field === 'source') {", 1)[1].split(
+            'markSchemeDirty();', 1)[0]
+        self.assertLess(rename_block.index('const order = mapOrder(section);'),
+                        rename_block.index('delete schemeDraft.maps'))
+        self.assertIn(
+            'schemeDraft.parse_order[section] = order.map(', rename_block)
 
     def test_clear_sonorant_english_variant_matches_r_change_voiced_stops(self):
         clear_sonorant = load_scheme('hsth_change')

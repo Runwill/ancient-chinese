@@ -453,10 +453,7 @@ body.debug-mode [data-debug-only] { display: flex; }
 .scheme-section { margin-bottom: 24px; }
 .section-heading { min-height: 38px; display: flex; align-items: center; justify-content: space-between; }
 .section-heading h3 { margin: 0; font-size: 14px; }
-.section-actions, .order-actions { display: flex; align-items: center; gap: 3px; }
-.section-actions .button { min-height: 28px; padding: 0 9px; }
-.button.quiet { color: var(--muted); background: transparent; border-color: transparent; }
-.button.quiet:hover { color: var(--text); background: var(--surface-soft); }
+.order-actions { display: flex; align-items: center; gap: 3px; }
 .data-table { min-width: 680px; border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
 .table-row { display: grid; min-height: 40px; }
 .table-row.map { grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr) minmax(180px, 1.4fr) 86px; }
