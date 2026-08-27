@@ -4,6 +4,7 @@ import base64
 import json
 import os
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -32,6 +33,30 @@ class WebApiEditorTests(unittest.TestCase):
             ],
             'y': [{'phonetic': 'y1'}],
         })
+
+    def test_update_download_runs_in_background_and_reports_progress(self):
+        def fake_download(on_progress=None):
+            on_progress({
+                'phase': 'downloading', 'message': '正在下载安装包…',
+                'progress': 50, 'downloaded': 5, 'total': 10,
+            })
+            time.sleep(0.02)
+            return {
+                'ok': True, 'path': 'update.apk', 'version': '9.8.7',
+                'platform': 'android',
+            }
+
+        with patch('web_api.download_update', side_effect=fake_download):
+            started = self.api.start_update_download('9.8.7')
+            self.assertIn(started['phase'], ('checking', 'downloading'))
+            for _ in range(50):
+                status = self.api.get_update_download_status()
+                if status['phase'] == 'ready':
+                    break
+                time.sleep(0.01)
+
+        self.assertEqual(status['phase'], 'ready')
+        self.assertEqual(status['result']['path'], 'update.apk')
 
     def _save_draft(self, filename, name, buffer, _cell_info,
                     _editor_state=None, create_history=False):

@@ -1,4 +1,4 @@
-"""Visual editor for NOCM transcription schemes."""
+"""Visual editor for PBOC transcription schemes."""
 
 import copy
 import tkinter as tk
@@ -34,7 +34,7 @@ LOOKUP_TEXT_MODE = '文本'
 LOOKUP_MAP_MODE = '映射拼接'
 LOOKUP_FIELD_LABELS = {
     'target': '输出',
-    'source': 'NOCM 项',
+    'source': 'PBOC 项',
 }
 LOOKUP_FIELD_VALUES = {label: key for key, label in LOOKUP_FIELD_LABELS.items()}
 MAP_SECTION_LABELS = {key: label for key, label in MAP_SECTIONS}
@@ -659,7 +659,7 @@ class SchemeEditor(tk.Toplevel):
                 on_add=lambda k=key: self._add_map_item(k))
             self._table_header(
                 self.map_frame.inner, MAP_TABLE_COLUMNS,
-                [(0, 'NOCM 项'), (1, '输出'), (2, '中文说明'), (3, '操作')])
+                [(0, 'PBOC 项'), (1, '输出'), (2, '中文说明'), (3, '操作')])
             if history_rows is not None:
                 for source, target, label in history_rows.get(key, []):
                     self._map_row(key, source, target, label)

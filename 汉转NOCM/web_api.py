@@ -135,6 +135,10 @@ class WebApi:
             'error': None,
             'details': None,
         }
+        self._update_download = {
+            'phase': 'idle', 'message': '', 'progress': 0,
+            'downloaded': 0, 'total': 0, 'result': None, 'error': None,
+        }
 
     def set_window(self, window):
         global _APP_WINDOW
@@ -1246,6 +1250,46 @@ class WebApi:
     def download_update(self):
         return download_update()
 
+    def start_update_download(self, expected_version=None):
+        """Start a non-blocking update download for WebView clients."""
+        with self._lock:
+            current = self._update_download
+            if current['phase'] in ('checking', 'downloading', 'verifying'):
+                return dict(current)
+            result = current.get('result') or {}
+            if (current['phase'] == 'ready' and result.get('version') ==
+                    str(expected_version or '')):
+                return dict(current)
+            self._update_download = {
+                'phase': 'checking', 'message': '正在获取更新信息…',
+                'progress': 0, 'downloaded': 0, 'total': 0,
+                'result': None, 'error': None,
+            }
+
+        def worker():
+            try:
+                result = download_update(on_progress=self._set_update_download)
+                with self._lock:
+                    self._update_download.update(
+                        phase='ready', message='安装包已下载并通过校验',
+                        progress=100, result=result, error=None)
+            except Exception as exc:
+                with self._lock:
+                    self._update_download.update(
+                        phase='error', message='更新下载失败',
+                        error=str(exc) or type(exc).__name__)
+
+        threading.Thread(target=worker, daemon=True).start()
+        return self.get_update_download_status()
+
+    def _set_update_download(self, status):
+        with self._lock:
+            self._update_download.update(status)
+
+    def get_update_download_status(self):
+        with self._lock:
+            return copy.deepcopy(self._update_download)
+
     def install_downloaded_update(self, path):
         verified = validate_downloaded_update(path)
         if os.environ.get('HAN_NOCM_RUNTIME') == 'android':
@@ -1261,7 +1305,7 @@ class WebApi:
             chosen = _APP_WINDOW.create_file_dialog(
                 webview.SAVE_DIALOG,
                 directory=default_backup_dir(),
-                save_filename='汉转NOCM备份.zip',
+                save_filename='汉转PBOC备份.zip',
                 file_types=('ZIP 备份 (*.zip)',))
             path = chosen[0] if chosen else None
         if not path:

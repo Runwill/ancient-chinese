@@ -1,4 +1,4 @@
-"""汉字转 NOCM 音标桌面程序入口。"""
+"""汉字转 PBOC 音标桌面程序入口。"""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ def _fatal(message):
     """Display a native Windows error without importing the legacy UI."""
     try:
         import ctypes
-        ctypes.windll.user32.MessageBoxW(0, str(message), '汉字转 NOCM 音标', 0x10)
+        ctypes.windll.user32.MessageBoxW(0, str(message), '汉字转 PBOC 音标', 0x10)
     except Exception:
         print(message, file=sys.stderr)
     raise SystemExit(1)
@@ -61,12 +61,12 @@ def run_legacy():
     from gui import App, COLORS
 
     splash = tk.Tk()
-    splash.title('汉字转 NOCM 音标')
+    splash.title('汉字转 PBOC 音标')
     splash.geometry('420x170')
     splash.resizable(False, False)
     splash.configure(bg=COLORS['bg_card'])
     status = tk.StringVar(value='正在初始化...')
-    tk.Label(splash, text='汉字转 NOCM 音标', font=('Microsoft YaHei', 18, 'bold'),
+    tk.Label(splash, text='汉字转 PBOC 音标', font=('Microsoft YaHei', 18, 'bold'),
              bg=COLORS['bg_card'], fg=COLORS['text_primary']).pack(pady=(34, 16))
     tk.Label(splash, textvariable=status, font=('Microsoft YaHei', 9),
              bg=COLORS['bg_card'], fg=COLORS['text_muted']).pack()

@@ -1,4 +1,4 @@
-"""Configurable NOCM transcription engine."""
+"""Configurable PBOC transcription engine."""
 
 import copy
 import json
@@ -228,7 +228,7 @@ def validate_scheme(scheme):
             continue
         for source, target in section_map.items():
             if not str(source):
-                add('error', f'maps.{section}', f'{section} 中存在空 NOCM 项')
+                add('error', f'maps.{section}', f'{section} 中存在空 PBOC 项')
             if target is None:
                 add('warning', f'maps.{section}.{source}', f'{source} 的输出为空值')
         order = parse_order.get(section, [])
@@ -346,7 +346,7 @@ def resolve_scheme_options(scheme: Dict) -> Dict:
 
 
 class NocmTranscriber:
-    """Render NOCM tokens through a configurable transcription scheme."""
+    """Render PBOC tokens through a configurable transcription scheme."""
 
     def __init__(self, scheme: Dict):
         self.scheme = resolve_scheme_options(scheme)

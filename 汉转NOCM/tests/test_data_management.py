@@ -61,7 +61,7 @@ class ApplicationUpdateTests(unittest.TestCase):
         manifest = {
             'schema': 1, 'version': '9.8.7', 'notes': '安全更新',
             'assets': {'android': {
-                'filename': 'HanToNocm-9.8.7-release.apk',
+                'filename': 'HanToPBOC-9.8.7-release.apk',
                 'url': 'https://github.com/update.apk',
                 'sha256': 'a' * 64, 'size': 12,
             }},
@@ -87,7 +87,7 @@ class ApplicationUpdateTests(unittest.TestCase):
             'ok': True, 'available': True, 'latest': '9.8.7',
             'platform': 'android',
             'asset': {
-                'filename': 'HanToNocm-9.8.7-release.apk',
+                'filename': 'HanToPBOC-9.8.7-release.apk',
                 'url': 'https://github.com/update.apk',
                 'sha256': digest, 'size': len(content),
             },
@@ -101,7 +101,8 @@ class ApplicationUpdateTests(unittest.TestCase):
                            return_value=update),
               patch.object(update_manager.urllib.request, 'urlopen',
                            return_value=self.Response(content))):
-            downloaded = update_manager.download_update()
+            progress = []
+            downloaded = update_manager.download_update(progress.append)
             verified = update_manager.validate_downloaded_update(
                 downloaded['path'])
             with open(downloaded['path'], 'ab') as file:
@@ -110,6 +111,9 @@ class ApplicationUpdateTests(unittest.TestCase):
                 update_manager.validate_downloaded_update(downloaded['path'])
 
         self.assertEqual(verified['sha256'], digest)
+        self.assertIn('downloading', [item['phase'] for item in progress])
+        self.assertEqual(progress[-1]['phase'], 'ready')
+        self.assertEqual(progress[-1]['downloaded'], len(content))
 
 
 class DataChangeViewerTests(unittest.TestCase):
@@ -229,7 +233,7 @@ class WebAssetContractTests(unittest.TestCase):
             build_script = file.read()
 
         self.assertNotIn('schemes/current_suno.json;schemes', build_script)
-        self.assertIn("executable_name = f'汉转NOCM-{__version__}'", build_script)
+        self.assertIn("executable_name = f'汉转PBOC-{__version__}'", build_script)
 
     def test_scheme_picker_uses_one_header_row_without_dropdown_glyph(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

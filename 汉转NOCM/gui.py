@@ -1,4 +1,4 @@
-"""GUI 模块：汉字转 NOCM 音标的可视化编辑器（现代化 UI）。"""
+"""GUI 模块：汉字转 PBOC 音标的可视化编辑器（现代化 UI）。"""
 
 import os
 import sys
@@ -26,7 +26,7 @@ class App(tk.Tk):
     def __init__(self, mapping):
         super().__init__()
         self.mapping = mapping
-        self.title('汉字转 NOCM 音标')
+        self.title('汉字转 PBOC 音标')
         self.geometry('1280x760')
         self.minsize(960, 600)
         self.configure(bg=COLORS['bg_main'])
@@ -85,7 +85,7 @@ class App(tk.Tk):
         title_row.pack(expand=True)
         style(title_row, bg='bg_card')
 
-        title_lbl = tk.Label(title_row, text='汉字转 NOCM 音标',
+        title_lbl = tk.Label(title_row, text='汉字转 PBOC 音标',
                 font=('Microsoft YaHei', 13, 'bold'),
                 bg=COLORS['bg_card'], fg=COLORS['text_primary'])
         title_lbl.pack(side=tk.LEFT)
@@ -903,7 +903,7 @@ class App(tk.Tk):
                        highlightbackground=COLORS['border'],
                        highlightthickness=1)
         seg.grid(row=0, column=0, sticky='w')
-        for label, val in [('NOCM', 'phon'), ('Suno', 'suno'),
+        for label, val in [('PBOC', 'phon'), ('Suno', 'suno'),
                            ('原文', 'raw'), ('全部', 'both')]:
             chip = tk.Label(seg, text=label, font=('Microsoft YaHei', 9),
                             bg=COLORS['bg_card'], fg=COLORS['text_secondary'],
@@ -1091,7 +1091,7 @@ class App(tk.Tk):
 
     def _update_title(self):
         """更新标题栏和副标题以反映保存状态。"""
-        base = '汉字转 NOCM 音标'
+        base = '汉字转 PBOC 音标'
         if self._current_draft:
             draft_name = get_draft_name(self._current_draft)
             base = f'{base} — {draft_name}'

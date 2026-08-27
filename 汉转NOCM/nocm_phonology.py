@@ -1,4 +1,4 @@
-"""NOCM syllable parsing utilities."""
+"""PBOC syllable parsing utilities."""
 
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Mapping, Tuple
@@ -17,7 +17,7 @@ DEFAULT_GLIDE_ORDER = ['r', 'ˤr', 'lˤ', 'l', 'wˤ', 'w', 'j̊', 'j', 'ˤ']
 
 @dataclass(frozen=True)
 class NocmSyllable:
-    """Parsed NOCM syllable components."""
+    """Parsed PBOC syllable components."""
 
     original: str
     onset: str = ''
@@ -111,7 +111,7 @@ def consume_prefix(text: str, source: Mapping[str, str], order: Iterable[str] = 
 
 
 def parse_syllable(token: str, scheme: Dict = None) -> NocmSyllable:
-    """Parse one NOCM token into phonological components."""
+    """Parse one PBOC token into phonological components."""
     scheme = scheme or {}
     maps = scheme.get('maps', {})
     parse_order = scheme.get('parse_order', {})

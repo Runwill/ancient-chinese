@@ -109,7 +109,7 @@ $version = & python -c "import app_version; print(app_version.__version__)"
 $variantLower = $variant.ToLowerInvariant()
 $sourceApk = Join-Path $repoRoot "android\app\build\outputs\apk\$variantLower\app-$variantLower.apk"
 $distDir = Join-Path $repoRoot 'dist\android'
-$targetApk = Join-Path $distDir "HanToNocm-$version-$variantLower.apk"
+$targetApk = Join-Path $distDir "HanToPBOC-$version-$variantLower.apk"
 New-Item -ItemType Directory -Path $distDir -Force | Out-Null
 Copy-Item -LiteralPath $sourceApk -Destination $targetApk -Force
 $hash = Get-FileHash -LiteralPath $targetApk -Algorithm SHA256

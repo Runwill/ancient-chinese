@@ -20,16 +20,16 @@ try {
     $releaseDir = Join-Path $repoRoot "dist\release-$version-empty-schemes"
     New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
     $windowsCandidates = @(Get-ChildItem (Join-Path $repoRoot 'dist') `
-        -Filter "*-$version.exe" -File)
+        -Filter "*PBOC-$version.exe" -File)
     if ($windowsCandidates.Count -ne 1) {
-        throw "Expected one Windows executable for version $version, found $($windowsCandidates.Count)"
+        throw "Expected one PBOC Windows executable for version $version, found $($windowsCandidates.Count)"
     }
     $windowsExe = $windowsCandidates[0].FullName
     Copy-Item -LiteralPath $windowsExe -Destination $releaseDir -Force
 
     Write-Host "Windows release: $releaseDir"
     $androidVariant = if ($ReleaseAndroid) { 'release' } else { 'debug' }
-    Write-Host "Android release: $(Join-Path $repoRoot "dist\android\HanToNocm-$version-$androidVariant.apk")"
+    Write-Host "Android release: $(Join-Path $repoRoot "dist\android\HanToPBOC-$version-$androidVariant.apk")"
 } finally {
     Pop-Location
 }

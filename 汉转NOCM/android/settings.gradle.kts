@@ -16,5 +16,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "HanToNocm"
+rootProject.name = "HanToPBOC"
 include(":app")

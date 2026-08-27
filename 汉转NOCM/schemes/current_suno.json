@@ -1,7 +1,7 @@
 {
   "id": "current_suno",
   "name": "当前 Suno 方案",
-  "description": "从原 NOCM转suno.py 抽出的默认混合文字转写方案。",
+  "description": "从原 PBOC 转 Suno 脚本抽出的默认混合文字转写方案。",
   "options": {
     "improve_pharyngeal": true,
     "improve_syllable": false

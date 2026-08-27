@@ -29,7 +29,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='汉转NOCM',
+    name='汉转PBOC',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

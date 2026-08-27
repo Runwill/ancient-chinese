@@ -1,4 +1,4 @@
-"""打包脚本：使用 PyInstaller 将汉转NOCM 打包为单文件 exe。"""
+"""打包脚本：使用 PyInstaller 将汉转PBOC 打包为单文件 exe。"""
 
 import subprocess
 import sys
@@ -15,8 +15,8 @@ def _write_version_file(path='build_version_info.txt'):
       StringStruct('CompanyName', 'Runwill'),
       StringStruct('FileDescription', '{APP_NAME}'),
       StringStruct('FileVersion', '{__version__}'),
-      StringStruct('InternalName', 'HanToNOCM'),
-      StringStruct('OriginalFilename', '汉转NOCM-{__version__}.exe'),
+      StringStruct('InternalName', 'HanToPBOC'),
+      StringStruct('OriginalFilename', '汉转PBOC-{__version__}.exe'),
       StringStruct('ProductName', '{APP_NAME}'),
       StringStruct('ProductVersion', '{__version__}')
     ])]),
@@ -29,7 +29,7 @@ def _write_version_file(path='build_version_info.txt'):
 
 def build():
     version_file = 'build_version_info.txt'
-    executable_name = f'汉转NOCM-{__version__}'
+    executable_name = f'汉转PBOC-{__version__}'
     _write_version_file(version_file)
     cmd = [
         sys.executable, '-m', 'PyInstaller',

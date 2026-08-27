@@ -12,3 +12,4 @@ android/app/build/
 *.keystore
 release-signing.env.ps1
 汉转NOCM-*.spec
+汉转PBOC-*.spec

@@ -42,15 +42,25 @@ try {
             $env:HAN_NOCM_KEY_PASSWORD = 'android'
             Write-Warning 'Using the signing key from previously distributed APKs. Back up ~/.android/debug.keystore securely.'
         }
-        & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build_all.ps1') `
-            -ReleaseAndroid -SkipSdkInstall:$SkipSdkInstall
+        $buildArguments = @(
+            '-ExecutionPolicy', 'Bypass',
+            '-File', (Join-Path $PSScriptRoot 'build_all.ps1'),
+            '-ReleaseAndroid'
+        )
+        if ($SkipSdkInstall) { $buildArguments += '-SkipSdkInstall' }
+        & powershell @buildArguments
         if ($LASTEXITCODE -ne 0) { throw "Release build failed ($LASTEXITCODE)" }
     }
 
-    $windowsSource = Join-Path $repoRoot "dist\汉转NOCM-$version.exe"
-    $windows = Join-Path $repoRoot "dist\HanToNocm-$version.exe"
+    $windowsCandidates = @(Get-ChildItem (Join-Path $repoRoot 'dist') `
+        -Filter "*PBOC-$version.exe" -File)
+    if ($windowsCandidates.Count -ne 1) {
+        throw "Expected one PBOC Windows executable for version $version, found $($windowsCandidates.Count)"
+    }
+    $windowsSource = $windowsCandidates[0].FullName
+    $windows = Join-Path $repoRoot "dist\HanToPBOC-$version.exe"
     Copy-Item -LiteralPath $windowsSource -Destination $windows -Force
-    $android = Join-Path $repoRoot "dist\android\HanToNocm-$version-release.apk"
+    $android = Join-Path $repoRoot "dist\android\HanToPBOC-$version-release.apk"
     $metadata = Join-Path $repoRoot "dist\release-$version"
     & python (Join-Path $PSScriptRoot 'release_metadata.py') `
         --windows $windows --android $android --output $metadata
@@ -58,7 +68,7 @@ try {
 
     & git rev-parse --verify --quiet "refs/tags/$tag" | Out-Null
     if ($LASTEXITCODE -ne 0) {
-        & git tag -a $tag -m "汉转NOCM $version"
+        & git tag -a $tag -m "HanToPBOC $version"
         if ($LASTEXITCODE -ne 0) { throw 'Failed to create release tag' }
     }
     if (-not $SkipPush) {
@@ -73,7 +83,7 @@ try {
         $windows, $android,
         (Join-Path $metadata 'update.json'),
         (Join-Path $metadata 'SHA256SUMS.txt'),
-        '--verify-tag', '--title', "汉转NOCM $version",
+        '--verify-tag', '--title', "HanToPBOC $version",
         '--notes-file', (Join-Path $metadata 'release-notes.md')
     )
     if ($Draft) { $arguments += '--draft' }

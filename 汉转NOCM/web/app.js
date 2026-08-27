@@ -1366,7 +1366,7 @@
       const rows = mapOrder(section);
       return `<section class="scheme-section" data-map-section="${section}">
         <div class="section-heading"><h3>${title}</h3><button class="button" data-add-map="${section}">新增项</button></div>
-        <div class="data-table"><div class="table-row map header"><span>NOCM 项</span><span>输出</span><span>中文说明</span><span>操作</span></div>
+        <div class="data-table"><div class="table-row map header"><span>PBOC 项</span><span>输出</span><span>中文说明</span><span>操作</span></div>
         ${rows.map((source, index) => mapRowHtml(section, source, index)).join('')}</div></section>`;
     }).join('');
     bindSchemeMapEvents();
@@ -1596,7 +1596,7 @@
       </section>
       <section class="tool-pane">
         <h3>即时预览</h3>
-        <textarea id="scheme-preview-input" class="preview-area" placeholder="输入 NOCM 音节，每个音节以空格分隔">kˤanʔ mra s-lə</textarea>
+        <textarea id="scheme-preview-input" class="preview-area" placeholder="输入 PBOC 音节，每个音节以空格分隔">kˤanʔ mra s-lə</textarea>
         <div class="maintenance-actions" style="margin-top:8px"><button id="run-preview" class="button primary">运行预览</button></div>
         <output id="scheme-preview-output" class="preview-output"></output>
       </section>
@@ -1778,7 +1778,7 @@
     const root = $('#maintenance-content');
     root.className = 'maintenance-content';
     if (maintenanceTab === 'about') {
-      root.innerHTML = `<div class="about-hero"><div class="about-mark">漢</div><div><h3>汉字转 NOCM 音标</h3><p>版本 ${esc(state.version || '')}</p></div><button id="check-update" class="button">检查更新</button></div>
+      root.innerHTML = `<div class="about-hero"><div class="about-mark">漢</div><div><h3>汉字转 PBOC 音标</h3><p>版本 ${esc(state.version || '')}</p></div><button id="check-update" class="button">检查更新</button></div>
         <div id="update-result"></div>
         <section class="maintenance-section compact-section"><label class="check-control"><input id="auto-check-updates" type="checkbox" ${state.ui_preferences?.auto_check_updates !== false ? 'checked' : ''}><span>启动后自动检查更新</span></label></section>
         <section class="maintenance-section"><h3>制作信息</h3><dl class="about-credits">
@@ -1814,7 +1814,7 @@
           <li>点击正文中的字，在右侧查看读音和释义；多音字可选择当前读音。</li>
           <li>同一个字出现多次时，可在读音右侧点击“全局”，逐处处理已有的手动选择。</li>
           <li>拖动、Shift+点击或 Shift+方向键可以选择文本；选区可复制原文或音标。</li>
-          <li>导出支持 NOCM、Suno、原文及组合内容，也可转换标点或清除无效换行；Suno 模式还可删除咽化、在清响音前额外添加 h。实验性声调选项可在“关于”的调试模式中开启。</li>
+          <li>导出支持 PBOC、Suno、原文及组合内容，也可转换标点或清除无效换行；Suno 模式还可删除咽化、在清响音前额外添加 h。实验性声调选项可在“关于”的调试模式中开启。</li>
           <li>方括号 [] 内的内容保持原样，不参与转写。</li>
         </ol></section>
         <section class="maintenance-section"><h3>正文状态</h3><div class="state-legend">
@@ -2115,7 +2115,7 @@
       holder.innerHTML = `${esc(result.message)} <button id="open-releases" class="button">打开发布页</button>`;
     } else if (result.available) {
       const action = result.can_install
-        ? '<button id="install-update" class="button primary">下载并更新</button>'
+        ? `<button id="install-update" class="button primary">${downloadedUpdate?.version === result.latest ? '继续安装' : '下载并更新'}</button>`
         : '<button id="open-releases" class="button">打开下载页</button>';
       holder.innerHTML = `<strong>发现 v${esc(result.latest)}</strong>${result.notes ? `<p>${esc(result.notes)}</p>` : ''}<div class="maintenance-actions">${action}</div>`;
     } else {
@@ -2156,9 +2156,9 @@
 
   async function installAvailableUpdate() {
     const button = $('#install-update');
-    if (button) { button.disabled = true; button.textContent = '正在下载并校验...'; }
+    if (button) button.disabled = true;
     try {
-      const downloaded = downloadedUpdate || await invoke('download_update');
+      const downloaded = downloadedUpdate || await downloadAvailableUpdate(button);
       downloadedUpdate = downloaded;
       const confirmed = await confirmBox(
         `安装 v${downloaded.version}`,
@@ -2167,18 +2167,52 @@
           : '更新包已通过校验。程序将关闭、替换并自动重新启动。',
         '立即安装');
       if (!confirmed) {
-        if (button) { button.disabled = false; button.textContent = '继续安装'; }
+        if (availableUpdate) renderUpdateResult(availableUpdate);
         return;
       }
       const installed = await invoke('install_downloaded_update', downloaded.path);
       if (installed?.permission_required) {
         toast('请允许此应用安装更新，然后返回并点击“继续安装”');
-        if (button) { button.disabled = false; button.textContent = '继续安装'; }
+        if (availableUpdate) renderUpdateResult(availableUpdate);
       }
     } catch (error) {
       toast(error.message || '更新失败', 'error');
-      if (button) { button.disabled = false; button.textContent = '重试更新'; }
+      if (availableUpdate) renderUpdateResult(availableUpdate);
     }
+  }
+
+  function formatDownloadSize(value) {
+    const bytes = Math.max(0, Number(value) || 0);
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function renderDownloadProgress(button, status) {
+    const actions = button?.closest('.maintenance-actions') || $('#update-result .maintenance-actions');
+    if (!actions) return;
+    const total = Number(status.total) || 0;
+    const downloaded = Number(status.downloaded) || 0;
+    const percent = total ? Math.min(100, Math.round(downloaded * 100 / total)) : Number(status.progress) || 0;
+    const detail = total
+      ? `${percent}% · ${formatDownloadSize(downloaded)} / ${formatDownloadSize(total)}`
+      : (status.phase === 'checking' ? '请稍候' : formatDownloadSize(downloaded));
+    actions.innerHTML = `<div class="update-download-status" role="status" aria-live="polite">
+      <div class="update-download-copy"><span>${esc(status.message || '正在下载安装包…')}</span><span>${esc(detail)}</span></div>
+      <div class="update-download-track ${total ? '' : 'indeterminate'}"><span style="width:${total ? percent : 38}%"></span></div>
+    </div>`;
+  }
+
+  async function downloadAvailableUpdate(button) {
+    let status = await invoke('start_update_download', availableUpdate?.latest || '');
+    while (!['ready', 'error'].includes(status.phase)) {
+      renderDownloadProgress(button, status);
+      await new Promise(resolve => setTimeout(resolve, 220));
+      status = await invoke('get_update_download_status');
+    }
+    renderDownloadProgress(button, status);
+    if (status.phase === 'error') throw new Error(status.error || '更新下载失败');
+    if (!status.result?.path) throw new Error('下载完成但没有找到安装包');
+    return status.result;
   }
 
   function bindEvents() {
@@ -2770,11 +2804,11 @@
     };
     const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false }];
     const previewChangelog = [
-      { version: '0.12.8', date: '2026-08-27', title: '更新提示与深色启动页', items: ['发现新版本后，问号按钮会持续显示更新提示色。', '深色模式会从应用启动和加载界面开始生效。'] },
+      { version: '0.12.8', date: '2026-08-28', title: 'PBOC 更名与更新体验', items: ['软件对外名称由 NOCM 改为 PBOC。', '移动端下载更新时显示实时进度，不再表现为界面卡住。', '发现新版本后，问号按钮会持续显示更新提示色。', '深色模式会从应用启动和加载界面开始生效。'] },
       { version: '0.12.7', date: '2026-08-27', title: '方案解析顺序编辑', items: ['映射表新增拖动排序，表格顺序就是实际检测顺序。', '替换规则同样支持拖动排序，并严格按照界面顺序执行。', '编辑映射项、输出或中文说明时保留原位置，不会把修改项移到末尾。'] },
       { version: '0.12.6', date: '2026-08-26', title: '应用自动更新与一键发布', items: ['启动后可自动检查更新，并直接下载适用于当前平台的安装包。', '更新包会进行 SHA-256 校验；Windows 自动替换重启，Android 交由系统安装。', '新增一键 GitHub Release 发布脚本。', '调整数据变更页批次与搜索控件，并移除诊断列表顶部多余的分隔线。', '批次选择改为软件统一样式的浮层菜单。'] },
       { version: '0.12.5', date: '2026-08-25', title: '数据变更查看器', items: ['维护页面新增可解析大体积日志的数据变更查看器，支持按批次分页、字段级新旧值对照和内容搜索。', '维护窗口合并标题与页面导航，数据变更页取消批次侧栏和重复标题栏，正文区域在宽窄窗口中都能获得更多空间。', '读音更新改为逐文稿、逐位置确认，可采用新读音、保留原读音、重新审阅或恢复确认前读音。', '文稿库文件夹增加开合图标并优化层级缩进；单击整行即可展开或折叠。'] },
-      { version: '0.12.4', date: '2026-08-08', title: 'Windows 安装包文件名统一', items: ['Windows 发布程序改为“汉转NOCM-版本号.exe”，单独取出后也能识别版本。'] },
+      { version: '0.12.4', date: '2026-08-08', title: 'Windows 安装包文件名统一', items: ['Windows 发布程序改为“汉转PBOC-版本号.exe”，单独取出后也能识别版本。'] },
       { version: '0.12.3', date: '2026-08-08', title: 'Android 启动加载页修复', items: ['Android 会先显示匹配系统主题的 HTML 加载页，再等待 Python 后端和词库，消除启动白屏。'] },
       { version: '0.12.2', date: '2026-08-08', title: 'Android 覆盖安装兼容修复', items: ['系统栏隐藏改用 Android 7 起支持的兼容方式，并隔离厂商系统异常，避免覆盖安装后启动退出。'] },
       { version: '0.12.1', date: '2026-08-08', title: 'Android 横屏与运行模式', items: ['Android 强制横屏并隐藏系统状态栏，横屏保留原有桌面布局，诊断页运行模式显示为 Android APK。'] },
@@ -2867,7 +2901,8 @@
       get_diagnostics: async () => ({ app_version: '0.12.8', draft_schema_version: 3, scheme_schema_version: 2, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
       import_old_library: async () => ({ ok: true, imported: 2, skipped: 1, renamed: 0, errors: [], state: full() }),
       check_for_updates: async () => ({ ok: true, current: '0.12.8', latest: '0.12.8', available: false }),
-      download_update: async () => ({ ok: true, version: '0.12.8', platform: 'windows', path: 'preview-update.exe' }),
+      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.8', platform: 'windows', path: 'preview-update.exe' } }),
+      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.8', platform: 'windows', path: 'preview-update.exe' } }),
       install_downloaded_update: async () => ({ ok: true, scheduled: true }),
       get_data_change_batches: async () => ({ ok: true, exists: true, file_size: 77729928, total: 2, items: [
         { id: 'b2', timestamp: '2026-08-22 23:55:12', filename: 'extra.json.gz', count: 10427 },

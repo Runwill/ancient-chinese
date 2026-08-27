@@ -28,7 +28,7 @@ def create_backup(path=None, reason='manual'):
     """Create a complete ZIP backup and return metadata about it."""
     stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     if not path:
-        path = os.path.join(default_backup_dir(), f'汉转NOCM备份_{stamp}.zip')
+        path = os.path.join(default_backup_dir(), f'汉转PBOC备份_{stamp}.zip')
     path = os.path.abspath(path)
     if not path.lower().endswith('.zip'):
         path += '.zip'

@@ -6,7 +6,6 @@ import json
 import hashlib
 import os
 import platform
-import shutil
 import subprocess
 import sys
 import urllib.error
@@ -29,7 +28,7 @@ UPDATE_MANIFEST_SCHEMA = 1
 def _read_json_url(url, timeout=12):
     request = urllib.request.Request(
         url, headers={'Accept': 'application/vnd.github+json, application/json',
-                      'User-Agent': f'han-to-nocm/{__version__}'})
+                      'User-Agent': f'han-to-pboc/{__version__}'})
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode('utf-8-sig'))
 
@@ -121,8 +120,16 @@ def _sha256(path):
     return digest.hexdigest().lower()
 
 
-def download_update():
+def _report_download_progress(callback, **status):
+    if callback:
+        callback(status)
+
+
+def download_update(on_progress=None):
     """Download and verify the current platform asset from the latest release."""
+    _report_download_progress(
+        on_progress, phase='checking', message='正在获取更新信息…',
+        progress=0, downloaded=0, total=0)
     update = check_for_updates()
     if not update.get('ok'):
         raise RuntimeError(update.get('message') or '无法检查更新')
@@ -135,12 +142,32 @@ def download_update():
     temporary = f'{destination}.part'
     try:
         request = urllib.request.Request(
-            asset['url'], headers={'User-Agent': f'han-to-nocm/{__version__}'})
+            asset['url'], headers={'User-Agent': f'han-to-pboc/{__version__}'})
         with urllib.request.urlopen(request, timeout=45) as response, \
                 open(temporary, 'wb') as output:
-            shutil.copyfileobj(response, output, length=1024 * 1024)
+            headers = getattr(response, 'headers', {})
+            total = asset['size'] or max(
+                0, int(headers.get('Content-Length', 0) or 0))
+            downloaded = 0
+            _report_download_progress(
+                on_progress, phase='downloading', message='正在下载安装包…',
+                progress=0, downloaded=0, total=total)
+            while True:
+                chunk = response.read(256 * 1024)
+                if not chunk:
+                    break
+                output.write(chunk)
+                downloaded += len(chunk)
+                percent = min(100, round(downloaded * 100 / total)) if total else 0
+                _report_download_progress(
+                    on_progress, phase='downloading', message='正在下载安装包…',
+                    progress=percent, downloaded=downloaded, total=total)
         if asset['size'] and os.path.getsize(temporary) != asset['size']:
             raise ValueError('更新包大小与发布清单不一致')
+        _report_download_progress(
+            on_progress, phase='verifying', message='正在校验安装包…',
+            progress=100, downloaded=os.path.getsize(temporary),
+            total=asset['size'])
         actual = _sha256(temporary)
         if actual != asset['sha256']:
             raise ValueError('更新包 SHA-256 校验失败')
@@ -154,11 +181,17 @@ def download_update():
         }
         with open(f'{destination}.verified.json', 'w', encoding='utf-8') as file:
             json.dump(verification, file, ensure_ascii=False)
-        return {
+        result = {
             'ok': True, 'path': destination, 'filename': asset['filename'],
             'version': update['latest'], 'platform': update['platform'],
             'sha256': actual,
         }
+        completed_size = os.path.getsize(destination)
+        _report_download_progress(
+            on_progress, phase='ready', message='安装包已下载并通过校验',
+            progress=100, downloaded=completed_size,
+            total=asset['size'] or completed_size)
+        return result
     finally:
         try:
             if os.path.exists(temporary):
