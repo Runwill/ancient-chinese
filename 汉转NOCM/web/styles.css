@@ -456,8 +456,8 @@ body.debug-mode [data-debug-only] { display: flex; }
 .order-actions { display: flex; align-items: center; gap: 3px; }
 .data-table { min-width: 680px; border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
 .table-row { display: grid; min-height: 40px; }
-.table-row.map { grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr) minmax(180px, 1.4fr) 86px; }
-.table-row.rule { grid-template-columns: 120px minmax(180px, 1.2fr) 76px minmax(180px, 1.2fr) 86px; }
+.table-row.map { grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr) minmax(180px, 1.4fr) 62px; }
+.table-row.rule { grid-template-columns: 120px minmax(180px, 1.2fr) 76px minmax(180px, 1.2fr) 62px; }
 .table-row > * { min-width: 0; display: flex; align-items: center; padding: 5px 8px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .table-row.header { min-height: 34px; color: var(--muted); background: var(--surface-soft); font-size: 11px; }
 .table-row input, .table-row select { width: 100%; height: 29px; padding: 0 6px; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 3px; outline: none; }
@@ -465,7 +465,12 @@ body.debug-mode [data-debug-only] { display: flex; }
 .table-row .icon-button { margin: auto; }
 .table-row .order-actions { justify-content: center; padding-inline: 4px; }
 .order-actions .icon-button { width: 24px; min-height: 24px; margin: 0; font-size: 13px; }
-.order-actions .icon-button:disabled { opacity: .22; }
+.drag-handle { cursor: grab; touch-action: none; }
+.drag-handle:active { cursor: grabbing; }
+.drag-handle i { width: 12px; height: 16px; background: radial-gradient(circle, currentColor 1.2px, transparent 1.5px) 0 0 / 6px 5px; opacity: .62; }
+.table-row.order-dragging { opacity: .45; }
+.table-row.order-drop-before { box-shadow: inset 0 2px 0 var(--accent); }
+.table-row.order-drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
 
 .lookup-dialog { width: min(570px, calc(100vw - 32px)); }
 .lookup-dialog select { width: 100%; margin-top: 5px; }

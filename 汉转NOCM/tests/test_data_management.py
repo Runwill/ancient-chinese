@@ -539,8 +539,11 @@ class SchemeToolTests(unittest.TestCase):
 
     def test_scheme_editor_exposes_manual_mapping_and_rule_order(self):
         script = Path('web/app.js').read_text(encoding='utf-8')
-        self.assertIn('data-move-map', script)
-        self.assertIn('data-move-rule', script)
+        self.assertIn('data-drag-map', script)
+        self.assertIn('data-drag-rule', script)
+        self.assertIn('setPointerCapture', script)
+        self.assertNotIn('data-move-map', script)
+        self.assertNotIn('data-move-rule', script)
         self.assertNotIn('data-sort-map', script)
         self.assertNotIn('data-sort-rule', script)
 

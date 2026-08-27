@@ -1365,7 +1365,7 @@
       const rows = mapOrder(section);
       return `<section class="scheme-section" data-map-section="${section}">
         <div class="section-heading"><h3>${title}</h3><button class="button" data-add-map="${section}">新增项</button></div>
-        <div class="data-table"><div class="table-row map header"><span>NOCM 项</span><span>输出</span><span>中文说明</span><span>顺序</span></div>
+        <div class="data-table"><div class="table-row map header"><span>NOCM 项</span><span>输出</span><span>中文说明</span><span>操作</span></div>
         ${rows.map((source, index) => mapRowHtml(section, source, index)).join('')}</div></section>`;
     }).join('');
     bindSchemeMapEvents();
@@ -1376,23 +1376,99 @@
     const label = schemeDraft.labels?.[section]?.[source] || '';
     return `<div class="table-row map" data-section="${section}" data-index="${index}" data-source="${esc(source)}">
       <label><input data-field="source" value="${esc(source)}"></label><label><input data-field="target" value="${esc(target)}"></label>
-      <label><input data-field="label" value="${esc(label)}"></label><span class="order-actions"><button class="icon-button small" data-move-map="-1" title="上移" aria-label="上移" ${index === 0 ? 'disabled' : ''}>↑</button><button class="icon-button small" data-move-map="1" title="下移" aria-label="下移" ${index === mapOrder(section).length - 1 ? 'disabled' : ''}>↓</button><button class="icon-button small" data-delete-map title="删除" aria-label="删除">×</button></span></div>`;
+      <label><input data-field="label" value="${esc(label)}"></label><span class="order-actions"><button type="button" class="icon-button small drag-handle" data-drag-map title="拖动排序；聚焦后可用方向键" aria-label="拖动排序"><i aria-hidden="true"></i></button><button class="icon-button small" data-delete-map title="删除" aria-label="删除">×</button></span></div>`;
+  }
+
+  function bindOrderDragging(selector, getItems, setItems, rerender) {
+    $$(selector).forEach(handle => {
+      const moveByKeyboard = delta => {
+        const row = handle.closest('.table-row');
+        const section = row.dataset.section;
+        const from = Number(row.dataset.index);
+        const items = [...getItems(section)];
+        const to = Math.max(0, Math.min(items.length - 1, from + delta));
+        if (to === from) return;
+        commitSchemeHistory();
+        const [item] = items.splice(from, 1);
+        items.splice(to, 0, item);
+        setItems(section, items);
+        rerender();
+        markSchemeDirty();
+        const sectionAttribute = selector.includes('drag-map')
+          ? 'data-map-section' : 'data-rule-section';
+        requestAnimationFrame(() => document.querySelector(
+          `[${sectionAttribute}="${CSS.escape(section)}"]`)
+          ?.querySelectorAll(selector)[to]?.focus());
+      };
+      handle.onkeydown = event => {
+        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+        event.preventDefault();
+        moveByKeyboard(event.key === 'ArrowUp' ? -1 : 1);
+      };
+      handle.onpointerdown = event => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        handle.focus();
+        const row = handle.closest('.table-row');
+        const container = row.parentElement;
+        const section = row.dataset.section;
+        const from = Number(row.dataset.index);
+        let to = from;
+        const scrollHost = handle.closest('.scheme-content');
+        const clearMarkers = () => {
+          $$('.table-row', container).forEach(item => item.classList.remove(
+            'order-drop-before', 'order-drop-after'));
+        };
+        const onMove = moveEvent => {
+          const rows = $$('.table-row:not(.header)', container);
+          const rawSlot = rows.findIndex(item => {
+            const rect = item.getBoundingClientRect();
+            return moveEvent.clientY < rect.top + rect.height / 2;
+          });
+          const slot = rawSlot < 0 ? rows.length : rawSlot;
+          to = Math.max(0, Math.min(rows.length - 1,
+            slot > from ? slot - 1 : slot));
+          clearMarkers();
+          if (slot >= rows.length) rows.at(-1)?.classList.add('order-drop-after');
+          else rows[slot]?.classList.add('order-drop-before');
+          if (scrollHost) {
+            const rect = scrollHost.getBoundingClientRect();
+            if (moveEvent.clientY < rect.top + 36) scrollHost.scrollTop -= 18;
+            else if (moveEvent.clientY > rect.bottom - 36) scrollHost.scrollTop += 18;
+          }
+        };
+        const finish = () => {
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', finish);
+          document.removeEventListener('pointercancel', cancel);
+          clearMarkers();
+          row.classList.remove('order-dragging');
+          if (to === from) return;
+          const items = [...getItems(section)];
+          commitSchemeHistory();
+          const [item] = items.splice(from, 1);
+          items.splice(to, 0, item);
+          setItems(section, items);
+          rerender();
+          markSchemeDirty();
+        };
+        const cancel = () => {
+          to = from;
+          finish();
+        };
+        row.classList.add('order-dragging');
+        handle.setPointerCapture(event.pointerId);
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', finish);
+        document.addEventListener('pointercancel', cancel);
+      };
+    });
   }
 
   function bindSchemeMapEvents() {
-    $$('[data-move-map]').forEach(button => button.onclick = () => {
-      const row = button.closest('.table-row');
-      const { section } = row.dataset;
-      const index = Number(row.dataset.index);
-      const target = index + Number(button.dataset.moveMap);
-      const order = mapOrder(section);
-      if (target < 0 || target >= order.length) return;
-      commitSchemeHistory();
-      [order[index], order[target]] = [order[target], order[index]];
-      schemeDraft.parse_order[section] = order;
-      renderSchemeMaps();
-      markSchemeDirty();
-    });
+    bindOrderDragging('[data-drag-map]', section => mapOrder(section),
+      (section, items) => { schemeDraft.parse_order[section] = items; },
+      renderSchemeMaps);
     $$('[data-add-map]').forEach(button => button.onclick = () => {
       commitSchemeHistory();
       const section = button.dataset.addMap;
@@ -1452,7 +1528,7 @@
       const rules = schemeDraft.rules[section] ||= [];
       return `<section class="scheme-section" data-rule-section="${section}">
         <div class="section-heading"><h3>${title}</h3><button class="button" data-add-rule="${section}">新增规则</button></div>
-        <div class="data-table"><div class="table-row rule header"><span>查找方式</span><span>查找</span><span>选择</span><span>替换为</span><span>顺序</span></div>
+        <div class="data-table"><div class="table-row rule header"><span>查找方式</span><span>查找</span><span>选择</span><span>替换为</span><span>操作</span></div>
         ${rules.map((rule, index) => ruleRowHtml(section, rule, index)).join('')}</div></section>`;
     }).join('');
     bindSchemeRuleEvents();
@@ -1468,21 +1544,14 @@
       <label><input data-rule-field="old" value="${esc(lookup)}" ${mapped ? 'readonly' : ''}></label>
       <span><button class="button" data-edit-lookup ${mapped ? '' : 'disabled'}>选择</button></span>
       <label><input data-rule-field="new" value="${esc(replacement)}"></label>
-      <span class="order-actions"><button class="icon-button small" data-move-rule="-1" title="上移" aria-label="上移" ${index === 0 ? 'disabled' : ''}>↑</button><button class="icon-button small" data-move-rule="1" title="下移" aria-label="下移" ${index === schemeDraft.rules[section].length - 1 ? 'disabled' : ''}>↓</button><button class="icon-button small" data-delete-rule title="删除" aria-label="删除">×</button></span></div>`;
+      <span class="order-actions"><button type="button" class="icon-button small drag-handle" data-drag-rule title="拖动排序；聚焦后可用方向键" aria-label="拖动排序"><i aria-hidden="true"></i></button><button class="icon-button small" data-delete-rule title="删除" aria-label="删除">×</button></span></div>`;
   }
 
   function bindSchemeRuleEvents() {
-    $$('[data-move-rule]').forEach(button => button.onclick = () => {
-      const row = button.closest('.table-row');
-      const rules = schemeDraft.rules[row.dataset.section];
-      const index = Number(row.dataset.index);
-      const target = index + Number(button.dataset.moveRule);
-      if (target < 0 || target >= rules.length) return;
-      commitSchemeHistory();
-      [rules[index], rules[target]] = [rules[target], rules[index]];
-      renderSchemeRules();
-      markSchemeDirty();
-    });
+    bindOrderDragging('[data-drag-rule]',
+      section => schemeDraft.rules[section] || [],
+      (section, items) => { schemeDraft.rules[section] = items; },
+      renderSchemeRules);
     $$('[data-add-rule]').forEach(button => button.onclick = () => {
       commitSchemeHistory();
       (schemeDraft.rules[button.dataset.addRule] ||= []).push(['', '']);
@@ -2689,7 +2758,7 @@
     };
     const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false }];
     const previewChangelog = [
-      { version: '0.12.7', date: '2026-08-27', title: '方案解析顺序编辑', items: ['映射表新增上移、下移，表格顺序就是实际检测顺序。', '替换规则同样支持手动排序，并严格按照界面顺序执行。', '编辑映射项、输出或中文说明时保留原位置，不会把修改项移到末尾。'] },
+      { version: '0.12.7', date: '2026-08-27', title: '方案解析顺序编辑', items: ['映射表新增拖动排序，表格顺序就是实际检测顺序。', '替换规则同样支持拖动排序，并严格按照界面顺序执行。', '编辑映射项、输出或中文说明时保留原位置，不会把修改项移到末尾。'] },
       { version: '0.12.6', date: '2026-08-26', title: '应用自动更新与一键发布', items: ['启动后可自动检查更新，并直接下载适用于当前平台的安装包。', '更新包会进行 SHA-256 校验；Windows 自动替换重启，Android 交由系统安装。', '新增一键 GitHub Release 发布脚本。', '调整数据变更页批次与搜索控件，并移除诊断列表顶部多余的分隔线。', '批次选择改为软件统一样式的浮层菜单。'] },
       { version: '0.12.5', date: '2026-08-25', title: '数据变更查看器', items: ['维护页面新增可解析大体积日志的数据变更查看器，支持按批次分页、字段级新旧值对照和内容搜索。', '维护窗口合并标题与页面导航，数据变更页取消批次侧栏和重复标题栏，正文区域在宽窄窗口中都能获得更多空间。', '读音更新改为逐文稿、逐位置确认，可采用新读音、保留原读音、重新审阅或恢复确认前读音。', '文稿库文件夹增加开合图标并优化层级缩进；单击整行即可展开或折叠。'] },
       { version: '0.12.4', date: '2026-08-08', title: 'Windows 安装包文件名统一', items: ['Windows 发布程序改为“汉转NOCM-版本号.exe”，单独取出后也能识别版本。'] },
