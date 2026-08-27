@@ -10,7 +10,8 @@ from typing import Dict, List, Optional
 
 from app_version import SCHEME_SCHEMA_VERSION, __version__, get_app_dir
 from atomic_io import save_json_atomic, write_text_atomic
-from nocm_phonology import apply_replacements, parse_syllable, replacement_pairs
+from nocm_phonology import (apply_replacements, mapping_pairs, parse_syllable,
+                            replacement_pairs)
 
 
 DEFAULT_SCHEME_ID = 'current_suno'
@@ -358,7 +359,9 @@ class NocmTranscriber:
             self.rules.get('residual_replace', []), self.scheme))
         residual_map = self.maps.get('residual', {})
         if residual_map:
-            text = apply_replacements(text, residual_map.items())
+            residual_order = self.scheme.get('parse_order', {}).get('residual')
+            text = apply_replacements(
+                text, mapping_pairs(residual_map, residual_order))
         return text
 
     def convert_token(

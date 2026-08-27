@@ -86,11 +86,16 @@ def _ordered_keys(source: Mapping[str, str], order: Iterable[str] = None) -> Lis
         keys = [key for key in order if key in source]
         keys.extend(key for key in source if key not in keys)
         return keys
-    return sorted(source.keys(), key=len, reverse=True)
+    return list(source.keys())
+
+
+def mapping_pairs(source: Mapping[str, str], order: Iterable[str] = None):
+    """Return mapping pairs in the same explicit or table order shown by the editor."""
+    return [(key, source[key]) for key in _ordered_keys(source, order)]
 
 
 def consume_suffix(text: str, source: Mapping[str, str], order: Iterable[str] = None):
-    """Consume a suffix according to an explicit order or longest-match order."""
+    """Consume a suffix according to the explicit or mapping-table order."""
     for key in _ordered_keys(source, order):
         if key and text.endswith(key):
             return text[:-len(key)], key
@@ -98,7 +103,7 @@ def consume_suffix(text: str, source: Mapping[str, str], order: Iterable[str] = 
 
 
 def consume_prefix(text: str, source: Mapping[str, str], order: Iterable[str] = None):
-    """Consume a prefix according to an explicit order or longest-match order."""
+    """Consume a prefix according to the explicit or mapping-table order."""
     for key in _ordered_keys(source, order):
         if key and text.startswith(key):
             return text[len(key):], key
@@ -116,18 +121,18 @@ def parse_syllable(token: str, scheme: Dict = None) -> NocmSyllable:
         rules.get('pre_normalize', []), scheme))
 
     text, tone = consume_suffix(
-        text, maps.get('tone', {}), parse_order.get('tone', DEFAULT_TONE_ORDER))
+        text, maps.get('tone', {}), parse_order.get('tone'))
     text, coda = consume_suffix(
-        text, maps.get('coda', {}), parse_order.get('coda', DEFAULT_CODA_ORDER))
+        text, maps.get('coda', {}), parse_order.get('coda'))
     text, onset = consume_prefix(
-        text, maps.get('onset', {}), parse_order.get('onset', DEFAULT_ONSET_ORDER))
+        text, maps.get('onset', {}), parse_order.get('onset'))
     text, glide = consume_prefix(
-        text, maps.get('glide', {}), parse_order.get('glide', DEFAULT_GLIDE_ORDER))
+        text, maps.get('glide', {}), parse_order.get('glide'))
 
     text = apply_replacements(text, replacement_pairs(
         rules.get('residual_preprocess', []), scheme))
     text, nucleus = consume_suffix(
-        text, maps.get('nucleus', {}), parse_order.get('nucleus', DEFAULT_NUCLEUS_ORDER))
+        text, maps.get('nucleus', {}), parse_order.get('nucleus'))
 
     return NocmSyllable(
         original=token,

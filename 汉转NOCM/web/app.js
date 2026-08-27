@@ -1364,8 +1364,8 @@
     $('#scheme-content').innerHTML = MAP_SECTIONS.map(([section, title]) => {
       const rows = mapOrder(section);
       return `<section class="scheme-section" data-map-section="${section}">
-        <div class="section-heading"><h3>${title}</h3><button class="button" data-add-map="${section}">新增项</button></div>
-        <div class="data-table"><div class="table-row map header"><span>NOCM 项</span><span>输出</span><span>中文说明</span><span>操作</span></div>
+        <div class="section-heading"><h3>${title}</h3><span class="section-actions"><button class="button quiet" data-sort-map="${section}">长项优先</button><button class="button" data-add-map="${section}">新增项</button></span></div>
+        <div class="data-table"><div class="table-row map header"><span>NOCM 项</span><span>输出</span><span>中文说明</span><span>顺序</span></div>
         ${rows.map((source, index) => mapRowHtml(section, source, index)).join('')}</div></section>`;
     }).join('');
     bindSchemeMapEvents();
@@ -1376,10 +1376,34 @@
     const label = schemeDraft.labels?.[section]?.[source] || '';
     return `<div class="table-row map" data-section="${section}" data-index="${index}" data-source="${esc(source)}">
       <label><input data-field="source" value="${esc(source)}"></label><label><input data-field="target" value="${esc(target)}"></label>
-      <label><input data-field="label" value="${esc(label)}"></label><span><button class="icon-button small" data-delete-map title="删除" aria-label="删除">×</button></span></div>`;
+      <label><input data-field="label" value="${esc(label)}"></label><span class="order-actions"><button class="icon-button small" data-move-map="-1" title="上移" aria-label="上移" ${index === 0 ? 'disabled' : ''}>↑</button><button class="icon-button small" data-move-map="1" title="下移" aria-label="下移" ${index === mapOrder(section).length - 1 ? 'disabled' : ''}>↓</button><button class="icon-button small" data-delete-map title="删除" aria-label="删除">×</button></span></div>`;
   }
 
   function bindSchemeMapEvents() {
+    $$('[data-sort-map]').forEach(button => button.onclick = () => {
+      commitSchemeHistory();
+      const section = button.dataset.sortMap;
+      const current = mapOrder(section);
+      schemeDraft.parse_order[section] = current
+        .map((key, index) => ({ key, index, length: [...key].length }))
+        .sort((left, right) => right.length - left.length || left.index - right.index)
+        .map(item => item.key);
+      renderSchemeMaps();
+      markSchemeDirty();
+    });
+    $$('[data-move-map]').forEach(button => button.onclick = () => {
+      const row = button.closest('.table-row');
+      const { section } = row.dataset;
+      const index = Number(row.dataset.index);
+      const target = index + Number(button.dataset.moveMap);
+      const order = mapOrder(section);
+      if (target < 0 || target >= order.length) return;
+      commitSchemeHistory();
+      [order[index], order[target]] = [order[target], order[index]];
+      schemeDraft.parse_order[section] = order;
+      renderSchemeMaps();
+      markSchemeDirty();
+    });
     $$('[data-add-map]').forEach(button => button.onclick = () => {
       commitSchemeHistory();
       const section = button.dataset.addMap;
@@ -1419,13 +1443,14 @@
       if (field === 'source') {
         const source = input.value.trim();
         if (!source || source === oldSource) return;
+        const order = mapOrder(section);
         const target = schemeDraft.maps[section][oldSource];
         const label = schemeDraft.labels?.[section]?.[oldSource];
         delete schemeDraft.maps[section][oldSource];
         delete schemeDraft.labels?.[section]?.[oldSource];
         schemeDraft.maps[section][source] = target;
         if (label) schemeDraft.labels[section][source] = label;
-        schemeDraft.parse_order[section] = mapOrder(section).map(key => key === oldSource ? source : key);
+        schemeDraft.parse_order[section] = order.map(key => key === oldSource ? source : key);
         row.dataset.source = source;
       }
       markSchemeDirty();
@@ -1437,8 +1462,8 @@
     $('#scheme-content').innerHTML = RULE_SECTIONS.map(([section, title]) => {
       const rules = schemeDraft.rules[section] ||= [];
       return `<section class="scheme-section" data-rule-section="${section}">
-        <div class="section-heading"><h3>${title}</h3><button class="button" data-add-rule="${section}">新增规则</button></div>
-        <div class="data-table"><div class="table-row rule header"><span>查找方式</span><span>查找</span><span>选择</span><span>替换为</span><span>操作</span></div>
+        <div class="section-heading"><h3>${title}</h3><span class="section-actions"><button class="button quiet" data-sort-rule="${section}">长项优先</button><button class="button" data-add-rule="${section}">新增规则</button></span></div>
+        <div class="data-table"><div class="table-row rule header"><span>查找方式</span><span>查找</span><span>选择</span><span>替换为</span><span>顺序</span></div>
         ${rules.map((rule, index) => ruleRowHtml(section, rule, index)).join('')}</div></section>`;
     }).join('');
     bindSchemeRuleEvents();
@@ -1454,10 +1479,31 @@
       <label><input data-rule-field="old" value="${esc(lookup)}" ${mapped ? 'readonly' : ''}></label>
       <span><button class="button" data-edit-lookup ${mapped ? '' : 'disabled'}>选择</button></span>
       <label><input data-rule-field="new" value="${esc(replacement)}"></label>
-      <span><button class="icon-button small" data-delete-rule title="删除" aria-label="删除">×</button></span></div>`;
+      <span class="order-actions"><button class="icon-button small" data-move-rule="-1" title="上移" aria-label="上移" ${index === 0 ? 'disabled' : ''}>↑</button><button class="icon-button small" data-move-rule="1" title="下移" aria-label="下移" ${index === schemeDraft.rules[section].length - 1 ? 'disabled' : ''}>↓</button><button class="icon-button small" data-delete-rule title="删除" aria-label="删除">×</button></span></div>`;
   }
 
   function bindSchemeRuleEvents() {
+    $$('[data-sort-rule]').forEach(button => button.onclick = () => {
+      const section = button.dataset.sortRule;
+      commitSchemeHistory();
+      schemeDraft.rules[section] = schemeDraft.rules[section]
+        .map((rule, index) => ({ rule, index, length: [...(typeof rule?.[0] === 'object' ? lookupPreview(rule[0]) : String(rule?.[0] ?? ''))].length }))
+        .sort((left, right) => right.length - left.length || left.index - right.index)
+        .map(item => item.rule);
+      renderSchemeRules();
+      markSchemeDirty();
+    });
+    $$('[data-move-rule]').forEach(button => button.onclick = () => {
+      const row = button.closest('.table-row');
+      const rules = schemeDraft.rules[row.dataset.section];
+      const index = Number(row.dataset.index);
+      const target = index + Number(button.dataset.moveRule);
+      if (target < 0 || target >= rules.length) return;
+      commitSchemeHistory();
+      [rules[index], rules[target]] = [rules[target], rules[index]];
+      renderSchemeRules();
+      markSchemeDirty();
+    });
     $$('[data-add-rule]').forEach(button => button.onclick = () => {
       commitSchemeHistory();
       (schemeDraft.rules[button.dataset.addRule] ||= []).push(['', '']);
@@ -2664,6 +2710,7 @@
     };
     const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false }];
     const previewChangelog = [
+      { version: '0.12.7', date: '2026-08-27', title: '方案解析顺序编辑', items: ['映射表新增上移、下移和“长项优先”，表格顺序就是实际检测顺序。', '替换规则同样支持排序，并严格按照界面顺序执行。', '程序不会自动改变顺序；“长项优先”只在手动点击时生效。'] },
       { version: '0.12.6', date: '2026-08-26', title: '应用自动更新与一键发布', items: ['启动后可自动检查更新，并直接下载适用于当前平台的安装包。', '更新包会进行 SHA-256 校验；Windows 自动替换重启，Android 交由系统安装。', '新增一键 GitHub Release 发布脚本。', '调整数据变更页批次与搜索控件，并移除诊断列表顶部多余的分隔线。', '批次选择改为软件统一样式的浮层菜单。'] },
       { version: '0.12.5', date: '2026-08-25', title: '数据变更查看器', items: ['维护页面新增可解析大体积日志的数据变更查看器，支持按批次分页、字段级新旧值对照和内容搜索。', '维护窗口合并标题与页面导航，数据变更页取消批次侧栏和重复标题栏，正文区域在宽窄窗口中都能获得更多空间。', '读音更新改为逐文稿、逐位置确认，可采用新读音、保留原读音、重新审阅或恢复确认前读音。', '文稿库文件夹增加开合图标并优化层级缩进；单击整行即可展开或折叠。'] },
       { version: '0.12.4', date: '2026-08-08', title: 'Windows 安装包文件名统一', items: ['Windows 发布程序改为“汉转NOCM-版本号.exe”，单独取出后也能识别版本。'] },
@@ -2695,7 +2742,7 @@
       { version: '0.9.1', date: '2026-07-20', title: 'HTML 界面全面调整', items: ['全面调整读音面板、拖动交互、滚动条和弹窗布局。'] },
       { version: '0.9.0', date: '2026-07-16', title: 'HTML 桌面界面预览版', items: ['界面迁移到 HTML 与 WebView2。'] },
     ];
-    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.6', ui_preferences: { inspector_width: 320, debug_mode: false }, changelog: previewChangelog });
+    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.7', ui_preferences: { inspector_width: 320, debug_mode: false }, changelog: previewChangelog });
     return new Proxy({
       initialize: async () => full(), get_startup_status: async () => ({ message: '准备就绪', progress: 100 }),
       get_cell_details: async (li, ci) => {
@@ -2756,10 +2803,10 @@
       },
       get_polyphonic_summary: async () => [{ char: '关', count: 2, readings: { 'kˤro[n]s': 1, 'kˤro[n]': 1 }, options: [{ phonetic: 'kˤro[n]s' }, { phonetic: 'kˤro[n]' }] }],
       batch_apply_reading: async () => clone(mock), get_draft_history: async () => [{ id: 'demo.json', name: '关雎', modified: '2026-07-16T12:00:00', preview: '关关雎在河之洲' }],
-      get_diagnostics: async () => ({ app_version: '0.12.6', draft_schema_version: 3, scheme_schema_version: 2, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
+      get_diagnostics: async () => ({ app_version: '0.12.7', draft_schema_version: 3, scheme_schema_version: 2, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
       import_old_library: async () => ({ ok: true, imported: 2, skipped: 1, renamed: 0, errors: [], state: full() }),
-      check_for_updates: async () => ({ ok: true, current: '0.12.6', latest: '0.12.6', available: false }),
-      download_update: async () => ({ ok: true, version: '0.12.6', platform: 'windows', path: 'preview-update.exe' }),
+      check_for_updates: async () => ({ ok: true, current: '0.12.7', latest: '0.12.7', available: false }),
+      download_update: async () => ({ ok: true, version: '0.12.7', platform: 'windows', path: 'preview-update.exe' }),
       install_downloaded_update: async () => ({ ok: true, scheduled: true }),
       get_data_change_batches: async () => ({ ok: true, exists: true, file_size: 77729928, total: 2, items: [
         { id: 'b2', timestamp: '2026-08-22 23:55:12', filename: 'extra.json.gz', count: 10427 },

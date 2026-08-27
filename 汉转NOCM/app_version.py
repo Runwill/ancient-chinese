@@ -7,7 +7,7 @@ import sys
 
 
 APP_NAME = '汉字转 NOCM 音标'
-__version__ = '0.12.6'
+__version__ = '0.12.7'
 
 DRAFT_SCHEMA_VERSION = 3
 SCHEME_SCHEMA_VERSION = 2
@@ -19,6 +19,16 @@ RELEASES_PAGE_URL = (
     'https://github.com/Runwill/ancient-chinese/releases')
 
 CHANGELOG = [
+    {
+        'version': '0.12.7',
+        'date': '2026-08-27',
+        'title': '方案解析顺序编辑',
+        'items': [
+            '方案映射表新增上移、下移和“长项优先”，表格从上到下即为音节解析与其余映射的实际检测顺序。',
+            '替换规则新增上移、下移和“长项优先”，规则严格按照界面顺序执行，不再需要直接编辑 JSON。',
+            '程序不会自动改变方案顺序；“长项优先”仅在手动点击时生效，可继续自定义重叠项的优先级。',
+        ],
+    },
     {
         'version': '0.12.6',
         'date': '2026-08-26',

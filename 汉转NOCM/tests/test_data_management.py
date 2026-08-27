@@ -6,6 +6,7 @@ import io
 import os
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import backup_manager
@@ -245,8 +246,8 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertLess(
             picker.index('id="scheme-picker-filter"'),
             picker.index('id="import-scheme-picker"'))
-        self.assertIn('styles.css?v=0.12.6', markup)
-        self.assertIn('app.js?v=0.12.6', markup)
+        self.assertIn(f'styles.css?v={__version__}', markup)
+        self.assertIn(f'app.js?v={__version__}', markup)
 
     def test_close_buttons_use_centered_svg_icons(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -503,6 +504,45 @@ class SchemeToolTests(unittest.TestCase):
         scheme['options']['english_voiced_stops'] = True
         self.assertEqual(NocmTranscriber(scheme).convert_text('ba da ga'),
                          'bA dA gA')
+
+    def test_mapping_table_order_controls_overlapping_onsets(self):
+        scheme = {
+            'maps': {
+                'onset': {'k': 'K', 'kh': 'X'},
+                'nucleus': {'a': 'a'},
+            },
+            'parse_order': {
+                'onset': ['k', 'kh'],
+                'nucleus': ['a'],
+            },
+        }
+        self.assertEqual(NocmTranscriber(scheme).convert_text('kha'), 'Kha')
+
+        scheme['parse_order']['onset'] = ['kh', 'k']
+        self.assertEqual(NocmTranscriber(scheme).convert_text('kha'), 'Xa')
+
+    def test_residual_mapping_uses_visible_table_order_without_auto_sort(self):
+        scheme = {
+            'maps': {
+                'residual': {'k': 'K', 'kh': 'X'},
+                'nucleus': {'a': 'a'},
+            },
+            'parse_order': {
+                'residual': ['k', 'kh'],
+                'nucleus': ['a'],
+            },
+        }
+        self.assertEqual(NocmTranscriber(scheme).convert_text('kha'), 'Kha')
+
+        scheme['parse_order']['residual'] = ['kh', 'k']
+        self.assertEqual(NocmTranscriber(scheme).convert_text('kha'), 'Xa')
+
+    def test_scheme_editor_exposes_manual_mapping_and_rule_order(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        self.assertIn('data-move-map', script)
+        self.assertIn('data-sort-map', script)
+        self.assertIn('data-move-rule', script)
+        self.assertIn('data-sort-rule', script)
 
     def test_clear_sonorant_english_variant_matches_r_change_voiced_stops(self):
         clear_sonorant = load_scheme('hsth_change')
