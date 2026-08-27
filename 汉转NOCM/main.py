@@ -102,6 +102,7 @@ def main():
     webview = _load_webview()
 
     from web_api import WebApi, web_asset_path
+    from constants import get_theme
 
     index_path = web_asset_path()
     if not os.path.isfile(index_path):
@@ -115,7 +116,7 @@ def main():
         width=1280,
         height=780,
         min_size=(960, 600),
-        background_color='#F4F6F8',
+        background_color='#1D2226' if get_theme() == 'dark' else '#F4F6F8',
         text_select=True,
     )
     api.set_window(window)

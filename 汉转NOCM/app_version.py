@@ -7,7 +7,7 @@ import sys
 
 
 APP_NAME = '汉字转 NOCM 音标'
-__version__ = '0.12.7'
+__version__ = '0.12.8'
 
 DRAFT_SCHEMA_VERSION = 3
 SCHEME_SCHEMA_VERSION = 2
@@ -19,6 +19,15 @@ RELEASES_PAGE_URL = (
     'https://github.com/Runwill/ancient-chinese/releases')
 
 CHANGELOG = [
+    {
+        'version': '0.12.8',
+        'date': '2026-08-27',
+        'title': '更新提示与深色启动页',
+        'items': [
+            '自动检查发现新版本后，右上角问号按钮会持续显示更新提示色，不再只依赖短暂消息。',
+            '深色模式会从应用启动和加载界面开始生效，Android 原生窗口与 WebView 不再固定显示浅色背景。',
+        ],
+    },
     {
         'version': '0.12.7',
         'date': '2026-08-27',

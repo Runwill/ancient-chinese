@@ -4,8 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>汉字转 NOCM 音标</title>
-  <script>document.documentElement.dataset.theme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';</script>
-  <link rel="stylesheet" href="styles.css?v=0.12.7">
+  <script>
+    (() => {
+      const requested = new URLSearchParams(location.search).get('theme');
+      let saved = null;
+      try { saved = localStorage.getItem('theme'); } catch (_) {}
+      document.documentElement.dataset.theme = [requested, saved].find(value => value === 'light' || value === 'dark')
+        || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css?v=0.12.8">
 </head>
 <body>
   <div id="startup" class="startup">
@@ -316,6 +324,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.12.7"></script>
+  <script src="app.js?v=0.12.8"></script>
 </body>
 </html>

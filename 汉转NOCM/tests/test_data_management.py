@@ -315,8 +315,13 @@ class WebAssetContractTests(unittest.TestCase):
                   encoding='utf-8') as file:
             script = file.read()
 
-        load_page = 'webView.loadUrl("file:///android_asset/web/index.html")'
+        load_page = 'webView.loadUrl("file:///android_asset/web/index.html?theme='
         self.assertLess(activity.index(load_page), activity.index('Thread {'))
+        self.assertIn('prefersDarkTheme()', activity)
+        self.assertTrue(os.path.isfile(os.path.join(
+            root, 'android', 'app', 'src', 'main', 'res', 'values-night',
+            'styles.xml')))
+        self.assertIn('updateAvailableIndicator(result)', script)
         self.assertIn('requestAnimationFrame(\n        () => requestAnimationFrame(resolve))', script)
 
 

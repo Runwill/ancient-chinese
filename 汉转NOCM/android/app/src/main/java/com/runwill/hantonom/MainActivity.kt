@@ -3,6 +3,7 @@ package com.runwill.hantonom
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -35,7 +36,9 @@ class MainActivity : Activity() {
     @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.navigationBarColor = Color.rgb(244, 246, 248)
+        val darkTheme = prefersDarkTheme()
+        val startupBackground = if (darkTheme) Color.rgb(29, 34, 38) else Color.rgb(244, 246, 248)
+        window.navigationBarColor = startupBackground
         hideSystemStatusBar()
 
         webView = WebView(this).apply {
@@ -62,10 +65,10 @@ class MainActivity : Activity() {
                 }
             }
             addJavascriptInterface(AndroidApi(this@MainActivity), "AndroidApi")
-            setBackgroundColor(Color.rgb(244, 246, 248))
+            setBackgroundColor(startupBackground)
         }
         setContentView(webView)
-        webView.loadUrl("file:///android_asset/web/index.html")
+        webView.loadUrl("file:///android_asset/web/index.html?theme=${if (darkTheme) "dark" else "light"}")
 
         Thread {
             try {
@@ -80,6 +83,17 @@ class MainActivity : Activity() {
                 backendReady.countDown()
             }
         }.start()
+    }
+
+    private fun prefersDarkTheme(): Boolean {
+        val saved = runCatching {
+            File(filesDir, ".theme_pref").takeIf { it.isFile }
+                ?.readText(Charsets.UTF_8)?.trim()
+        }.getOrNull()
+        if (saved == "dark") return true
+        if (saved == "light") return false
+        return resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES
     }
 
     override fun onResume() {
