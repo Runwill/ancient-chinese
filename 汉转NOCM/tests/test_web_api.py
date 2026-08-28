@@ -6,9 +6,10 @@ import os
 import tempfile
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import web_api
+import runtime_log
 from web_api import WebApi
 
 
@@ -57,6 +58,32 @@ class WebApiEditorTests(unittest.TestCase):
 
         self.assertEqual(status['phase'], 'ready')
         self.assertEqual(status['result']['path'], 'update.apk')
+
+    def test_backend_output_can_be_viewed_and_cleared(self):
+        runtime_log.clear_runtime_logs()
+        self.addCleanup(runtime_log.clear_runtime_logs)
+        runtime_log.write_runtime_log('后台测试输出')
+
+        snapshot = self.api.get_backend_logs()
+        self.assertIn('后台测试输出', snapshot['text'])
+        self.assertGreater(snapshot['characters'], 0)
+
+        cleared = self.api.clear_backend_logs()
+        self.assertEqual(cleared['text'], '')
+        self.assertEqual(cleared['characters'], 0)
+
+    def test_desktop_window_controls_use_attached_window(self):
+        window = Mock()
+        with patch.object(web_api, '_APP_WINDOW', window):
+            self.api.minimize_window()
+            maximized = self.api.toggle_maximize_window()
+            restored = self.api.toggle_maximize_window()
+
+        window.minimize.assert_called_once_with()
+        window.maximize.assert_called_once_with()
+        window.restore.assert_called_once_with()
+        self.assertTrue(maximized['maximized'])
+        self.assertFalse(restored['maximized'])
 
     def _save_draft(self, filename, name, buffer, _cell_info,
                     _editor_state=None, create_history=False):
@@ -467,6 +494,16 @@ class WebApiEditorTests(unittest.TestCase):
         self.assertEqual(result['value'], 520)
         self.assertEqual(preferences['inspector_width'], 520)
 
+    def test_editor_zoom_preference_is_clamped_and_persisted(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = os.path.join(root, '.ui_state.json')
+            with patch.object(web_api, '_UI_STATE_PATH', path):
+                result = self.api.set_ui_preference('editor_zoom', 9)
+                preferences = web_api._load_ui_preferences()
+
+        self.assertEqual(result['value'], 2.0)
+        self.assertEqual(preferences['editor_zoom'], 2.0)
+
     def test_debug_mode_preference_is_persisted(self):
         with tempfile.TemporaryDirectory() as root:
             path = os.path.join(root, '.ui_state.json')
@@ -555,13 +592,15 @@ class WebApiEditorTests(unittest.TestCase):
         self.assertIsNone(self.api.current_draft)
 
     def test_about_source_links_only_open_known_urls(self):
-        source = 'https://github.com/qwert-ly/xtext'
+        source = 'https://space.bilibili.com/129368153'
         with patch('webbrowser.open') as open_mock:
             self.api.open_source_url(source)
+            self.api.open_source_url('https://space.bilibili.com/87432837')
             with self.assertRaises(ValueError):
                 self.api.open_source_url('https://example.com')
 
-        open_mock.assert_called_once_with(source)
+        self.assertEqual(open_mock.call_count, 2)
+        open_mock.assert_any_call(source)
 
     def test_loading_theme_preference_is_available_before_editor_startup(self):
         with patch('web_api.get_theme', return_value='dark'):

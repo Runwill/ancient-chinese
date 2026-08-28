@@ -13,10 +13,16 @@
         || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     })();
   </script>
+  <link rel="icon" type="image/png" href="app-icon.png?v=0.12.8">
   <link rel="stylesheet" href="styles.css?v=0.12.8">
 </head>
 <body>
-  <div id="startup" class="startup">
+  <div id="startup" class="startup pywebview-drag-region">
+    <div class="window-controls startup-window-controls" aria-label="窗口控制">
+      <button type="button" data-window-action="minimize" aria-label="最小化" title="最小化"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5h8"></path></svg></button>
+      <button type="button" data-window-action="maximize" aria-label="最大化" title="最大化"><svg class="maximize-glyph" viewBox="0 0 12 12" aria-hidden="true"><rect x="2.5" y="2.5" width="7" height="7"></rect></svg><svg class="restore-glyph" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 3h5v5"></path><path d="M3 4h5v5H3Z"></path></svg></button>
+      <button type="button" data-window-action="close" class="window-close" aria-label="关闭窗口" title="关闭"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 3 6 6M9 3 3 9"></path></svg></button>
+    </div>
     <div class="startup-mark">漢</div>
     <h1>汉字转 PBOC 音标</h1>
     <span id="startup-version" class="startup-version"></span>
@@ -30,32 +36,43 @@
   </div>
 
   <main id="app" class="app hidden">
-    <header class="topbar">
-      <div class="brand">
+    <header id="app-titlebar" class="topbar pywebview-drag-region">
+      <div class="brand pywebview-drag-region">
+        <img class="titlebar-icon titlebar-icon-light" src="app-icon.png?v=0.12.8" alt="">
+        <img class="titlebar-icon titlebar-icon-dark" src="app-icon-dark.png?v=0.12.8" alt="">
         <strong>汉字转 PBOC 音标</strong>
         <span id="document-title">未命名文稿</span>
         <span id="save-state" class="save-state">已自动保存</span>
       </div>
       <nav class="toolbar" aria-label="主要操作">
         <button class="icon-button mobile-only" id="mobile-library-button" title="文稿库" aria-label="文稿库"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3Z"></path></svg></button>
-        <button class="icon-button" id="search-button" title="查找 (Ctrl+F)" aria-label="查找"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></button>
-        <button class="icon-button" id="undo-button" title="撤回 (Ctrl+Z)" aria-label="撤回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg></button>
-        <button class="icon-button" id="redo-button" title="重做 (Ctrl+Y)" aria-label="重做"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"></path><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path></svg></button>
-        <span class="toolbar-divider"></span>
-        <button class="button" id="highlight-button">高亮</button>
-        <button class="button" id="batch-button">批量</button>
-        <button class="button" id="save-button">保存</button>
+        <button class="icon-button" id="tools-button" title="更多工具" aria-label="更多工具" aria-expanded="false" aria-controls="utilitybar"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></button>
         <button class="icon-button" id="restart-button" title="重启应用" aria-label="重启应用"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"></path><path d="M21 3v5h-5"></path></svg></button>
         <button class="icon-button" id="theme-button" title="切换主题" aria-label="切换主题"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-1.1-.2-2.1-.5-3A7 7 0 0 1 12 3Z"></path></svg></button>
         <button class="icon-button" id="help-button" title="关于与维护" aria-label="关于与维护"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.8 9a2.4 2.4 0 0 1 4.6 1c0 1.8-2.4 2-2.4 3.6"></path><path d="M12 17h.01"></path></svg></button>
         <button class="icon-button mobile-only" id="mobile-inspector-button" title="读音信息" aria-label="读音信息"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5"></path><path d="M12 8h.01"></path></svg></button>
         <button class="button primary" id="export-button">导出</button>
+        <div class="window-controls" aria-label="窗口控制">
+          <button type="button" data-window-action="minimize" aria-label="最小化" title="最小化"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5h8"></path></svg></button>
+          <button type="button" data-window-action="maximize" aria-label="最大化" title="最大化"><svg class="maximize-glyph" viewBox="0 0 12 12" aria-hidden="true"><rect x="2.5" y="2.5" width="7" height="7"></rect></svg><svg class="restore-glyph" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 3h5v5"></path><path d="M3 4h5v5H3Z"></path></svg></button>
+          <button type="button" data-window-action="close" class="window-close" aria-label="关闭窗口" title="关闭"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 3 6 6M9 3 3 9"></path></svg></button>
+        </div>
       </nav>
     </header>
 
+    <section id="utilitybar" class="utilitybar hidden" aria-label="更多工具">
+      <button class="icon-button" id="search-button" title="查找 (Ctrl+F)" aria-label="查找"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></button>
+      <button class="icon-button" id="undo-button" title="撤回 (Ctrl+Z)" aria-label="撤回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg></button>
+      <button class="icon-button" id="redo-button" title="重做 (Ctrl+Y)" aria-label="重做"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"></path><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path></svg></button>
+      <span class="toolbar-divider" aria-hidden="true"></span>
+      <button class="button" id="highlight-button">高亮</button>
+      <button class="button" id="batch-button">批量</button>
+      <button class="button" id="save-button">保存</button>
+      <span class="toolbar-divider" aria-hidden="true"></span>
+      <button class="button" id="backend-log-button">后台</button>
+    </section>
+
     <section id="searchbar" class="searchbar hidden">
-      <input id="search-input" type="search" placeholder="查找汉字或音标" autocomplete="off">
-      <input id="replace-input" type="text" placeholder="替换为" autocomplete="off">
       <div class="segmented" id="search-scope">
         <button data-value="all" class="active">全部</button>
         <button data-value="char">汉字</button>
@@ -63,6 +80,8 @@
       </div>
       <span id="search-count" class="muted"></span>
       <span class="flex-spacer"></span>
+      <input id="search-input" type="search" placeholder="查找汉字或音标" autocomplete="off">
+      <input id="replace-input" type="text" placeholder="替换为" autocomplete="off">
       <button class="button" id="replace-one">替换</button>
       <button class="button" id="replace-all">全部替换</button>
       <button class="icon-button small" id="search-prev" title="上一个" aria-label="上一个">↑</button>
@@ -79,7 +98,13 @@
       <aside class="draft-sidebar">
         <div class="sidebar-heading">
           <strong>文稿库</strong>
+          <div id="library-search" class="library-search hidden">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+            <input id="library-search-input" type="text" role="searchbox" placeholder="搜索文稿" autocomplete="off" aria-label="搜索文稿">
+            <button id="library-search-close" type="button" aria-label="关闭文稿搜索" title="关闭文稿搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
+          </div>
           <div class="heading-actions">
+            <button id="library-search-button" class="icon-button small" title="搜索文稿" aria-label="搜索文稿"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></button>
             <button id="new-folder-button" class="icon-button small" title="新建文件夹" aria-label="新建文件夹"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3Z"></path><path d="M12 11v5M9.5 13.5h5"></path></svg></button>
             <button id="new-draft-button" class="icon-button small accent" title="新建文稿" aria-label="新建文稿"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h10l4 4v14H5Z"></path><path d="M14 3v5h5M12 11v6M9 14h6"></path></svg></button>
           </div>
@@ -100,6 +125,7 @@
           <span id="cursor-status">第 1 行，第 1 列</span>
           <span id="selection-status"></span>
           <span class="flex-spacer"></span>
+          <span id="editor-zoom-status" title="Ctrl + 滚轮调整编辑和导出正文字号">100%</span>
           <span id="autosave-status">自动保存已开启</span>
         </footer>
       </section>
@@ -111,7 +137,23 @@
     </div>
   </main>
 
+  <div class="window-resize-handles" aria-hidden="true">
+    <i class="window-resize-handle top" data-resize-edge="top"></i>
+    <i class="window-resize-handle right" data-resize-edge="right"></i>
+    <i class="window-resize-handle bottom" data-resize-edge="bottom"></i>
+    <i class="window-resize-handle left" data-resize-edge="left"></i>
+    <i class="window-resize-handle top-left" data-resize-edge="top-left"></i>
+    <i class="window-resize-handle top-right" data-resize-edge="top-right"></i>
+    <i class="window-resize-handle bottom-left" data-resize-edge="bottom-left"></i>
+    <i class="window-resize-handle bottom-right" data-resize-edge="bottom-right"></i>
+  </div>
+
   <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+  <section id="startup-output-card" class="startup-output-card hidden" role="status" aria-live="polite">
+    <header><strong>本次启动输出</strong><button id="startup-output-close" type="button" aria-label="收起启动输出" title="收起"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
+    <pre id="startup-output-text"></pre>
+    <button id="startup-output-open" type="button">查看完整后台输出</button>
+  </section>
 
   <dialog id="prompt-dialog" class="dialog compact-dialog">
     <form method="dialog">
@@ -151,7 +193,7 @@
   <dialog id="export-dialog" class="dialog export-dialog">
     <form method="dialog">
       <header>
-        <div><span class="eyebrow">输出</span><h2>导出文本</h2></div>
+        <h2>导出文本</h2>
         <button value="cancel" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
       </header>
       <div class="export-controls">
@@ -171,16 +213,20 @@
           <label class="check-control"><input id="clean-line-breaks" type="checkbox"><span>清除无效换行</span></label>
           <label class="check-control"><input id="ignore-bracket-control-lines" type="checkbox"><span>忽略方括号控制行</span></label>
           <label class="check-control" data-suno-only><input id="remove-pharyngeal" type="checkbox"><span>删除所有咽化</span></label>
-          <label class="check-control" data-debug-only data-suno-only><input id="remove-tones" type="checkbox"><span>删除所有声调</span></label>
           <label class="check-control" data-suno-only><input id="remove-glottal-tone" type="checkbox"><span>删除喉塞音声调</span></label>
           <label class="check-control" data-suno-only><input id="extra-h-voiceless-sonorant" type="checkbox"><span>清响音前额外加 h</span></label>
-          <label class="check-control" data-debug-only data-suno-only><input id="entry-before-glottal" type="checkbox"><span>喉塞音前的 p/t/k 入声改为上声</span></label>
-          <label class="check-control" data-debug-only data-suno-only><input id="departing-before-glottal" type="checkbox"><span>喉塞音前的去声改为上声</span></label>
+          <details class="export-experimental" data-debug-only data-suno-only>
+            <summary>实验选项</summary>
+            <div class="export-experimental-panel">
+              <label class="check-control"><input id="remove-tones" type="checkbox"><span>删除所有声调</span></label>
+              <label class="check-control"><input id="entry-before-glottal" type="checkbox"><span>喉塞音前的 p/t/k 入声改为上声</span></label>
+              <label class="check-control"><input id="departing-before-glottal" type="checkbox"><span>喉塞音前的去声改为上声</span></label>
+            </div>
+          </details>
         </div>
       </div>
       <textarea id="export-output" class="export-output" spellcheck="false"></textarea>
       <footer>
-        <button value="cancel" class="button">关闭</button>
         <button type="button" id="open-image-export-button" class="button">导出图片</button>
         <button type="button" id="copy-export-button" class="button primary">复制全部</button>
       </footer>
@@ -214,7 +260,7 @@
   <dialog id="image-export-dialog" class="dialog image-export-dialog">
     <div class="dialog-layout">
       <header>
-        <div><span class="eyebrow">正文成图</span><h2>选择保留的行</h2></div>
+        <h2>导出图片</h2>
         <button id="close-image-export" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
       </header>
       <div class="image-export-body">
@@ -252,7 +298,7 @@
   <dialog id="scheme-dialog" class="dialog scheme-dialog">
     <div class="scheme-layout">
       <header>
-        <div><span class="eyebrow">转写配置</span><h2>方案编辑器</h2></div>
+        <h2>方案编辑器</h2>
         <div class="scheme-header-actions">
           <button id="scheme-undo" class="icon-button" title="撤回 (Ctrl+Z)" aria-label="撤回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg></button>
           <button id="scheme-redo" class="icon-button" title="重做 (Ctrl+Y)" aria-label="重做"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"></path><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path></svg></button>
@@ -294,15 +340,24 @@
 
   <dialog id="history-dialog" class="dialog history-dialog">
     <div class="dialog-layout">
-      <header><div><span class="eyebrow">文稿保护</span><h2>历史版本</h2></div><button id="close-history" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
+      <header><h2>历史版本</h2><button id="close-history" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
       <div id="history-list" class="history-list"></div>
     </div>
   </dialog>
 
   <dialog id="batch-dialog" class="dialog batch-dialog">
     <div class="dialog-layout">
-      <header><div><span class="eyebrow">正文工具</span><h2>批量处理多音字</h2></div><button id="close-batch" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
+      <header><h2>批量处理多音字</h2><button id="close-batch" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
       <div id="batch-list" class="batch-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="backend-log-dialog" class="dialog backend-log-dialog">
+    <div class="dialog-layout">
+      <header><h2>后台输出</h2><button id="close-backend-log" class="icon-button" aria-label="关闭后台输出"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
+      <div id="backend-log-meta" class="backend-log-meta"></div>
+      <pre id="backend-log-output" class="backend-log-output"></pre>
+      <footer><button id="clear-backend-log" class="button">清空</button><span class="flex-spacer"></span><button id="refresh-backend-log" class="button">刷新</button><button id="copy-backend-log" class="button">复制</button></footer>
     </div>
   </dialog>
 

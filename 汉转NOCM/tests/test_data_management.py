@@ -264,7 +264,7 @@ class WebAssetContractTests(unittest.TestCase):
             for part in markup.split('<button')[1:]
             if 'aria-label="关闭' in part.split('>', 1)[0]
         ]
-        self.assertEqual(len(close_buttons), 12)
+        self.assertEqual(len(close_buttons), 16)
         for button in close_buttons:
             self.assertIn('<svg ', button)
             self.assertNotIn('×', button)
@@ -307,6 +307,100 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertIn('View.SYSTEM_UI_FLAG_FULLSCREEN', activity)
         self.assertIn('runCatching', activity)
         self.assertNotIn('WindowInsetsController', activity)
+
+    def test_application_icon_is_wired_to_web_and_android(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, 'web', 'index.html'),
+                  encoding='utf-8') as file:
+            markup = file.read()
+        with open(os.path.join(root, 'android', 'app', 'src', 'main',
+                               'AndroidManifest.xml'),
+                  encoding='utf-8') as file:
+            manifest = file.read()
+
+        self.assertIn('rel="icon"', markup)
+        self.assertIn('app-icon.png', markup)
+        self.assertIn('app-icon-dark.png', markup)
+        self.assertTrue(os.path.isfile(
+            os.path.join(root, 'web', 'app-icon-dark.png')))
+        self.assertIn('android:icon="@drawable/app_icon"', manifest)
+
+        with open(os.path.join(root, 'main.py'), encoding='utf-8') as file:
+            desktop_entry = file.read()
+        with open(os.path.join(root, 'build_exe.py'), encoding='utf-8') as file:
+            build_script = file.read()
+        self.assertIn('icon=icon_path', desktop_entry)
+        self.assertIn('assets/app-icon.ico;assets', build_script)
+
+    def test_windows_titlebar_is_integrated_into_the_web_ui(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, 'main.py'), encoding='utf-8') as file:
+            desktop_entry = file.read()
+        with open(os.path.join(root, 'web', 'index.html'),
+                  encoding='utf-8') as file:
+            markup = file.read()
+        with open(os.path.join(root, 'web', 'app.js'),
+                  encoding='utf-8') as file:
+            script = file.read()
+        with open(os.path.join(root, 'web', 'styles.css'),
+                  encoding='utf-8') as file:
+            styles = file.read()
+
+        self.assertIn('frameless=True', desktop_entry)
+        self.assertIn('easy_drag=False', desktop_entry)
+        self.assertIn("DRAG_REGION_DIRECT_TARGET_ONLY", desktop_entry)
+        self.assertIn('id="app-titlebar"', markup)
+        self.assertIn('titlebar-icon-light', markup)
+        self.assertIn('titlebar-icon-dark', markup)
+        self.assertIn(':root[data-theme="dark"] .titlebar-icon-dark', styles)
+        self.assertIn('data-window-action="minimize"', markup)
+        self.assertIn('data-window-action="maximize"', markup)
+        self.assertIn('data-window-action="close"', markup)
+        self.assertIn('data-resize-edge="bottom-right"', markup)
+        self.assertIn("invoke('toggle_maximize_window')", script)
+        self.assertIn("invoke('start_window_resize'", script)
+
+    def test_editor_supports_persistent_ctrl_wheel_zoom(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, 'web', 'index.html'),
+                  encoding='utf-8') as file:
+            markup = file.read()
+        with open(os.path.join(root, 'web', 'styles.css'),
+                  encoding='utf-8') as file:
+            styles = file.read()
+        with open(os.path.join(root, 'web', 'app.js'),
+                  encoding='utf-8') as file:
+            script = file.read()
+
+        self.assertIn('id="editor-zoom-status"', markup)
+        self.assertIn('zoom: var(--editor-zoom, 1)', styles)
+        self.assertIn('font-size: calc(14px * var(--editor-zoom, 1))',
+                      styles)
+        self.assertIn("addEventListener('wheel', adjustEditorZoom", script)
+        self.assertIn("$('#export-output').addEventListener(", script)
+        self.assertIn('<span>正文字号</span><kbd>Ctrl 滚轮</kbd>', script)
+        self.assertIn("'set_ui_preference', 'editor_zoom'", script)
+        self.assertIn('event.preventDefault()', script)
+
+    def test_dialog_headers_are_compact_and_not_duplicated(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, 'web', 'index.html'),
+                  encoding='utf-8') as file:
+            markup = file.read()
+        with open(os.path.join(root, 'web', 'styles.css'),
+                  encoding='utf-8') as file:
+            styles = file.read()
+
+        self.assertNotIn('<span class="eyebrow">输出</span>', markup)
+        self.assertNotIn('<span class="eyebrow">正文成图</span>', markup)
+        self.assertNotIn('<span class="eyebrow">转写配置</span>', markup)
+        self.assertNotIn('<span class="eyebrow">文稿保护</span>', markup)
+        self.assertNotIn('<span class="eyebrow">正文工具</span>', markup)
+        self.assertNotIn('<span class="eyebrow">运行诊断</span>', markup)
+        self.assertIn('class="export-experimental"', markup)
+        self.assertIn('.compact-dialog header', styles)
+        self.assertIn('.export-dialog header', styles)
+        self.assertIn('border-bottom: 0', styles)
 
     def test_android_loads_startup_page_before_backend_thread(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -363,6 +457,35 @@ class DraftMigrationTests(unittest.TestCase):
         self.assertEqual(view['cursor'], [0, 0])
         self.assertEqual(draft_io.load_json(path)['schema_version'],
                          DRAFT_SCHEMA_VERSION)
+
+    def test_draft_list_counts_only_unselected_polyphonic_cells(self):
+        draft_io.save_draft(
+            None, 'unfinished', [['甲', '乙', '丙']], [[
+                {'phonetic': 'a', 'is_poly': True, 'selected': 'none'},
+                {'phonetic': 'b', 'is_poly': True, 'selected': 'manual'},
+                {'phonetic': 'c', 'is_poly': False, 'selected': 'none'},
+            ]])
+
+        drafts = draft_io.list_drafts()
+
+        self.assertEqual(drafts[0]['unselected_polyphonic'], 1)
+
+    def test_manual_completion_marker_survives_later_saves(self):
+        filename = draft_io.save_draft(
+            None, 'complete', [['甲']], [[{
+                'phonetic': 'a', 'is_poly': True, 'selected': 'none',
+            }]])
+        draft_io.set_draft_completed(filename, True)
+        draft_io.save_draft(
+            filename, None, [['甲']], [[{
+                'phonetic': 'a', 'is_poly': True, 'selected': 'none',
+            }]])
+
+        draft = next(item for item in draft_io.list_drafts()
+                     if item['filename'] == filename)
+
+        self.assertTrue(draft['manually_completed'])
+        self.assertEqual(draft['unselected_polyphonic'], 1)
 
     def test_manual_save_creates_restorable_history(self):
         mapping = {'x': [{'phonetic': 'x1'}]}

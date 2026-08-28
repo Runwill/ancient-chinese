@@ -8,6 +8,7 @@ import subprocess
 import sys
 
 from app_version import APP_NAME, __version__
+from runtime_log import install_output_capture, write_runtime_log
 
 
 def _fatal(message):
@@ -99,6 +100,8 @@ def main():
     if '--legacy' in sys.argv:
         run_legacy()
         return
+    install_output_capture()
+    write_runtime_log(f'{APP_NAME} v{__version__} 正在启动')
     webview = _load_webview()
 
     from web_api import WebApi, web_asset_path
@@ -109,6 +112,7 @@ def main():
         _fatal(f'找不到界面文件：\n{index_path}')
 
     api = WebApi()
+    webview.settings['DRAG_REGION_DIRECT_TARGET_ONLY'] = True
     window = webview.create_window(
         APP_NAME,
         url=index_path,
@@ -116,12 +120,21 @@ def main():
         width=1280,
         height=780,
         min_size=(960, 600),
+        frameless=True,
+        easy_drag=False,
         background_color='#1D2226' if get_theme() == 'dark' else '#F4F6F8',
         text_select=True,
     )
     api.set_window(window)
+    icon_path = os.path.join(
+        getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__))),
+        'assets', 'app-icon.ico')
     try:
-        webview.start(gui='edgechromium', debug='--debug-webview' in sys.argv)
+        webview.start(
+            gui='edgechromium',
+            debug='--debug-webview' in sys.argv,
+            icon=icon_path,
+        )
     except Exception as exc:
         _fatal(f'HTML 界面启动失败：\n{exc}\n\n请确认系统已安装 Microsoft Edge WebView2 Runtime。')
 

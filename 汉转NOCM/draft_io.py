@@ -105,6 +105,8 @@ def list_drafts():
             'name': data.get('name', fn[:-5]),
             'modified': data.get('modified', ''),
             'preview': data.get('preview', ''),
+            'unselected_polyphonic': count_unselected_polyphonic(data),
+            'manually_completed': bool(data.get('manually_completed')),
         })
     order = get_drafts_order()
     new_drafts = [d for d in drafts if d['filename'] not in order]
@@ -112,6 +114,17 @@ def list_drafts():
     new_drafts.sort(key=lambda d: d['modified'], reverse=True)
     ordered_drafts.sort(key=lambda d: order.index(d['filename']))
     return new_drafts + ordered_drafts
+
+
+def count_unselected_polyphonic(data):
+    """Count polyphonic cells whose reading has never been selected."""
+    total = 0
+    for row in (data.get('cell_info') or []):
+        for info in row:
+            if (isinstance(info, dict) and info.get('is_poly')
+                    and info.get('selected', 'none') == 'none'):
+                total += 1
+    return total
 
 
 def save_draft(filename, name, buffer, cell_info, editor_state=None,
@@ -168,6 +181,8 @@ def save_draft(filename, name, buffer, cell_info, editor_state=None,
         'created': (existing or {}).get('created', now.isoformat()),
         'modified': now.isoformat(),
         'preview': preview,
+        'manually_completed': bool(
+            (existing or {}).get('manually_completed', False)),
         'buffer': buffer,
         'cell_info': serialized_info,
         'editor_state': _normalize_editor_state(
@@ -342,6 +357,14 @@ def rename_draft(filename, new_name):
     data['name'] = new_name
     data['modified'] = datetime.now().isoformat()
     save_json(fp, data)
+
+
+def set_draft_completed(filename, completed):
+    """Set or clear the user's explicit completion marker."""
+    filename = _safe_filename(filename)
+    data = load_draft_data(filename)
+    data['manually_completed'] = bool(completed)
+    save_json(os.path.join(DRAFTS_DIR, filename), data)
 
 
 def get_draft_name(filename):

@@ -168,6 +168,8 @@ class MainActivity : Activity() {
         private val allowedSourceUrls = setOf(
             "https://zhuanlan.zhihu.com/p/12987993957",
             "https://github.com/qwert-ly/xtext",
+            "https://space.bilibili.com/129368153",
+            "https://space.bilibili.com/87432837",
         )
 
         @JavascriptInterface

@@ -24,7 +24,8 @@ from data_loader import (download_and_update, get_current_data_revision,
 from draft_io import (delete_draft, draft_has_pending_updates, get_draft_name,
                       list_draft_history, list_drafts, list_recent_drafts,
                       load_draft, rename_draft, restore_draft_history,
-                      save_draft, update_draft_editor_state)
+                      save_draft, set_draft_completed,
+                      update_draft_editor_state)
 from editor_buffer import EditorBuffer
 from folder_manager import (create_group, delete_group, get_groups,
                             move_group_into, move_to_group, rename_group,
@@ -40,6 +41,7 @@ from nocm_transcriber import (DEFAULT_SCHEME_ID, NocmTranscriber, diff_schemes,
                               validate_scheme)
 from update_manager import (check_for_updates, diagnostic_info, download_update,
                             launch_windows_update, validate_downloaded_update)
+from runtime_log import clear_runtime_logs, get_runtime_logs
 
 
 _PUNCT_TO_NEWLINE = '，。！？；：、,!?;:…—○'
@@ -127,6 +129,7 @@ class WebApi:
         self.current_draft: Optional[str] = None
         self.export_scheme_id = load_preferred_scheme_id()
         self.scroll_top = 0
+        self._window_maximized = False
         self._lock = threading.RLock()
         self._startup = {
             'phase': 'ready' if mapping else 'waiting',
@@ -143,6 +146,17 @@ class WebApi:
     def set_window(self, window):
         global _APP_WINDOW
         _APP_WINDOW = window
+        window.events.maximized += lambda: self._set_window_maximized(True)
+        window.events.restored += lambda: self._set_window_maximized(False)
+
+    def _set_window_maximized(self, maximized):
+        self._window_maximized = bool(maximized)
+        if _APP_WINDOW and _APP_WINDOW.events.loaded.is_set():
+            try:
+                _APP_WINDOW.run_js(
+                    f'window.setDesktopWindowMaximized?.({str(bool(maximized)).lower()})')
+            except Exception:
+                pass
 
     # Startup -------------------------------------------------------------
 
@@ -767,6 +781,11 @@ class WebApi:
             rename_draft(filename, name)
             return self.get_state()
 
+    def set_draft_completed(self, filename, completed):
+        with self._lock:
+            set_draft_completed(filename, bool(completed))
+            return self.get_state()
+
     def create_group(self, name='新建文件夹', parent_id=None):
         with self._lock:
             create_group(str(name or '新建文件夹'), parent_id)
@@ -1221,10 +1240,13 @@ class WebApi:
         os.execv(executable, args)
 
     def set_ui_preference(self, key, value):
-        if key not in ('inspector_width', 'debug_mode', 'export_options'):
+        if key not in ('inspector_width', 'editor_zoom', 'debug_mode',
+                       'export_options'):
             raise ValueError('不支持的界面偏好')
         if key == 'inspector_width':
             normalized = max(230, min(520, int(value)))
+        elif key == 'editor_zoom':
+            normalized = max(0.7, min(2.0, round(float(value), 1)))
         elif key == 'export_options':
             source = value if isinstance(value, dict) else {}
             normalized = {
@@ -1241,8 +1263,58 @@ class WebApi:
 
     # Maintenance --------------------------------------------------------
 
+    def get_window_state(self):
+        return {'maximized': self._window_maximized}
+
+    def minimize_window(self):
+        if _APP_WINDOW:
+            _APP_WINDOW.minimize()
+        return {'ok': True}
+
+    def toggle_maximize_window(self):
+        if not _APP_WINDOW:
+            return {'ok': False, 'maximized': False}
+        maximized = not self._window_maximized
+        if maximized:
+            _APP_WINDOW.maximize()
+        else:
+            _APP_WINDOW.restore()
+        self._set_window_maximized(maximized)
+        return {'ok': True, 'maximized': maximized}
+
+    def close_window(self):
+        if _APP_WINDOW:
+            threading.Timer(0.05, _APP_WINDOW.destroy).start()
+        return {'ok': True}
+
+    def start_window_resize(self, edge):
+        hit_tests = {
+            'left': 10, 'right': 11, 'top': 12,
+            'top-left': 13, 'top-right': 14, 'bottom': 15,
+            'bottom-left': 16, 'bottom-right': 17,
+        }
+        hit_test = hit_tests.get(str(edge))
+        native = getattr(_APP_WINDOW, 'native', None) if _APP_WINDOW else None
+        if os.name != 'nt' or not hit_test or native is None or self._window_maximized:
+            return {'ok': False}
+        try:
+            import ctypes
+            handle = int(native.Handle.ToInt64())
+            ctypes.windll.user32.ReleaseCapture()
+            ctypes.windll.user32.SendMessageW(handle, 0x00A1, hit_test, 0)
+            return {'ok': True}
+        except Exception:
+            return {'ok': False}
+
     def get_diagnostics(self):
         return diagnostic_info()
+
+    def get_backend_logs(self):
+        return get_runtime_logs()
+
+    def clear_backend_logs(self):
+        clear_runtime_logs()
+        return get_runtime_logs()
 
     def check_for_updates(self):
         return check_for_updates()
@@ -1377,6 +1449,8 @@ class WebApi:
         allowed = {
             'https://zhuanlan.zhihu.com/p/12987993957',
             'https://github.com/qwert-ly/xtext',
+            'https://space.bilibili.com/129368153',
+            'https://space.bilibili.com/87432837',
         }
         if url not in allowed:
             raise ValueError('未知的数据源地址')

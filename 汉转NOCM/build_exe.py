@@ -36,11 +36,13 @@ def build():
         '--onefile',
         '--windowed',
         '--name', executable_name,
+        '--icon', 'assets/app-icon.ico',
         '--version-file', version_file,
         '--hidden-import', 'email.utils',
         '--collect-all', 'webview',
         '--hidden-import', 'clr_loader',
         '--add-data', 'web;web',
+        '--add-data', 'assets/app-icon.ico;assets',
         'main.py',
     ]
     print('执行打包命令:')

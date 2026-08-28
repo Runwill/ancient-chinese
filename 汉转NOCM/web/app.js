@@ -28,6 +28,7 @@
   let visualNavX = null;
   let highlightMode = false;
   let search = { visible: false, query: '', scope: 'all', matches: [], index: 0 };
+  let draftLibraryQuery = '';
   let exportMode = 'phon';
   let exportOptionsInitialized = false;
   let imageExport = { title: '正文', lines: [], hidden: new Set(), ready: false };
@@ -57,6 +58,10 @@
   let automaticUpdateCheckStarted = false;
   let scrollSaveTimer = null;
   let imageResizeTimer = null;
+  let backendLogTimer = null;
+  let startupOutputTimer = null;
+  let editorZoom = 1;
+  let editorZoomSaveTimer = null;
 
   function toast(message, kind = '') {
     const node = document.createElement('div');
@@ -101,6 +106,116 @@
     document.body.classList.remove('mobile-library-open', 'mobile-inspector-open');
   }
 
+  function setUtilitybarVisible(visible) {
+    if (visible && search.visible) setSearchVisible(false, false);
+    $('#utilitybar').classList.toggle('hidden', !visible);
+    $('#tools-button').setAttribute('aria-expanded', String(visible));
+  }
+
+  function setSearchVisible(visible, restoreFocus = true) {
+    search.visible = visible;
+    $('#searchbar').classList.toggle('hidden', !visible);
+    if (visible) {
+      setUtilitybarVisible(false);
+      $('#search-input').focus();
+      $('#search-input').select();
+    } else {
+      search.query = '';
+      $('#search-input').value = '';
+      renderEditor();
+      if (restoreFocus) focusEditor();
+    }
+  }
+
+  function closeSearch() {
+    setSearchVisible(false);
+  }
+
+  function closeStartupOutput() {
+    clearTimeout(startupOutputTimer);
+    startupOutputTimer = null;
+    $('#startup-output-card').classList.add('hidden');
+    document.body.classList.remove('startup-output-visible');
+  }
+
+  function setDesktopWindowMaximized(maximized) {
+    document.documentElement.classList.toggle('window-maximized', Boolean(maximized));
+    $$('[data-window-action="maximize"]').forEach(button => {
+      button.setAttribute('aria-label', maximized ? '还原窗口' : '最大化');
+      button.title = maximized ? '还原' : '最大化';
+    });
+  }
+
+  async function runWindowAction(action) {
+    if (document.documentElement.dataset.platform === 'android') return;
+    if (action === 'minimize') {
+      await invoke('minimize_window');
+    } else if (action === 'maximize') {
+      const result = await invoke('toggle_maximize_window');
+      setDesktopWindowMaximized(result?.maximized);
+    } else if (action === 'close') {
+      clearTimeout(editorZoomSaveTimer);
+      editorZoomSaveTimer = null;
+      await invoke('set_ui_preference', 'editor_zoom', editorZoom);
+      await invoke('close_window');
+    }
+  }
+
+  window.setDesktopWindowMaximized = setDesktopWindowMaximized;
+
+  async function refreshBackendLogs() {
+    const payload = await invoke('get_backend_logs');
+    const output = $('#backend-log-output');
+    const followsEnd = output.scrollHeight - output.scrollTop - output.clientHeight < 28;
+    const text = String(payload?.text || '').trimEnd();
+    output.textContent = text || '暂无后台输出';
+    output.classList.toggle('empty', !text);
+    $('#backend-log-meta').textContent = `本次运行开始于 ${formatDate(payload?.started_at) || '未知时间'} · ${Number(payload?.characters || 0).toLocaleString()} 字符`;
+    if (followsEnd) output.scrollTop = output.scrollHeight;
+    return payload;
+  }
+
+  async function openBackendLogs() {
+    closeStartupOutput();
+    setUtilitybarVisible(false);
+    const dialog = $('#backend-log-dialog');
+    if (!dialog.open) dialog.showModal();
+    await refreshBackendLogs();
+    clearInterval(backendLogTimer);
+    backendLogTimer = setInterval(() => {
+      if (!dialog.open) return clearInterval(backendLogTimer);
+      refreshBackendLogs().catch(() => {});
+    }, 900);
+  }
+
+  async function showStartupOutput() {
+    try {
+      const payload = await invoke('get_backend_logs');
+      const text = String(payload?.text || '').trim();
+      if (!text) return;
+      const card = $('#startup-output-card');
+      $('#startup-output-text').textContent = text;
+      card.classList.remove('hidden');
+      document.body.classList.add('startup-output-visible');
+      $('#startup-output-text').scrollTop = $('#startup-output-text').scrollHeight;
+      clearTimeout(startupOutputTimer);
+      startupOutputTimer = setTimeout(closeStartupOutput, 15000);
+    } catch (_) { /* logs remain optional during startup */ }
+  }
+
+  function setLibrarySearchVisible(visible) {
+    $('.sidebar-heading').classList.toggle('searching', visible);
+    $('#library-search').classList.toggle('hidden', !visible);
+    if (visible) {
+      $('#library-search-input').focus();
+      $('#library-search-input').select();
+    } else {
+      draftLibraryQuery = '';
+      $('#library-search-input').value = '';
+      renderDraftTree();
+    }
+  }
+
   function applyResult(result) {
     if (!result) return;
     if (result.editor && result.drafts) {
@@ -108,6 +223,7 @@
       state = result;
       editor = result.editor;
       applyInspectorWidth(result.ui_preferences?.inspector_width);
+      applyEditorZoom(result.ui_preferences?.editor_zoom);
       applyDebugMode(result.ui_preferences?.debug_mode);
       renderAll();
       if (previousDraft !== editor.current_draft || editor.scroll_top) {
@@ -123,6 +239,7 @@
       renderEditor();
       renderInspector();
       updateToolbar();
+      syncCurrentDraftCompletion();
       if (state && previousDraft !== result.current_draft) {
         invoke('get_state').then(applyResult).catch(() => {});
       }
@@ -144,6 +261,44 @@
     const maxWidth = Math.max(230, Math.min(520, window.innerWidth - 560));
     const width = Math.max(230, Math.min(maxWidth, Number(value) || 286));
     $('.workspace')?.style.setProperty('--inspector-width', `${width}px`);
+  }
+
+  function applyEditorZoom(value) {
+    const normalized = Math.max(.7, Math.min(2,
+      Math.round((Number(value) || 1) * 10) / 10));
+    editorZoom = normalized;
+    document.documentElement.style.setProperty('--editor-zoom', String(normalized));
+    const status = $('#editor-zoom-status');
+    if (status) status.textContent = `${Math.round(normalized * 100)}%`;
+    if (state) {
+      state.ui_preferences ||= {};
+      state.ui_preferences.editor_zoom = normalized;
+    }
+    return normalized;
+  }
+
+  function adjustEditorZoom(event) {
+    if (!event.ctrlKey || !event.deltaY) return;
+    event.preventDefault();
+    const scroll = event.currentTarget;
+    if (!scroll) return;
+    const rect = scroll.getBoundingClientRect();
+    const localX = event.clientX - rect.left;
+    const localY = event.clientY - rect.top;
+    const contentX = scroll.scrollLeft + localX;
+    const contentY = scroll.scrollTop + localY;
+    const previous = editorZoom;
+    const next = Math.max(.7, Math.min(2,
+      Math.round((previous + (event.deltaY < 0 ? .1 : -.1)) * 10) / 10));
+    if (next === previous) return;
+    applyEditorZoom(next);
+    const ratio = next / previous;
+    scroll.scrollLeft = contentX * ratio - localX;
+    scroll.scrollTop = contentY * ratio - localY;
+    clearTimeout(editorZoomSaveTimer);
+    editorZoomSaveTimer = setTimeout(() => {
+      invoke('set_ui_preference', 'editor_zoom', editorZoom).catch(() => {});
+    }, 220);
   }
 
   function applyDebugMode(enabled) {
@@ -248,6 +403,7 @@
     state = result;
     editor = result.editor;
     applyInspectorWidth(result.ui_preferences?.inspector_width);
+    applyEditorZoom(result.ui_preferences?.editor_zoom);
     applyDebugMode(result.ui_preferences?.debug_mode);
     applyExportOptionPreferences(result.ui_preferences?.export_options);
     $('#startup-version').textContent = `v${result.version || ''}`;
@@ -256,6 +412,7 @@
     $('#app').classList.remove('hidden');
     renderAll();
     focusEditor();
+    showStartupOutput();
     if (!automaticUpdateCheckStarted
         && result.ui_preferences?.auto_check_updates !== false) {
       automaticUpdateCheckStarted = true;
@@ -643,6 +800,16 @@
   function renderDraftTree() {
     if (!state) return;
     const root = $('#draft-tree');
+    const query = draftLibraryQuery.trim().toLocaleLowerCase();
+    if (query) {
+      const matches = state.drafts.filter(draft => [
+        draft.name, draft.preview, draft.filename,
+      ].some(value => String(value || '').toLocaleLowerCase().includes(query)));
+      const results = matches.map(item => draftHtml(item, '', false, true)).join('');
+      root.innerHTML = `<div class="tree-section-label">搜索结果 · ${matches.length}</div><div class="library-search-results">${results || '<div class="folder-empty">没有匹配的文稿</div>'}</div>`;
+      bindDraftTree();
+      return;
+    }
     const draftMap = new Map(state.drafts.map(item => [item.filename, item]));
     const grouped = new Set();
     const groupHtml = groups => groups.map(group => {
@@ -670,14 +837,32 @@
     bindDraftTree();
   }
 
-  function draftHtml(draft, groupId, recent = false) {
+  function draftHtml(draft, groupId, recent = false, searchResult = false) {
     const active = draft.filename === editor?.current_draft ? 'active' : '';
+    const pendingCount = Math.max(0, Number(draft.unselected_polyphonic) || 0);
+    const completed = Boolean(draft.manually_completed);
+    const statusClass = completed ? 'completed' : pendingCount ? 'incomplete' : '';
     const stale = draft.stale
       ? '<span class="draft-stale" role="img" aria-label="包含词库读音已更新的字" title="包含词库读音已更新的字"></span>' : '';
-    return `<div class="draft-row ${active} ${recent ? 'recent-row' : ''}" draggable="${recent ? 'false' : 'true'}" data-kind="draft" data-id="${esc(draft.filename)}" data-group-id="${esc(groupId)}">
+    return `<div class="draft-row ${active} ${statusClass} ${recent ? 'recent-row' : ''}" draggable="${recent || searchResult ? 'false' : 'true'}" data-kind="draft" data-id="${esc(draft.filename)}" data-group-id="${esc(groupId)}">
       <div class="draft-main"><div class="draft-name-row"><div class="draft-name">${esc(draft.name)}</div>${stale}</div><div class="draft-preview">${esc(draft.preview || '空文稿')}</div></div>
       <button class="tree-menu" data-menu="draft" title="文稿操作" aria-label="文稿操作">•••</button>
     </div>`;
+  }
+
+  function syncCurrentDraftCompletion() {
+    if (!state || !editor?.current_draft) return;
+    const pendingCount = editor.lines.reduce((total, line) => total + line.filter(
+      cell => cell.is_poly && (cell.selected || 'none') === 'none').length, 0);
+    let changed = false;
+    for (const collection of [state.drafts || [], state.recent_drafts || []]) {
+      const draft = collection.find(item => item.filename === editor.current_draft);
+      if (draft && Number(draft.unselected_polyphonic || 0) !== pendingCount) {
+        draft.unselected_polyphonic = pendingCount;
+        changed = true;
+      }
+    }
+    if (changed) renderDraftTree();
   }
 
   function bindDraftTree() {
@@ -750,16 +935,36 @@
     const row = button.closest('.draft-row, .folder-row');
     const menu = document.createElement('div');
     menu.className = 'floating-menu';
-    menu.style.cssText = `position:fixed;z-index:30;right:${window.innerWidth - button.getBoundingClientRect().right}px;top:${button.getBoundingClientRect().bottom + 3}px;display:grid;min-width:110px;padding:4px;background:var(--surface);border:1px solid var(--border);border-radius:5px;box-shadow:var(--shadow)`;
-    menu.innerHTML = `${row.dataset.kind === 'draft' ? '<button class="button" data-action="history" style="border:0;text-align:left">历史版本</button>' : ''}<button class="button" data-action="rename" style="border:0;text-align:left">重命名</button><button class="button" data-action="delete" style="border:0;text-align:left;color:var(--danger)">删除</button>`;
+    menu.style.cssText = 'position:fixed;z-index:30;left:0;top:0;visibility:hidden;display:grid;min-width:110px;padding:4px;background:var(--surface);border:1px solid var(--border);border-radius:5px;box-shadow:var(--shadow)';
+    const draft = row.dataset.kind === 'draft'
+      ? state.drafts.find(item => item.filename === row.dataset.id) : null;
+    const completionAction = draft
+      ? `<button class="button" data-action="completion" style="border:0;text-align:left">${draft.manually_completed ? '取消完成标记' : '标记为已完成'}</button>` : '';
+    menu.innerHTML = `${completionAction}${draft ? '<button class="button" data-action="history" style="border:0;text-align:left">历史版本</button>' : ''}<button class="button" data-action="rename" style="border:0;text-align:left">重命名</button><button class="button" data-action="delete" style="border:0;text-align:left;color:var(--danger)">删除</button>`;
     menu.onclick = async event => {
       const action = event.target.dataset.action;
       menu.remove();
       if (action === 'rename') renameTreeItem(row.dataset.kind, row.dataset.id);
       if (action === 'delete') deleteTreeItem(row.dataset.kind, row.dataset.id);
       if (action === 'history') openDraftHistory(row.dataset.id);
+      if (action === 'completion' && draft) queue(async () => applyResult(
+        await invoke('set_draft_completed', row.dataset.id, !draft.manually_completed)));
     };
     document.body.append(menu);
+    const buttonRect = button.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const edge = 8;
+    const gap = 3;
+    const left = Math.min(
+      window.innerWidth - menuRect.width - edge,
+      Math.max(edge, buttonRect.right - menuRect.width));
+    const roomBelow = window.innerHeight - buttonRect.bottom - edge;
+    const top = roomBelow >= menuRect.height + gap
+      ? buttonRect.bottom + gap
+      : Math.max(edge, buttonRect.top - menuRect.height - gap);
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    menu.style.visibility = 'visible';
     setTimeout(() => document.addEventListener('click', () => menu.remove(), { once: true }), 0);
   }
 
@@ -1782,10 +1987,10 @@
         <div id="update-result"></div>
         <section class="maintenance-section compact-section"><label class="check-control"><input id="auto-check-updates" type="checkbox" ${state.ui_preferences?.auto_check_updates !== false ? 'checked' : ''}><span>启动后自动检查更新</span></label></section>
         <section class="maintenance-section"><h3>制作信息</h3><dl class="about-credits">
-          <dt>作者</dt><dd>Bilibili-@-凛武-</dd>
+          <dt>作者</dt><dd><a href="https://space.bilibili.com/129368153" data-external-url>Bilibili-@-凛武-</a></dd>
           <dt>拟音</dt><dd>知乎-@Nulll</dd>
-          <dt>源数据</dt><dd><a href="https://zhuanlan.zhihu.com/p/12987993957" data-source-url>知乎专栏</a> · <a href="https://github.com/qwert-ly/xtext" data-source-url>qwert-ly/xtext</a></dd>
-          <dt>测试</dt><dd>Bilibili-@Freegrep</dd>
+          <dt>源数据</dt><dd><a href="https://zhuanlan.zhihu.com/p/12987993957" data-external-url>知乎专栏</a> · <a href="https://github.com/qwert-ly/xtext" data-external-url>qwert-ly/xtext</a></dd>
+          <dt>测试</dt><dd><a href="https://space.bilibili.com/87432837" data-external-url>Bilibili-@Freegrep</a></dd>
         </dl></section>
         <section class="maintenance-section"><h3>调试</h3><label class="check-control"><input id="debug-mode-toggle" type="checkbox" ${state.ui_preferences?.debug_mode ? 'checked' : ''}><span>显示实验性导出选项</span></label><p class="muted">开启后显示“删除所有声调”以及喉塞音前声调调整选项。</p></section>
         <section class="maintenance-section"><h3>版本说明</h3>${(state.changelog || []).map(entry => `<div class="changelog-entry"><h4>v${esc(entry.version)} · ${esc(entry.title)}</h4><div class="muted">${esc(entry.date)}</div><ul>${entry.items.map(item => `<li>${esc(item)}</li>`).join('')}</ul></div>`).join('')}</section>`;
@@ -1802,7 +2007,7 @@
         await invoke('set_ui_preference', 'debug_mode', enabled);
         toast(`调试模式已${enabled ? '开启' : '关闭'}`);
       };
-      $$('[data-source-url]', root).forEach(link => link.onclick = event => {
+      $$('[data-external-url]', root).forEach(link => link.onclick = event => {
         event.preventDefault();
         invoke('open_source_url', link.href);
       });
@@ -1882,7 +2087,7 @@
       $$('[data-open-location]', root).forEach(button => button.onclick = () => invoke('open_location', button.dataset.openLocation));
       return;
     }
-    root.innerHTML = `<div class="shortcut-grid"><span>撤回</span><kbd>Ctrl Z</kbd><span>重做</span><kbd>Ctrl Y</kbd><span>复制</span><kbd>Ctrl C</kbd><span>剪切</span><kbd>Ctrl X</kbd><span>粘贴</span><kbd>Ctrl V</kbd><span>查找</span><kbd>Ctrl F</kbd><span>保存</span><kbd>Ctrl S</kbd><span>全选</span><kbd>Ctrl A</kbd></div>`;
+    root.innerHTML = `<div class="shortcut-grid"><span>撤回</span><kbd>Ctrl Z</kbd><span>重做</span><kbd>Ctrl Y</kbd><span>复制</span><kbd>Ctrl C</kbd><span>剪切</span><kbd>Ctrl X</kbd><span>粘贴</span><kbd>Ctrl V</kbd><span>查找</span><kbd>Ctrl F</kbd><span>保存</span><kbd>Ctrl S</kbd><span>全选</span><kbd>Ctrl A</kbd><span>正文字号</span><kbd>Ctrl 滚轮</kbd></div>`;
   }
 
   function renderDataChangeBatches() {
@@ -2216,6 +2421,20 @@
   }
 
   function bindEvents() {
+    $$('[data-window-action]').forEach(button => {
+      button.onclick = () => queue(() => runWindowAction(button.dataset.windowAction));
+    });
+    $('#app-titlebar').ondblclick = event => {
+      if (event.target.closest('button, input, a, nav')) return;
+      queue(() => runWindowAction('maximize'));
+    };
+    $$('[data-resize-edge]').forEach(handle => {
+      handle.onpointerdown = event => {
+        if (event.button !== 0
+            || document.documentElement.dataset.platform === 'android') return;
+        invoke('start_window_resize', handle.dataset.resizeEdge).catch(() => {});
+      };
+    });
     $('#startup-retry').onclick = initialize;
     document.addEventListener('pointerdown', event => {
       const openMenu = $('.data-change-batch-menu:not([hidden])');
@@ -2248,15 +2467,59 @@
       if (event.target.closest?.('.inspector-shell, #mobile-inspector-button, .cell')) return;
       document.body.classList.remove('mobile-inspector-open');
     });
-    $('#highlight-button').onclick = () => setHighlightMode(!highlightMode);
+    $('#library-search-button').onclick = () => setLibrarySearchVisible(true);
+    $('#library-search-close').onclick = () => setLibrarySearchVisible(false);
+    $('#library-search-input').oninput = event => {
+      draftLibraryQuery = event.target.value;
+      renderDraftTree();
+    };
+    $('#library-search-input').onkeydown = event => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setLibrarySearchVisible(false);
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        $('.library-search-results .draft-row')?.click();
+      }
+    };
+    $('#tools-button').onclick = () => setUtilitybarVisible(
+      $('#utilitybar').classList.contains('hidden'));
+    $('#highlight-button').onclick = () => {
+      setHighlightMode(!highlightMode);
+      setUtilitybarVisible(false);
+    };
     $('#exit-highlight-mode').onclick = () => setHighlightMode(false);
-    $('#batch-button').onclick = openBatchEditor;
+    $('#batch-button').onclick = () => {
+      setUtilitybarVisible(false);
+      openBatchEditor();
+    };
     $('#undo-button').onclick = () => editAction('undo');
     $('#redo-button').onclick = () => editAction('redo');
-    $('#save-button').onclick = () => queue(async () => {
-      const result = await invoke('save_current');
-      if (!result.ok) toast(result.message, 'error'); else { applyResult(result); toast('文稿已保存'); }
+    $('#save-button').onclick = () => {
+      setUtilitybarVisible(false);
+      queue(async () => {
+        const result = await invoke('save_current');
+        if (!result.ok) toast(result.message, 'error'); else { applyResult(result); toast('文稿已保存'); }
+      });
+    };
+    $('#backend-log-button').onclick = openBackendLogs;
+    $('#close-backend-log').onclick = () => $('#backend-log-dialog').close();
+    $('#backend-log-dialog').addEventListener('close', () => {
+      clearInterval(backendLogTimer);
+      backendLogTimer = null;
     });
+    $('#refresh-backend-log').onclick = () => refreshBackendLogs();
+    $('#copy-backend-log').onclick = async () => {
+      const payload = await invoke('get_backend_logs');
+      await writeClipboard(payload?.text || '');
+      toast('后台输出已复制');
+    };
+    $('#clear-backend-log').onclick = async () => {
+      await invoke('clear_backend_logs');
+      await refreshBackendLogs();
+    };
+    $('#startup-output-close').onclick = closeStartupOutput;
+    $('#startup-output-open').onclick = openBackendLogs;
     $('#restart-button').onclick = async () => {
       const confirmed = await confirmBox(
         '重启应用', '当前内容已自动保存。应用将使用当前启动参数重新启动。', '立即重启');
@@ -2285,6 +2548,10 @@
       $('#export-dialog').showModal();
       await refreshExport();
     };
+    document.addEventListener('pointerdown', event => {
+      const details = $('.export-experimental[open]');
+      if (details && !details.contains(event.target)) details.open = false;
+    });
     $('#open-scheme-picker').onclick = openSchemePicker;
     $('#import-scheme-picker').onclick = importSchemeFromPicker;
     $('#close-scheme-picker').onclick = () => $('#scheme-picker-dialog').close();
@@ -2506,14 +2773,8 @@
   }
 
   function bindSearchEvents() {
-    const toggle = visible => {
-      search.visible = visible;
-      $('#searchbar').classList.toggle('hidden', !visible);
-      if (visible) { $('#search-input').focus(); $('#search-input').select(); }
-      else { search.query = ''; $('#search-input').value = ''; renderEditor(); focusEditor(); }
-    };
-    $('#search-button').onclick = () => toggle(!search.visible);
-    $('#search-close').onclick = () => toggle(false);
+    $('#search-button').onclick = () => setSearchVisible(!search.visible);
+    $('#search-close').onclick = closeSearch;
     $('#search-input').oninput = event => { search.query = event.target.value; search.index = 0; recomputeSearch(true); };
     $('#search-scope').onclick = event => {
       const button = event.target.closest('button');
@@ -2536,13 +2797,13 @@
       const ctrl = event.ctrlKey || event.metaKey;
       if (ctrl && event.key.toLowerCase() === 'f') {
         event.preventDefault();
-        toggle(false);
+        closeSearch();
       } else if (event.key === 'Enter') {
         event.preventDefault();
         jump(event.shiftKey ? -1 : 1);
       } else if (event.key === 'Escape') {
         event.preventDefault();
-        toggle(false);
+        closeSearch();
       }
     };
     const replace = async replaceAll => {
@@ -2620,7 +2881,11 @@
   function bindEditorEvents() {
     const root = $('#editor');
     const capture = $('#input-capture');
-    $('#editor-scroll').addEventListener('click', event => { if (!event.target.closest('.cell')) focusEditor(); });
+    const scroll = $('#editor-scroll');
+    scroll.addEventListener('wheel', adjustEditorZoom, { passive: false });
+    $('#export-output').addEventListener(
+      'wheel', adjustEditorZoom, { passive: false });
+    scroll.addEventListener('click', event => { if (!event.target.closest('.cell')) focusEditor(); });
     root.addEventListener('mousedown', event => {
       const cell = event.target.closest('.cell');
       const lineNode = event.target.closest('.editor-line');
@@ -2765,6 +3030,7 @@
       manual_hl: false, stale: false, in_bracket: true,
     }));
     let mockGroupExpanded = true;
+    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.8 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
     const mockUpdate = {
       id: 'mock-reading-update', batch_id: 'b1',
       timestamp: '2026-08-22 23:55:03', filename: 'base.json.gz',
@@ -2802,9 +3068,9 @@
       maps: { onset: { k: 'к', t: 'т', b: 'mб', d: 'nд', g: 'ŋг' }, glide: { r: 'р' }, nucleus: { a: 'α' }, coda: { n: 'n' }, tone: { s: 's' }, residual: {} },
       labels: {}, parse_order: {}, rules: { pre_normalize: [['ʰ', 'h']], residual_preprocess: [], residual_replace: [], pharyngeal_relax: [], syllable_relax: [], post_replace: [] }
     };
-    const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false }];
+    const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true, unselected_polyphonic: 2, manually_completed: false }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false, unselected_polyphonic: 0, manually_completed: true }];
     const previewChangelog = [
-      { version: '0.12.8', date: '2026-08-28', title: 'PBOC 更名与更新体验', items: ['软件对外名称由 NOCM 改为 PBOC。', '移动端下载更新时显示实时进度，不再表现为界面卡住。', '发现新版本后，问号按钮会持续显示更新提示色。', '深色模式会从应用启动和加载界面开始生效。'] },
+      { version: '0.12.8', date: '2026-08-28', title: 'PBOC 更名与界面整理', items: ['软件对外名称由 NOCM 改为 PBOC。', '应用采用蓝底白色“漢”字图标；加载标志和应用顶栏图标会跟随深浅主题变化，Windows 任务栏使用浅蓝底版本。', '文稿库以橙色左侧标识尚有多音字未选的文稿，以绿色左侧标识手动标记完成的文稿。', '文稿库标题栏新增搜索，可按文稿名称、正文摘要或文件名实时筛选。', '文稿与文件夹操作菜单会避开窗口边缘，靠近底部时自动向上展开。', 'Windows 正式版在无终端窗口模式下收集后台输出；可从“更多工具”查看，启动完成后也会在右下角显示本次启动输出。', 'Windows 原生标题栏整合进应用顶栏，图标与窗口控制集中在同一行，并保留拖动、双击最大化与边缘缩放。', '正文编辑区和文本导出页支持按住 Ctrl 滚动鼠标滚轮调整字号，缩放比例会自动保存。', '精简导出与确认弹窗，移除重复标题和无意义分隔线，并将实验性导出规则收纳到独立入口。', '查找、撤回、重做、高亮、批量与保存集中到可展开的“更多工具”行；查找范围位于左侧，查找与替换输入框位于右侧。', '作者与测试人员名称增加 Bilibili 主页链接。', '移动端下载更新时显示实时进度和文件大小。', '发现新版本后，问号按钮会持续显示更新提示色。', '深色模式从应用启动和加载界面开始生效。'] },
       { version: '0.12.7', date: '2026-08-27', title: '方案解析顺序编辑', items: ['映射表新增拖动排序，表格顺序就是实际检测顺序。', '替换规则同样支持拖动排序，并严格按照界面顺序执行。', '编辑映射项、输出或中文说明时保留原位置，不会把修改项移到末尾。'] },
       { version: '0.12.6', date: '2026-08-26', title: '应用自动更新与一键发布', items: ['启动后可自动检查更新，并直接下载适用于当前平台的安装包。', '更新包会进行 SHA-256 校验；Windows 自动替换重启，Android 交由系统安装。', '新增一键 GitHub Release 发布脚本。', '调整数据变更页批次与搜索控件，并移除诊断列表顶部多余的分隔线。', '批次选择改为软件统一样式的浮层菜单。'] },
       { version: '0.12.5', date: '2026-08-25', title: '数据变更查看器', items: ['维护页面新增可解析大体积日志的数据变更查看器，支持按批次分页、字段级新旧值对照和内容搜索。', '维护窗口合并标题与页面导航，数据变更页取消批次侧栏和重复标题栏，正文区域在宽窄窗口中都能获得更多空间。', '读音更新改为逐文稿、逐位置确认，可采用新读音、保留原读音、重新审阅或恢复确认前读音。', '文稿库文件夹增加开合图标并优化层级缩进；单击整行即可展开或折叠。'] },
@@ -2891,6 +3157,11 @@
         cell.stale = true;
         return full();
       },
+      set_draft_completed: async (filename, completed) => {
+        const draft = mockDrafts.find(item => item.filename === filename);
+        if (draft) draft.manually_completed = Boolean(completed);
+        return full();
+      },
       toggle_group: async () => { mockGroupExpanded = !mockGroupExpanded; return full(); },
       toggle_highlight: async (li, ci) => {
         mock.lines[li][ci].manual_hl = !mock.lines[li][ci].manual_hl;
@@ -2899,6 +3170,8 @@
       get_polyphonic_summary: async () => [{ char: '关', count: 2, readings: { 'kˤro[n]s': 1, 'kˤro[n]': 1 }, options: [{ phonetic: 'kˤro[n]s' }, { phonetic: 'kˤro[n]' }] }],
       batch_apply_reading: async () => clone(mock), get_draft_history: async () => [{ id: 'demo.json', name: '关雎', modified: '2026-07-16T12:00:00', preview: '关关雎在河之洲' }],
       get_diagnostics: async () => ({ app_version: '0.12.8', draft_schema_version: 3, scheme_schema_version: 2, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
+      get_backend_logs: async () => ({ text: mockBackendLog, started_at: '2026-08-28T11:20:01+08:00', characters: mockBackendLog.length }),
+      clear_backend_logs: async () => { mockBackendLog = ''; return { text: '', started_at: '2026-08-28T11:20:01+08:00', characters: 0 }; },
       import_old_library: async () => ({ ok: true, imported: 2, skipped: 1, renamed: 0, errors: [], state: full() }),
       check_for_updates: async () => ({ ok: true, current: '0.12.8', latest: '0.12.8', available: false }),
       start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.8', platform: 'windows', path: 'preview-update.exe' } }),
@@ -2928,7 +3201,7 @@
       reorder_schemes: async ids => { schemes.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)); return { ok: true, schemes: clone(schemes) }; },
       update_scheme_description: async (id, description) => { const item = schemes.find(value => value.id === id); if (item) item.description = description.trim(); return { ok: true, scheme: clone(item), schemes: clone(schemes) }; },
       set_scheme_archived: async (id, archived) => { const item = schemes.find(value => value.id === id); if (item) item.archived = archived; const selected = archived && id === 'current_suno' ? schemes.find(value => !value.archived)?.id || null : 'current_suno'; return { ok: true, schemes: clone(schemes), selected_scheme: selected }; },
-      select_scheme: async () => ({ ok: true }), get_theme_preference: async () => ({ theme: document.documentElement.dataset.theme || 'light' }), set_theme: async theme => ({ theme }), set_ui_preference: async (_key, value) => ({ ok: true, value }), save_editor_view: async () => ({ ok: true }), open_source_url: async () => ({ ok: true }), restart_app: async () => ({ ok: true })
+      select_scheme: async () => ({ ok: true }), get_theme_preference: async () => ({ theme: document.documentElement.dataset.theme || 'light' }), set_theme: async theme => ({ theme }), set_ui_preference: async (_key, value) => ({ ok: true, value }), save_editor_view: async () => ({ ok: true }), open_source_url: async () => ({ ok: true }), restart_app: async () => ({ ok: true }), get_window_state: async () => ({ maximized: false }), minimize_window: async () => ({ ok: true }), toggle_maximize_window: async () => ({ ok: true, maximized: document.documentElement.classList.toggle('window-maximized') }), close_window: async () => ({ ok: true })
     }, { get(target, prop) { return target[prop] || (async () => full()); } });
   }
 
@@ -2948,6 +3221,10 @@
       dialogs[dialogs.length - 1].close();
       return true;
     }
+    if ($('.sidebar-heading').classList.contains('searching')) {
+      setLibrarySearchVisible(false);
+      return true;
+    }
     if (document.body.classList.contains('mobile-library-open')
         || document.body.classList.contains('mobile-inspector-open')) {
       closeMobilePanels();
@@ -2959,6 +3236,10 @@
     }
     if (search.visible) {
       closeSearch();
+      return true;
+    }
+    if (!$('#utilitybar').classList.contains('hidden')) {
+      setUtilitybarVisible(false);
       return true;
     }
     return false;
@@ -2976,6 +3257,10 @@
         const preference = await invoke('get_theme_preference');
         if (preference?.theme) setTheme(preference.theme);
       } catch (_) { /* keep the system theme until initialization completes */ }
+      try {
+        const windowState = await invoke('get_window_state');
+        setDesktopWindowMaximized(windowState?.maximized);
+      } catch (_) { /* Android does not expose desktop window controls */ }
       initialize();
     })();
     return true;
