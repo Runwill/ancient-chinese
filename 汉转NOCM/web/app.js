@@ -1624,6 +1624,12 @@
     const keys = [...new Set([...Object.keys(labels), ...Object.keys(options), ...Object.keys(definitions)])];
     $('#scheme-content').innerHTML = `<div class="option-list">${keys.map(key => {
       const definition = definitions[key] || {};
+      if (definition.type === 'choice') {
+        const value = String(options[key] ?? definition.default ?? 'custom');
+        const choices = Array.isArray(definition.choices) ? definition.choices : [];
+        return `<div class="option-row"><div class="option-copy"><strong>${esc(definition.label || labels[key] || key)}</strong>${definition.description ? `<div class="muted">${esc(definition.description)}</div>` : ''}</div>
+          <div class="option-control segmented compact">${choices.map(choice => `<button type="button" data-option-choice="${esc(key)}" data-value="${esc(choice.value)}" class="${value === String(choice.value) ? 'active' : ''}">${esc(choice.label || choice.value)}</button>`).join('')}</div></div>`;
+      }
       const enabled = Boolean(options[key]);
       const offLabel = definition.off_label;
       const onLabel = definition.on_label;
@@ -1636,6 +1642,28 @@
       renderSchemeOptions();
       markSchemeDirty();
     });
+    $$('[data-option-choice]', $('#scheme-content')).forEach(button => button.onclick = () => {
+      const key = button.dataset.optionChoice;
+      const value = button.dataset.value;
+      if (schemeDraft.options[key] === value) return;
+      commitSchemeHistory();
+      schemeDraft.options[key] = value;
+      const preset = schemeDraft.option_definitions?.[key]?.presets?.[value];
+      if (preset && typeof preset === 'object') {
+        schemeDraft.maps ||= {};
+        schemeDraft.maps.onset ||= {};
+        Object.assign(schemeDraft.maps.onset, preset);
+      }
+      renderSchemeOptions();
+      markSchemeDirty();
+    });
+  }
+
+  function markVoicedStopsCustom(section, ...sources) {
+    if (section !== 'onset' || !sources.some(source => ['b', 'd', 'g'].includes(source))) return;
+    if (schemeDraft.options?.voiced_stop_style !== undefined) {
+      schemeDraft.options.voiced_stop_style = 'custom';
+    }
   }
 
   function mapOrder(section) {
@@ -1775,6 +1803,7 @@
       const row = button.closest('.table-row');
       commitSchemeHistory();
       const { section, source } = row.dataset;
+      markVoicedStopsCustom(section, source);
       delete schemeDraft.maps[section][source];
       delete schemeDraft.labels?.[section]?.[source];
       schemeDraft.parse_order[section] = mapOrder(section).filter(key => key !== source);
@@ -1787,7 +1816,10 @@
       const oldSource = row.dataset.source;
       const field = input.dataset.field;
       commitSchemeHistory();
-      if (field === 'target') schemeDraft.maps[section][oldSource] = input.value;
+      if (field === 'target') {
+        schemeDraft.maps[section][oldSource] = input.value;
+        markVoicedStopsCustom(section, oldSource);
+      }
       if (field === 'label') {
         schemeDraft.labels[section] ||= {};
         if (input.value) schemeDraft.labels[section][oldSource] = input.value;
@@ -1796,6 +1828,7 @@
       if (field === 'source') {
         const source = input.value.trim();
         if (!source || source === oldSource) return;
+        markVoicedStopsCustom(section, oldSource, source);
         const order = mapOrder(section);
         const target = schemeDraft.maps[section][oldSource];
         const label = schemeDraft.labels?.[section]?.[oldSource];
@@ -3131,7 +3164,7 @@
       manual_hl: false, stale: false, in_bracket: true,
     }));
     let mockGroupExpanded = true;
-    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.9 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
+    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.10 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
     const mockUpdate = {
       id: 'mock-reading-update', batch_id: 'b1',
       timestamp: '2026-08-22 23:55:03', filename: 'base.json.gz',
@@ -3157,13 +3190,12 @@
     ];
     const scheme = {
       id: 'current_suno', name: '清响音修改', description: '浏览器预览数据',
-      options: { improve_pharyngeal: true, improve_syllable: false, english_voiced_stops: false },
+      options: { improve_pharyngeal: true, improve_syllable: false, voiced_stop_style: 'nasal' },
       option_definitions: {
-        english_voiced_stops: {
-          label: '浊塞音拼写', description: '鼻音诱导：mб / nд / ŋг；英美：б / ντ / γκ。',
-          off_label: '鼻音诱导', on_label: '英美',
-          when_false: { maps: { onset: { b: 'mб', d: 'nд', g: 'ŋг' } } },
-          when_true: { maps: { onset: { b: 'б', d: 'ντ', g: 'γκ' } } },
+        voiced_stop_style: {
+          type: 'choice', label: '浊塞音拼写', description: '选择预设或直接修改映射表。',
+          choices: [{ value: 'nasal', label: '鼻音诱导' }, { value: 'english', label: '英美' }, { value: 'custom', label: '自定义' }],
+          presets: { nasal: { b: 'mб', d: 'nд', g: 'ŋг' }, english: { b: 'б', d: 'ντ', g: 'γκ' } },
         },
       },
       maps: { onset: { k: 'к', t: 'т', b: 'mб', d: 'nд', g: 'ŋг' }, glide: { r: 'р' }, nucleus: { a: 'α' }, coda: { n: 'n' }, tone: { s: 's' }, residual: {} },
@@ -3171,6 +3203,7 @@
     };
     const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true, unselected_polyphonic: 2, manually_completed: false }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false, unselected_polyphonic: 0, manually_completed: true }];
     const previewChangelog = [
+      { version: '0.12.10', date: '2026-08-28', title: '浊塞音拼写支持自定义', items: ['浊塞音拼写改为“鼻音诱导 / 英美 / 自定义”三种状态，两种预设会明确写入映射表。', '手动编辑 b、d、g 会自动进入自定义，转写只使用当前映射，不再暗中覆盖。', '旧二值方案会自动迁移并保持原输出。'] },
       { version: '0.12.9', date: '2026-08-28', title: '启动进度细化', items: ['启动页显示真实步骤、当前文件、具体动作和已用时间。', '初始化在后台执行；网络不可用且本地数据完整时直接使用本地文件；Android 安装包同步包含启动日志模块。', 'Android 与 Python 统一使用异步桥接，检查更新、读取大型记录、备份导入和较大的导出任务不再阻塞界面。'] },
       { version: '0.12.8', date: '2026-08-28', title: 'PBOC 更名与界面整理', items: ['软件对外名称由 NOCM 改为 PBOC。', '应用采用蓝底白色“漢”字图标；加载标志和应用顶栏图标会跟随深浅主题变化，Windows 任务栏使用浅蓝底版本。', '文稿库以橙色左侧标识尚有多音字未选的文稿，以绿色左侧标识手动标记完成的文稿。', '文稿库标题栏新增搜索，可按文稿名称、正文摘要或文件名实时筛选。', '文稿与文件夹操作菜单会避开窗口边缘，靠近底部时自动向上展开。', 'Windows 正式版在无终端窗口模式下收集后台输出；可从“更多工具”查看，启动完成后也会在右下角显示本次启动输出。', 'Windows 原生标题栏整合进应用顶栏，图标与窗口控制集中在同一行，并保留拖动、双击最大化与边缘缩放。', '正文编辑区和文本导出页支持按住 Ctrl 滚动鼠标滚轮调整字号，缩放比例会自动保存。', '精简导出与确认弹窗，移除重复标题和无意义分隔线，并将实验性导出规则收纳到独立入口。', '查找、撤回、重做、高亮、批量与保存集中到可展开的“更多工具”行；查找范围位于左侧，查找与替换输入框位于右侧。', '作者与测试人员名称增加 Bilibili 主页链接。', '移动端下载更新时显示实时进度和文件大小。', '发现新版本后，问号按钮会持续显示更新提示色。', '深色模式从应用启动和加载界面开始生效。'] },
       { version: '0.12.7', date: '2026-08-27', title: '方案解析顺序编辑', items: ['映射表新增拖动排序，表格顺序就是实际检测顺序。', '替换规则同样支持拖动排序，并严格按照界面顺序执行。', '编辑映射项、输出或中文说明时保留原位置，不会把修改项移到末尾。'] },
@@ -3205,7 +3238,7 @@
       { version: '0.9.1', date: '2026-07-20', title: 'HTML 界面全面调整', items: ['全面调整读音面板、拖动交互、滚动条和弹窗布局。'] },
       { version: '0.9.0', date: '2026-07-16', title: 'HTML 桌面界面预览版', items: ['界面迁移到 HTML 与 WebView2。'] },
     ];
-    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.9', ui_preferences: { inspector_width: 320, debug_mode: false }, changelog: previewChangelog });
+    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.10', ui_preferences: { inspector_width: 320, debug_mode: false }, changelog: previewChangelog });
     return new Proxy({
       initialize: async () => full(),
       start_initialize: async () => ({ phase: 'ready', message: '准备就绪', progress: 100, step: 6, step_count: 6, detail: '启动完成', indeterminate: false }),
@@ -3273,15 +3306,15 @@
       },
       get_polyphonic_summary: async () => [{ char: '关', count: 2, readings: { 'kˤro[n]s': 1, 'kˤro[n]': 1 }, options: [{ phonetic: 'kˤro[n]s' }, { phonetic: 'kˤro[n]' }] }],
       batch_apply_reading: async () => clone(mock), get_draft_history: async () => [{ id: 'demo.json', name: '关雎', modified: '2026-07-16T12:00:00', preview: '关关雎在河之洲' }],
-      get_diagnostics: async () => ({ app_version: '0.12.9', draft_schema_version: 3, scheme_schema_version: 2, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
+      get_diagnostics: async () => ({ app_version: '0.12.10', draft_schema_version: 3, scheme_schema_version: 3, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
       get_backend_logs: async () => ({ text: mockBackendLog, started_at: '2026-08-28T11:20:01+08:00', characters: mockBackendLog.length }),
       clear_backend_logs: async () => { mockBackendLog = ''; return { text: '', started_at: '2026-08-28T11:20:01+08:00', characters: 0 }; },
       import_old_library: async () => ({ ok: true, imported: 2, skipped: 1, renamed: 0, errors: [], state: full() }),
-      check_for_updates: async () => ({ ok: true, current: '0.12.9', latest: '0.12.9', available: false }),
-      start_update_check: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.9', latest: '0.12.9', available: false }, error: null }),
-      get_update_check_status: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.9', latest: '0.12.9', available: false }, error: null }),
-      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.9', platform: 'windows', path: 'preview-update.exe' } }),
-      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.9', platform: 'windows', path: 'preview-update.exe' } }),
+      check_for_updates: async () => ({ ok: true, current: '0.12.10', latest: '0.12.10', available: false }),
+      start_update_check: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.10', latest: '0.12.10', available: false }, error: null }),
+      get_update_check_status: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.10', latest: '0.12.10', available: false }, error: null }),
+      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.10', platform: 'windows', path: 'preview-update.exe' } }),
+      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.10', platform: 'windows', path: 'preview-update.exe' } }),
       install_downloaded_update: async () => ({ ok: true, scheduled: true }),
       get_data_change_batches: async () => ({ ok: true, exists: true, file_size: 77729928, total: 2, items: [
         { id: 'b2', timestamp: '2026-08-22 23:55:12', filename: 'extra.json.gz', count: 10427 },

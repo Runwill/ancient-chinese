@@ -634,29 +634,52 @@ class SchemeToolTests(unittest.TestCase):
         differences = diff_schemes(left, right)
         self.assertEqual(differences[0]['key'], 'onset.k')
 
-    def test_boolean_scheme_option_selects_map_variant(self):
+    def test_old_voiced_stop_boolean_migrates_to_nasal_preset(self):
+        scheme, changed = migrate_scheme_data({
+            'schema_version': 2,
+            'maps': {'onset': {'b': 'old-b', 'd': 'old-d', 'g': 'old-g'}},
+            'options': {'english_voiced_stops': False},
+            'option_definitions': {'english_voiced_stops': {}},
+        })
+
+        self.assertTrue(changed)
+        self.assertEqual(scheme['options']['voiced_stop_style'], 'nasal')
+        self.assertNotIn('english_voiced_stops', scheme['options'])
+        self.assertEqual(scheme['maps']['onset'], {
+            'b': 'mб', 'd': 'nд', 'g': 'ŋг'})
+
+    def test_old_voiced_stop_boolean_migrates_to_english_preset(self):
+        scheme, changed = migrate_scheme_data({
+            'schema_version': 2,
+            'maps': {'onset': {}},
+            'options': {'english_voiced_stops': True},
+            'option_definitions': {'english_voiced_stops': {}},
+        })
+
+        self.assertTrue(changed)
+        self.assertEqual(scheme['options']['voiced_stop_style'], 'english')
+        self.assertEqual(scheme['maps']['onset'], {
+            'b': 'б', 'd': 'ντ', 'g': 'γκ'})
+
+    def test_custom_voiced_stop_maps_are_not_overridden(self):
         scheme = {
             'maps': {
-                'onset': {'b': 'MB', 'd': 'ND', 'g': 'NG'},
+                'onset': {'b': 'B!', 'd': 'D!', 'g': 'G!'},
                 'nucleus': {'a': 'A'},
             },
-            'options': {'english_voiced_stops': False},
+            'options': {'voiced_stop_style': 'custom'},
             'option_definitions': {
-                'english_voiced_stops': {
-                    'when_false': {'maps': {'onset': {
-                        'b': 'MB', 'd': 'ND', 'g': 'NG'}}},
-                    'when_true': {'maps': {'onset': {
-                        'b': 'b', 'd': 'd', 'g': 'g'}}},
+                'voiced_stop_style': {
+                    'type': 'choice',
+                    'presets': {'english': {
+                        'b': 'б', 'd': 'ντ', 'g': 'γκ'}},
                 },
             },
             'rules': {},
         }
 
         self.assertEqual(NocmTranscriber(scheme).convert_text('ba da ga'),
-                         'MBA NDA NGA')
-        scheme['options']['english_voiced_stops'] = True
-        self.assertEqual(NocmTranscriber(scheme).convert_text('ba da ga'),
-                         'bA dA gA')
+                         'B!A D!A G!A')
 
     def test_mapping_table_order_controls_overlapping_onsets(self):
         scheme = {
@@ -700,6 +723,12 @@ class SchemeToolTests(unittest.TestCase):
         self.assertNotIn('data-sort-map', script)
         self.assertNotIn('data-sort-rule', script)
 
+    def test_scheme_editor_supports_voiced_stop_choice_and_custom_state(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        self.assertIn('data-option-choice', script)
+        self.assertIn('Object.assign(schemeDraft.maps.onset, preset)', script)
+        self.assertIn("schemeDraft.options.voiced_stop_style = 'custom'", script)
+
     def test_renaming_mapping_item_preserves_its_table_position(self):
         script = Path('web/app.js').read_text(encoding='utf-8')
         rename_block = script.split("if (field === 'source') {", 1)[1].split(
@@ -712,7 +741,6 @@ class SchemeToolTests(unittest.TestCase):
     def test_clear_sonorant_english_variant_matches_r_change_voiced_stops(self):
         clear_sonorant = load_scheme('hsth_change')
         r_change = load_scheme('r_change')
-        clear_sonorant['options']['english_voiced_stops'] = True
 
         active_onsets = NocmTranscriber(clear_sonorant).maps['onset']
         self.assertEqual(

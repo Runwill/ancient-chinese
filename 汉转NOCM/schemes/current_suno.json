@@ -333,9 +333,10 @@
       ]
     ]
   },
-  "schema_version": 2,
-  "migrated_by": "0.9.0",
+  "schema_version": 3,
+  "migrated_by": "0.12.10",
   "app_version": "0.11.4",
   "archived": true,
-  "created_at": "2026-07-22T20:17:00.527776+00:00"
+  "created_at": "2026-07-22T20:17:00.527776+00:00",
+  "option_definitions": {}
 }

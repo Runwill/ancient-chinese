@@ -130,6 +130,33 @@ def migrate_scheme_data(scheme):
     scheme.setdefault('labels', {})
     scheme.setdefault('parse_order', {})
     scheme.setdefault('rules', {})
+    options = scheme['options']
+    definitions = scheme.setdefault('option_definitions', {})
+    if ('english_voiced_stops' in options or
+            'english_voiced_stops' in definitions):
+        style = ('english' if bool(options.get('english_voiced_stops', False))
+                 else 'nasal')
+        presets = {
+            'nasal': {'b': 'mб', 'd': 'nд', 'g': 'ŋг'},
+            'english': {'b': 'б', 'd': 'ντ', 'g': 'γκ'},
+        }
+        scheme['maps'].setdefault('onset', {}).update(presets[style])
+        options.pop('english_voiced_stops', None)
+        definitions.pop('english_voiced_stops', None)
+        options['voiced_stop_style'] = style
+        definitions['voiced_stop_style'] = {
+            'type': 'choice',
+            'label': '浊塞音拼写',
+            'description': ('鼻音诱导：mб / nд / ŋг；英美：б / ντ / γκ；'
+                            '手动修改映射后使用自定义。'),
+            'choices': [
+                {'value': 'nasal', 'label': '鼻音诱导'},
+                {'value': 'english', 'label': '英美'},
+                {'value': 'custom', 'label': '自定义'},
+            ],
+            'presets': presets,
+        }
+        changed = True
     scheme['schema_version'] = SCHEME_SCHEMA_VERSION
     if changed:
         scheme['migrated_by'] = __version__
@@ -324,25 +351,8 @@ def clone_scheme(source_id: str = DEFAULT_SCHEME_ID, target_id: str = None,
 
 
 def resolve_scheme_options(scheme: Dict) -> Dict:
-    """Return a copy with the selected option-driven map variants applied."""
-    resolved = copy.deepcopy(scheme)
-    options = resolved.get('options', {})
-    definitions = resolved.get('option_definitions', {})
-    if not isinstance(options, dict) or not isinstance(definitions, dict):
-        return resolved
-
-    for key, definition in definitions.items():
-        if not isinstance(definition, dict):
-            continue
-        enabled = bool(options.get(key, definition.get('default', False)))
-        branch = definition.get('when_true' if enabled else 'when_false', {})
-        if not isinstance(branch, dict):
-            continue
-        for section, values in branch.get('maps', {}).items():
-            if not isinstance(values, dict):
-                continue
-            resolved.setdefault('maps', {}).setdefault(section, {}).update(values)
-    return resolved
+    """Return an isolated scheme whose visible maps are the source of truth."""
+    return copy.deepcopy(scheme)
 
 
 class NocmTranscriber:

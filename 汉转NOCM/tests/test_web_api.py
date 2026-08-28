@@ -68,7 +68,7 @@ class WebApiEditorTests(unittest.TestCase):
             started.set()
             release.wait(1)
             return {
-                'ok': True, 'current': '0.12.9', 'latest': '0.12.9',
+                'ok': True, 'current': '0.12.10', 'latest': '0.12.10',
                 'available': False,
             }
 

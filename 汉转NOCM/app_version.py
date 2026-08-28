@@ -7,10 +7,10 @@ import sys
 
 
 APP_NAME = '汉字转 PBOC 音标'
-__version__ = '0.12.9'
+__version__ = '0.12.10'
 
 DRAFT_SCHEMA_VERSION = 3
-SCHEME_SCHEMA_VERSION = 2
+SCHEME_SCHEMA_VERSION = 3
 BACKUP_SCHEMA_VERSION = 1
 
 RELEASES_API_URL = (
@@ -19,6 +19,16 @@ RELEASES_PAGE_URL = (
     'https://github.com/Runwill/ancient-chinese/releases')
 
 CHANGELOG = [
+    {
+        'version': '0.12.10',
+        'date': '2026-08-28',
+        'title': '浊塞音拼写支持自定义',
+        'items': [
+            '浊塞音拼写改为“鼻音诱导 / 英美 / 自定义”三种状态，两种预设会把 b、d、g 的结果明确写入映射表。',
+            '手动编辑、重命名或删除 b、d、g 映射时会自动进入自定义状态，转写严格使用映射表，不再由选项暗中覆盖。',
+            '旧版二值方案会自动迁移到对应预设并保持原有输出。',
+        ],
+    },
     {
         'version': '0.12.9',
         'date': '2026-08-28',

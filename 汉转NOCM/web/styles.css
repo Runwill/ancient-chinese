@@ -515,6 +515,7 @@ body.debug-mode .export-controls.suno-mode details.export-experimental[data-debu
 .option-copy { min-width: 0; display: grid; gap: 3px; }
 .option-copy .muted { font-size: 11px; line-height: 1.45; }
 .option-control { display: flex; align-items: center; gap: 9px; }
+.option-control.segmented { gap: 0; flex: 0 0 auto; }
 .option-state { min-width: 58px; color: var(--muted); font-size: 11px; text-align: center; }
 .option-state.active { color: var(--accent); font-weight: 700; }
 .switch { position: relative; width: 38px; height: 22px; flex: 0 0 auto; }
