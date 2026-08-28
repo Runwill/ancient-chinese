@@ -17,7 +17,7 @@ From the repository root, run:
 powershell -ExecutionPolicy Bypass -File tools/build_android.ps1
 ```
 
-The debug APK is copied to `dist/android/HanToPBOC-0.12.8-debug.apk`.
+The debug APK is copied to `dist/android/HanToPBOC-0.12.9-debug.apk`.
 
 To build the Windows EXE and Android APK in one release pass, run:
 

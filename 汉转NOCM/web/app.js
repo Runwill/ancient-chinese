@@ -62,6 +62,8 @@
   let startupOutputTimer = null;
   let editorZoom = 1;
   let editorZoomSaveTimer = null;
+  let startupStatus = null;
+  let startupStartedAt = 0;
 
   function toast(message, kind = '') {
     const node = document.createElement('div');
@@ -84,20 +86,43 @@
     return api[method](...args);
   }
 
+  let androidApiRequestId = 0;
+  const androidApiRequests = new Map();
+  window.__resolveAndroidApi = (requestId, responseJson) => {
+    const request = androidApiRequests.get(String(requestId));
+    if (!request) return;
+    androidApiRequests.delete(String(requestId));
+    try {
+      const response = JSON.parse(responseJson);
+      if (!response.ok) {
+        const error = new Error(
+          response.error || 'Android API 调用失败');
+        error.details = response.details;
+        request.reject(error);
+      } else {
+        request.resolve(response.value);
+      }
+    } catch (error) {
+      request.reject(error);
+    }
+  };
+
   function createAndroidApi(bridge) {
     document.documentElement.dataset.platform = 'android';
     return new Proxy({}, {
       get(_target, method) {
         if (method === 'then') return undefined;
-        return async (...args) => {
-          const response = JSON.parse(bridge.invoke(String(method), JSON.stringify(args)));
-          if (!response.ok) {
-            const error = new Error(response.error || `Android API 调用失败: ${String(method)}`);
-            error.details = response.details;
-            throw error;
+        return (...args) => new Promise((resolve, reject) => {
+          const requestId = String(++androidApiRequestId);
+          androidApiRequests.set(requestId, { resolve, reject });
+          try {
+            bridge.invokeAsync(
+              requestId, String(method), JSON.stringify(args));
+          } catch (error) {
+            androidApiRequests.delete(requestId);
+            reject(error);
           }
-          return response.value;
-        };
+        });
       }
     });
   }
@@ -373,21 +398,78 @@
     });
   }
 
+  function renderStartupStatus(status = startupStatus) {
+    if (!status) return;
+    startupStatus = status;
+    $('#startup-message').textContent = status.message || '正在准备数据...';
+    const elapsed = Math.max(0, Math.floor(
+      (Date.now() - startupStartedAt) / 1000));
+    const step = Number(status.step) > 0
+      ? `步骤 ${status.step}/${status.step_count || 6}` : '启动准备';
+    $('#startup-stage').textContent = [
+      step, status.detail, `已用时 ${elapsed} 秒`,
+    ].filter(Boolean).join(' · ');
+    const progress = Math.max(0, Math.min(100, Number(status.progress) || 0));
+    $('#startup-progress').style.width = `${Math.max(4, progress)}%`;
+    $('#startup-progress-track').classList.toggle(
+      'indeterminate', Boolean(status.indeterminate));
+  }
+
+  const wait = milliseconds => new Promise(
+    resolve => setTimeout(resolve, milliseconds));
+
+  async function waitForAndroidBackend() {
+    if (document.documentElement.dataset.platform !== 'android') return;
+    while (true) {
+      const readiness = await invoke('get_backend_readiness');
+      if (readiness.error) throw new Error(readiness.error);
+      if (readiness.ready) return;
+      renderStartupStatus({
+        phase: 'waiting', message: '正在启动 Android 运行环境...',
+        progress: 2, step: 0, step_count: 6,
+        detail: '正在加载 Python 后端', indeterminate: true,
+      });
+      await wait(180);
+    }
+  }
+
   async function initialize() {
     $('#startup-retry').classList.add('hidden');
     $('#startup-copy-error').classList.add('hidden');
     $('#startup-details').classList.add('hidden');
     $('#startup-details').textContent = '';
     startupErrorReport = '';
-    const poll = setInterval(async () => {
-      try {
+    startupStartedAt = Date.now();
+    startupStatus = {
+      phase: 'waiting', message: '正在启动运行环境...', progress: 2,
+      step: 0, step_count: 6, detail: '连接应用后端', indeterminate: true,
+    };
+    renderStartupStatus();
+    const elapsedTimer = setInterval(() => renderStartupStatus(), 250);
+    let result;
+    try {
+      await waitForAndroidBackend();
+      renderStartupStatus(await invoke('start_initialize'));
+      while (true) {
         const status = await invoke('get_startup_status');
-        $('#startup-message').textContent = status.message || '正在准备数据...';
-        $('#startup-progress').style.width = `${status.progress || 4}%`;
-      } catch (_) { /* initialization owns the visible error */ }
-    }, 180);
-    const result = await invoke('initialize');
-    clearInterval(poll);
+        renderStartupStatus(status);
+        if (status.phase === 'ready') {
+          result = await invoke('initialize');
+          break;
+        }
+        if (status.phase === 'error') {
+          result = { ok: false, startup: status };
+          break;
+        }
+        await wait(160);
+      }
+    } catch (error) {
+      result = { ok: false, startup: {
+        error: error?.message || String(error), details: error?.details || '',
+      } };
+    } finally {
+      clearInterval(elapsedTimer);
+    }
     if (!result?.ok) {
       const message = result?.startup?.error || '启动失败';
       $('#startup-message').textContent = message;
@@ -2342,12 +2424,26 @@
 
   async function checkUpdates(silent = false) {
     const holder = $('#update-result');
+    const button = $('#check-update');
     if (holder && !silent) {
       holder.className = 'update-result';
       holder.textContent = '正在检查更新...';
     }
+    if (button) {
+      button.disabled = true;
+      button.textContent = '检查中...';
+    }
     try {
-      const result = await invoke('check_for_updates');
+      let status = await invoke('start_update_check');
+      while (status.phase === 'checking') {
+        await wait(180);
+        status = await invoke('get_update_check_status');
+      }
+      if (status.phase === 'error') {
+        throw new Error(status.error || status.message || '检查更新失败');
+      }
+      const result = status.result;
+      if (!result) throw new Error('更新检查没有返回结果');
       availableUpdate = result;
       updateAvailableIndicator(result);
       if (!result.available || downloadedUpdate?.version !== result.latest) downloadedUpdate = null;
@@ -2356,6 +2452,11 @@
     } catch (error) {
       const result = { ok: false, message: error.message || '检查更新失败' };
       if (!silent) renderUpdateResult(result);
+    } finally {
+      if (button?.isConnected) {
+        button.disabled = false;
+        button.textContent = '检查更新';
+      }
     }
   }
 
@@ -3030,7 +3131,7 @@
       manual_hl: false, stale: false, in_bracket: true,
     }));
     let mockGroupExpanded = true;
-    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.8 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
+    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.9 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
     const mockUpdate = {
       id: 'mock-reading-update', batch_id: 'b1',
       timestamp: '2026-08-22 23:55:03', filename: 'base.json.gz',
@@ -3070,6 +3171,7 @@
     };
     const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true, unselected_polyphonic: 2, manually_completed: false }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false, unselected_polyphonic: 0, manually_completed: true }];
     const previewChangelog = [
+      { version: '0.12.9', date: '2026-08-28', title: '启动进度细化', items: ['启动页显示真实步骤、当前文件、具体动作和已用时间。', '初始化在后台执行；网络不可用且本地数据完整时直接使用本地文件；Android 安装包同步包含启动日志模块。', 'Android 与 Python 统一使用异步桥接，检查更新、读取大型记录、备份导入和较大的导出任务不再阻塞界面。'] },
       { version: '0.12.8', date: '2026-08-28', title: 'PBOC 更名与界面整理', items: ['软件对外名称由 NOCM 改为 PBOC。', '应用采用蓝底白色“漢”字图标；加载标志和应用顶栏图标会跟随深浅主题变化，Windows 任务栏使用浅蓝底版本。', '文稿库以橙色左侧标识尚有多音字未选的文稿，以绿色左侧标识手动标记完成的文稿。', '文稿库标题栏新增搜索，可按文稿名称、正文摘要或文件名实时筛选。', '文稿与文件夹操作菜单会避开窗口边缘，靠近底部时自动向上展开。', 'Windows 正式版在无终端窗口模式下收集后台输出；可从“更多工具”查看，启动完成后也会在右下角显示本次启动输出。', 'Windows 原生标题栏整合进应用顶栏，图标与窗口控制集中在同一行，并保留拖动、双击最大化与边缘缩放。', '正文编辑区和文本导出页支持按住 Ctrl 滚动鼠标滚轮调整字号，缩放比例会自动保存。', '精简导出与确认弹窗，移除重复标题和无意义分隔线，并将实验性导出规则收纳到独立入口。', '查找、撤回、重做、高亮、批量与保存集中到可展开的“更多工具”行；查找范围位于左侧，查找与替换输入框位于右侧。', '作者与测试人员名称增加 Bilibili 主页链接。', '移动端下载更新时显示实时进度和文件大小。', '发现新版本后，问号按钮会持续显示更新提示色。', '深色模式从应用启动和加载界面开始生效。'] },
       { version: '0.12.7', date: '2026-08-27', title: '方案解析顺序编辑', items: ['映射表新增拖动排序，表格顺序就是实际检测顺序。', '替换规则同样支持拖动排序，并严格按照界面顺序执行。', '编辑映射项、输出或中文说明时保留原位置，不会把修改项移到末尾。'] },
       { version: '0.12.6', date: '2026-08-26', title: '应用自动更新与一键发布', items: ['启动后可自动检查更新，并直接下载适用于当前平台的安装包。', '更新包会进行 SHA-256 校验；Windows 自动替换重启，Android 交由系统安装。', '新增一键 GitHub Release 发布脚本。', '调整数据变更页批次与搜索控件，并移除诊断列表顶部多余的分隔线。', '批次选择改为软件统一样式的浮层菜单。'] },
@@ -3103,9 +3205,11 @@
       { version: '0.9.1', date: '2026-07-20', title: 'HTML 界面全面调整', items: ['全面调整读音面板、拖动交互、滚动条和弹窗布局。'] },
       { version: '0.9.0', date: '2026-07-16', title: 'HTML 桌面界面预览版', items: ['界面迁移到 HTML 与 WebView2。'] },
     ];
-    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.8', ui_preferences: { inspector_width: 320, debug_mode: false }, changelog: previewChangelog });
+    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.9', ui_preferences: { inspector_width: 320, debug_mode: false }, changelog: previewChangelog });
     return new Proxy({
-      initialize: async () => full(), get_startup_status: async () => ({ message: '准备就绪', progress: 100 }),
+      initialize: async () => full(),
+      start_initialize: async () => ({ phase: 'ready', message: '准备就绪', progress: 100, step: 6, step_count: 6, detail: '启动完成', indeterminate: false }),
+      get_startup_status: async () => ({ phase: 'ready', message: '准备就绪', progress: 100, step: 6, step_count: 6, detail: '启动完成', indeterminate: false }),
       get_cell_details: async (li, ci) => {
         const cell = mock.lines[li][ci];
         const sameCharCount = mock.lines.reduce(
@@ -3169,13 +3273,15 @@
       },
       get_polyphonic_summary: async () => [{ char: '关', count: 2, readings: { 'kˤro[n]s': 1, 'kˤro[n]': 1 }, options: [{ phonetic: 'kˤro[n]s' }, { phonetic: 'kˤro[n]' }] }],
       batch_apply_reading: async () => clone(mock), get_draft_history: async () => [{ id: 'demo.json', name: '关雎', modified: '2026-07-16T12:00:00', preview: '关关雎在河之洲' }],
-      get_diagnostics: async () => ({ app_version: '0.12.8', draft_schema_version: 3, scheme_schema_version: 2, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
+      get_diagnostics: async () => ({ app_version: '0.12.9', draft_schema_version: 3, scheme_schema_version: 2, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
       get_backend_logs: async () => ({ text: mockBackendLog, started_at: '2026-08-28T11:20:01+08:00', characters: mockBackendLog.length }),
       clear_backend_logs: async () => { mockBackendLog = ''; return { text: '', started_at: '2026-08-28T11:20:01+08:00', characters: 0 }; },
       import_old_library: async () => ({ ok: true, imported: 2, skipped: 1, renamed: 0, errors: [], state: full() }),
-      check_for_updates: async () => ({ ok: true, current: '0.12.8', latest: '0.12.8', available: false }),
-      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.8', platform: 'windows', path: 'preview-update.exe' } }),
-      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.8', platform: 'windows', path: 'preview-update.exe' } }),
+      check_for_updates: async () => ({ ok: true, current: '0.12.9', latest: '0.12.9', available: false }),
+      start_update_check: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.9', latest: '0.12.9', available: false }, error: null }),
+      get_update_check_status: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.9', latest: '0.12.9', available: false }, error: null }),
+      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.9', platform: 'windows', path: 'preview-update.exe' } }),
+      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.9', platform: 'windows', path: 'preview-update.exe' } }),
       install_downloaded_update: async () => ({ ok: true, scheduled: true }),
       get_data_change_batches: async () => ({ ok: true, exists: true, file_size: 77729928, total: 2, items: [
         { id: 'b2', timestamp: '2026-08-22 23:55:12', filename: 'extra.json.gz', count: 10427 },

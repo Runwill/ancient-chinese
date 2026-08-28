@@ -173,7 +173,27 @@ class MainActivity : Activity() {
         )
 
         @JavascriptInterface
+        fun invokeAsync(requestId: String, method: String, argumentsJson: String) {
+            Thread {
+                val response = invoke(method, argumentsJson)
+                activity.runOnUiThread {
+                    webView.evaluateJavascript(
+                        "window.__resolveAndroidApi(" +
+                            JSONObject.quote(requestId) + "," +
+                            JSONObject.quote(response) + ")",
+                        null,
+                    )
+                }
+            }.start()
+        }
+
+        @JavascriptInterface
         fun invoke(method: String, argumentsJson: String): String {
+            if (method == "get_backend_readiness") {
+                return success(JSONObject()
+                    .put("ready", backendReady.count == 0L && backendError == null)
+                    .put("error", backendError ?: JSONObject.NULL))
+            }
             if (!backendReady.await(40, TimeUnit.SECONDS)) {
                 return failure("Android 后端启动超时")
             }

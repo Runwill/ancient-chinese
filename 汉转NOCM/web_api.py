@@ -135,12 +135,21 @@ class WebApi:
             'phase': 'ready' if mapping else 'waiting',
             'message': '准备就绪' if mapping else '正在准备数据...',
             'progress': 100 if mapping else 0,
+            'step': 6 if mapping else 0,
+            'step_count': 6,
+            'detail': '启动完成' if mapping else '等待后端开始初始化',
+            'indeterminate': False,
             'error': None,
             'details': None,
         }
+        self._startup_thread = None
+        self._startup_result = None
         self._update_download = {
             'phase': 'idle', 'message': '', 'progress': 0,
             'downloaded': 0, 'total': 0, 'result': None, 'error': None,
+        }
+        self._update_check = {
+            'phase': 'idle', 'message': '', 'result': None, 'error': None,
         }
 
     def set_window(self, window):
@@ -160,19 +169,43 @@ class WebApi:
 
     # Startup -------------------------------------------------------------
 
+    def start_initialize(self):
+        """Start initialization without blocking WebView progress polling."""
+        with self._lock:
+            if self.buf is not None:
+                return dict(self._startup)
+            if self._startup_thread and self._startup_thread.is_alive():
+                return dict(self._startup)
+            self._startup_result = None
+            self._startup.update(
+                phase='loading', message='正在检查基础音标数据...',
+                progress=4, step=1, step_count=6,
+                detail='base.json.gz · 正在连接数据源',
+                indeterminate=True, error=None, details=None)
+            self._startup_thread = threading.Thread(
+                target=self.initialize, name='pboc-startup', daemon=True)
+            thread = self._startup_thread
+        thread.start()
+        return self.get_startup_status()
+
     def initialize(self):
         """Load/update phonology data and return the first complete snapshot."""
         with self._lock:
             if self.buf is not None:
-                return self.get_state()
-            self._startup.update(phase='loading', message='正在检查音标数据...', progress=5)
+                return self._startup_result or self.get_state()
+            self._startup.update(
+                phase='loading', message='正在检查基础音标数据...',
+                progress=5, step=1, step_count=6,
+                detail='base.json.gz · 正在确认是否需要更新',
+                indeterminate=True)
         try:
             download_report = download_and_update(
                 on_status=self._set_startup_message,
                 on_progress=self._set_startup_progress,
             )
-            self._set_startup_message('正在加载音标数据...')
-            mapping = load_map_from_json_gz()
+            mapping = load_map_from_json_gz(
+                on_status=self._set_mapping_stage,
+                on_progress=self._set_mapping_progress)
             if mapping is None:
                 error = RuntimeError(
                     '无法加载音节数据，请检查数据文件或网络连接。')
@@ -181,17 +214,35 @@ class WebApi:
             with self._lock:
                 self.mapping = mapping
                 self.data_revision = get_current_data_revision()
+                self._startup.update(
+                    phase='loading', message='正在读取数据变更记录...',
+                    progress=91, step=4,
+                    detail='识别需要重新确认读音的位置',
+                    indeterminate=True)
                 self.reading_events = get_reading_change_events()
                 self.buf = EditorBuffer(mapping, self.data_revision)
+                self._startup.update(
+                    phase='loading', message='正在恢复上次文稿...',
+                    progress=95, step=5,
+                    detail='恢复光标、选择和滚动位置',
+                    indeterminate=False)
                 self._restore_startup_draft()
                 self._startup.update(
+                    phase='loading', message='正在准备应用界面...',
+                    progress=98, step=6,
+                    detail='整理文稿库、方案和界面设置')
+                result = self.get_state()
+                self._startup_result = result
+                self._startup.update(
                     phase='ready', message='准备就绪', progress=100,
+                    step=6, detail='启动完成', indeterminate=False,
                     error=None, details=None)
-            return self.get_state()
+            return result
         except Exception as exc:
             with self._lock:
                 self._startup.update(
                     phase='error', message='启动失败', error=str(exc),
+                    indeterminate=False,
                     details=getattr(
                         exc, 'details', self._startup_error_report(None, exc)))
             return {'ok': False, 'startup': dict(self._startup)}
@@ -237,14 +288,82 @@ class WebApi:
         with self._lock:
             return dict(self._startup)
 
+    def get_backend_readiness(self):
+        """Desktop bridge is ready when this method can be called."""
+        return {'ready': True, 'error': None}
+
     def _set_startup_message(self, message):
         with self._lock:
-            self._startup['message'] = str(message)
+            raw = str(message)
+            filename = ('base.json.gz' if 'base.json.gz' in raw else
+                        'extra.json.gz' if 'extra.json.gz' in raw else '')
+            if filename:
+                base = filename == 'base.json.gz'
+                label = '基础音标数据' if base else '扩展注释数据'
+                step = 1 if base else 2
+                floor = 5 if base else 31
+                if '正在检查' in raw:
+                    message = f'正在检查{label}...'
+                    detail = f'{filename} · 正在确认是否需要更新'
+                    indeterminate = True
+                elif '正在下载' in raw:
+                    message = f'正在下载{label}...'
+                    detail = f'{filename} · 正在连接数据源'
+                    indeterminate = True
+                elif '已是最新' in raw:
+                    message = f'{label}已是最新'
+                    detail = f'{filename} · 使用本地文件'
+                    indeterminate = False
+                elif '下载失败' in raw:
+                    message = f'{label}联网更新失败'
+                    detail = f'{filename} · 将尝试使用已有本地文件'
+                    indeterminate = False
+                else:
+                    message = f'正在处理{label}...'
+                    detail = raw
+                    indeterminate = False
+                self._startup.update(
+                    message=message, detail=detail, step=step,
+                    progress=max(self._startup['progress'], floor),
+                    indeterminate=indeterminate)
+            else:
+                self._startup.update(message=raw, detail=raw)
 
     def _set_startup_progress(self, progress, _name=None):
         with self._lock:
             if progress >= 0:
-                self._startup['progress'] = max(5, min(95, int(progress)))
+                base = _name == 'base.json.gz'
+                start, span = (5, 25) if base else (31, 24)
+                pct = max(0, min(100, int(progress)))
+                label = '基础音标数据' if base else '扩展注释数据'
+                self._startup.update(
+                    message=f'正在下载{label}...',
+                    progress=start + pct * span // 100,
+                    step=1 if base else 2,
+                    detail=f'{_name} · 已下载 {pct}%',
+                    indeterminate=False)
+            else:
+                self._startup['indeterminate'] = True
+
+    def _set_mapping_stage(self, stage, message):
+        stages = {
+            'read_base': (3, 58, 'base.json.gz'),
+            'read_extra': (3, 66, 'extra.json.gz'),
+            'build_index': (4, 74, '整理汉字、音标与注释的对应关系'),
+        }
+        step, progress, detail = stages.get(stage, (3, 58, ''))
+        with self._lock:
+            self._startup.update(
+                phase='loading', message=str(message), progress=progress,
+                step=step, detail=detail, indeterminate=True)
+
+    def _set_mapping_progress(self, progress):
+        pct = max(0, min(100, int(progress)))
+        with self._lock:
+            self._startup.update(
+                message='正在建立字音索引...',
+                progress=74 + pct * 16 // 100, step=4,
+                detail=f'字音索引 · 已完成 {pct}%', indeterminate=False)
 
     def _require_buffer(self):
         if self.buf is None:
@@ -1318,6 +1437,37 @@ class WebApi:
 
     def check_for_updates(self):
         return check_for_updates()
+
+    def start_update_check(self):
+        """Check releases in the background and expose a pollable status."""
+        with self._lock:
+            if self._update_check['phase'] == 'checking':
+                return copy.deepcopy(self._update_check)
+            self._update_check = {
+                'phase': 'checking', 'message': '正在连接 GitHub…',
+                'result': None, 'error': None,
+            }
+
+        def worker():
+            try:
+                result = check_for_updates()
+                with self._lock:
+                    self._update_check.update(
+                        phase='ready', message='更新检查完成',
+                        result=result, error=None)
+            except Exception as exc:
+                with self._lock:
+                    self._update_check.update(
+                        phase='error', message='检查更新失败',
+                        error=str(exc) or type(exc).__name__)
+
+        threading.Thread(
+            target=worker, name='pboc-update-check', daemon=True).start()
+        return self.get_update_check_status()
+
+    def get_update_check_status(self):
+        with self._lock:
+            return copy.deepcopy(self._update_check)
 
     def download_update(self):
         return download_update()

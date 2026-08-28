@@ -7,7 +7,7 @@ import sys
 
 
 APP_NAME = '汉字转 PBOC 音标'
-__version__ = '0.12.8'
+__version__ = '0.12.9'
 
 DRAFT_SCHEMA_VERSION = 3
 SCHEME_SCHEMA_VERSION = 2
@@ -19,6 +19,16 @@ RELEASES_PAGE_URL = (
     'https://github.com/Runwill/ancient-chinese/releases')
 
 CHANGELOG = [
+    {
+        'version': '0.12.9',
+        'date': '2026-08-28',
+        'title': '启动进度细化',
+        'items': [
+            '启动页按后端启动、数据检查、解压解析、索引构建、文稿恢复和界面准备显示真实进度，并持续显示当前文件、具体动作与已用时间。',
+            '初始化改为后台执行，避免耗时任务阻塞进度刷新；网络不可用且本地数据完整时直接使用本地文件，不再重复等待失败下载；Android 安装包同步包含启动日志模块。',
+            'Android 与 Python 的调用统一改为异步桥接，检查更新、读取大型记录、备份导入和较大的导出任务不再阻塞界面；更新检查会显示持续状态并防止重复点击。',
+        ],
+    },
     {
         'version': '0.12.8',
         'date': '2026-08-28',

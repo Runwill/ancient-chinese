@@ -46,6 +46,7 @@ val pythonModules = listOf(
     "library_import.py",
     "nocm_phonology.py",
     "nocm_transcriber.py",
+    "runtime_log.py",
     "update_manager.py",
     "web_api.py",
 )

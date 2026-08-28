@@ -61,7 +61,9 @@ def _needs_update(url: str, local_path: str) -> bool:
         return True
     remote_ts = _get_remote_last_modified(url)
     if remote_ts is None:
-        return True
+        # 网络不可用时优先使用已有的有效本地数据，避免每次启动继续
+        # 等待一次注定失败的完整下载。
+        return False
     local_ts = os.path.getmtime(local_path)
     return remote_ts > local_ts
 
@@ -617,10 +619,16 @@ def download_and_update(on_status=None, on_progress=None):
     return report
 
 
-def load_map_from_json_gz() -> Optional[Dict[str, List[Dict[str, Any]]]]:
+def load_map_from_json_gz(on_status=None, on_progress=None) -> Optional[Dict[str, List[Dict[str, Any]]]]:
     """从本地 base.json.gz + extra.json.gz 构建映射字典。"""
     base_path = _local_path('base.json.gz')
     extra_path = _local_path('extra.json.gz')
+
+    def _status(stage, message):
+        if on_status:
+            on_status(stage, message)
+
+    _status('read_base', '正在解压并解析基础音标数据...')
 
     try:
         with gzip.open(base_path, 'rt', encoding='utf-8') as f:
@@ -630,13 +638,16 @@ def load_map_from_json_gz() -> Optional[Dict[str, List[Dict[str, Any]]]]:
         return None
 
     extra_data = None
+    _status('read_extra', '正在解压并解析扩展注释数据...')
     try:
         with gzip.open(extra_path, 'rt', encoding='utf-8') as f:
             extra_data = json.load(f)
     except Exception as e:
         print(f'[警告] 读取 extra.json.gz 失败 (注释将不可用): {e}')
 
+    _status('build_index', '正在建立字音索引...')
     mapping: Dict[str, List[Dict[str, Any]]] = {}
+    total = max(1, len(base_data))
     for i, entry in enumerate(base_data):
         ch = entry.get('z', '')
         phonetic = entry.get('y', '').strip()
@@ -665,6 +676,8 @@ def load_map_from_json_gz() -> Optional[Dict[str, List[Dict[str, Any]]]]:
                 note = '\n'.join(parts)
 
         mapping.setdefault(ch, []).append({'phonetic': phonetic, 'note': note})
+        if on_progress and (i % 500 == 0 or i + 1 == total):
+            on_progress((i + 1) * 100 // total)
 
     print(f'[加载] 从 JSON 加载了 {len(mapping)} 个字的音标数据')
     return mapping if mapping else None

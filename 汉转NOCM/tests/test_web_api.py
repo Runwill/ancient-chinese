@@ -4,6 +4,7 @@ import base64
 import json
 import os
 import tempfile
+import threading
 import time
 import unittest
 from unittest.mock import Mock, patch
@@ -58,6 +59,34 @@ class WebApiEditorTests(unittest.TestCase):
 
         self.assertEqual(status['phase'], 'ready')
         self.assertEqual(status['result']['path'], 'update.apk')
+
+    def test_update_check_runs_in_background(self):
+        started = threading.Event()
+        release = threading.Event()
+
+        def fake_check():
+            started.set()
+            release.wait(1)
+            return {
+                'ok': True, 'current': '0.12.9', 'latest': '0.12.9',
+                'available': False,
+            }
+
+        with patch('web_api.check_for_updates', side_effect=fake_check):
+            status = self.api.start_update_check()
+            self.assertTrue(started.wait(.5))
+            self.assertEqual(status['phase'], 'checking')
+            self.assertEqual(
+                self.api.start_update_check()['phase'], 'checking')
+            release.set()
+            for _ in range(50):
+                status = self.api.get_update_check_status()
+                if status['phase'] == 'ready':
+                    break
+                time.sleep(.01)
+
+        self.assertEqual(status['phase'], 'ready')
+        self.assertFalse(status['result']['available'])
 
     def test_backend_output_can_be_viewed_and_cleared(self):
         runtime_log.clear_runtime_logs()
@@ -606,6 +635,27 @@ class WebApiEditorTests(unittest.TestCase):
         with patch('web_api.get_theme', return_value='dark'):
             self.assertEqual(
                 self.api.get_theme_preference(), {'theme': 'dark'})
+
+    def test_startup_initialization_runs_without_blocking_status_polling(self):
+        api = WebApi(None)
+        started = threading.Event()
+        release = threading.Event()
+
+        def delayed_initialize():
+            started.set()
+            release.wait(1)
+
+        with patch.object(api, 'initialize', side_effect=delayed_initialize):
+            status = api.start_initialize()
+            self.assertTrue(started.wait(.5))
+            self.assertEqual(status['phase'], 'loading')
+            self.assertEqual(status['step'], 1)
+            self.assertTrue(api._startup_thread.is_alive())
+            self.assertEqual(api.get_startup_status()['step_count'], 6)
+            release.set()
+            api._startup_thread.join(1)
+
+        self.assertFalse(api._startup_thread.is_alive())
 
     def test_startup_failure_includes_download_error_report(self):
         api = WebApi(None)

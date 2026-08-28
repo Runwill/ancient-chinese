@@ -99,9 +99,12 @@ button { color: inherit; }
 }
 .startup h1 { margin: 18px 0 6px; font-size: 20px; }
 .startup-version { margin-bottom: 6px; color: var(--muted); font-size: 12px; }
-.startup p { margin: 0 0 18px; color: var(--text-2); }
+.startup p { margin: 0 0 5px; color: var(--text-2); }
+.startup-stage { min-height: 18px; margin-bottom: 13px; color: var(--muted); font-size: 11px; }
 .progress { width: 320px; height: 4px; overflow: hidden; background: var(--border); }
 .progress span { display: block; width: 4%; height: 100%; background: var(--accent); transition: width .25s ease; }
+.progress.indeterminate span { width: 28% !important; animation: startup-indeterminate 1.15s ease-in-out infinite; }
+@keyframes startup-indeterminate { from { transform: translateX(-110%); } to { transform: translateX(370%); } }
 .startup-details { width: min(680px, calc(100vw - 40px)); max-height: min(240px, 32vh); margin: 16px 0 0; padding: 12px 14px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-2); background: var(--surface-soft); border: 1px solid var(--border); border-radius: 5px; font: 12px/1.6 Consolas, "Microsoft YaHei UI", monospace; text-align: left; }
 .startup-actions { min-height: 32px; margin-top: 14px; display: flex; gap: 8px; }
 

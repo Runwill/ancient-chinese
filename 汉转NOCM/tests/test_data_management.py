@@ -25,6 +25,16 @@ from nocm_transcriber import (NocmTranscriber, diff_schemes,
 
 
 class DataDownloadTests(unittest.TestCase):
+    def test_existing_local_data_is_used_when_remote_check_fails(self):
+        with (tempfile.TemporaryDirectory() as root,
+              patch.object(data_loader, '_get_remote_last_modified',
+                           return_value=None)):
+            local = os.path.join(root, 'base.json.gz')
+            Path(local).write_bytes(b'existing')
+
+            self.assertFalse(data_loader._needs_update(
+                'https://example.invalid/base.json.gz', local))
+
     def test_download_report_preserves_network_errors(self):
         with (tempfile.TemporaryDirectory() as root,
               patch.object(data_loader, 'get_data_dir', return_value=root),
@@ -276,7 +286,10 @@ class WebAssetContractTests(unittest.TestCase):
             script = file.read()
 
         self.assertIn('function createAndroidApi(bridge)', script)
-        self.assertIn('bridge.invoke(String(method), JSON.stringify(args))', script)
+        self.assertIn('bridge.invokeAsync(', script)
+        self.assertIn('window.__resolveAndroidApi', script)
+        self.assertNotIn(
+            'bridge.invoke(String(method), JSON.stringify(args))', script)
         self.assertIn('window.handleAndroidBack', script)
 
     def test_android_build_does_not_bundle_schemes(self):
@@ -289,6 +302,7 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertNotIn('schemes\\', build_script)
         self.assertIn('base.json.gz', build_script)
         self.assertIn('extra.json.gz', build_script)
+        self.assertIn('"runtime_log.py"', build_script)
 
     def test_android_activity_forces_landscape_and_hides_status_bar(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -412,6 +426,9 @@ class WebAssetContractTests(unittest.TestCase):
         with open(os.path.join(root, 'web', 'app.js'),
                   encoding='utf-8') as file:
             script = file.read()
+        with open(os.path.join(root, 'web', 'index.html'),
+                  encoding='utf-8') as file:
+            markup = file.read()
 
         load_page = 'webView.loadUrl("file:///android_asset/web/index.html?theme='
         self.assertLess(activity.index(load_page), activity.index('Thread {'))
@@ -420,6 +437,10 @@ class WebAssetContractTests(unittest.TestCase):
             root, 'android', 'app', 'src', 'main', 'res', 'values-night',
             'styles.xml')))
         self.assertIn('updateAvailableIndicator(result)', script)
+        self.assertIn('get_backend_readiness', activity)
+        self.assertIn('fun invokeAsync(', activity)
+        self.assertIn("invoke('start_initialize')", script)
+        self.assertIn('id="startup-stage"', markup)
         self.assertIn('requestAnimationFrame(\n        () => requestAnimationFrame(resolve))', script)
 
 
