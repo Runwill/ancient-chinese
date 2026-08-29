@@ -150,7 +150,7 @@ def download_update(on_progress=None):
                 0, int(headers.get('Content-Length', 0) or 0))
             downloaded = 0
             _report_download_progress(
-                on_progress, phase='downloading', message='正在下载安装包…',
+                on_progress, phase='downloading', message='正在下载更新包…',
                 progress=0, downloaded=0, total=total)
             while True:
                 chunk = response.read(256 * 1024)
@@ -160,7 +160,7 @@ def download_update(on_progress=None):
                 downloaded += len(chunk)
                 percent = min(100, round(downloaded * 100 / total)) if total else 0
                 _report_download_progress(
-                    on_progress, phase='downloading', message='正在下载安装包…',
+                    on_progress, phase='downloading', message='正在下载更新包…',
                     progress=percent, downloaded=downloaded, total=total)
         if asset['size'] and os.path.getsize(temporary) != asset['size']:
             raise ValueError('更新包大小与发布清单不一致')
@@ -188,7 +188,7 @@ def download_update(on_progress=None):
         }
         completed_size = os.path.getsize(destination)
         _report_download_progress(
-            on_progress, phase='ready', message='安装包已下载并通过校验',
+            on_progress, phase='ready', message='更新包已下载并通过校验',
             progress=100, downloaded=completed_size,
             total=asset['size'] or completed_size)
         return result

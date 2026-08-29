@@ -1507,7 +1507,7 @@ class WebApi:
                 result = download_update(on_progress=self._set_update_download)
                 with self._lock:
                     self._update_download.update(
-                        phase='ready', message='安装包已下载并通过校验',
+                        phase='ready', message='更新包已下载并通过校验',
                         progress=100, result=result, error=None)
             except Exception as exc:
                 with self._lock:

@@ -7,7 +7,7 @@ import sys
 
 
 APP_NAME = '汉字转 PBOC 音标'
-__version__ = '0.12.11'
+__version__ = '0.12.12'
 
 DRAFT_SCHEMA_VERSION = 3
 SCHEME_SCHEMA_VERSION = 3
@@ -19,6 +19,16 @@ RELEASES_PAGE_URL = (
     'https://github.com/Runwill/ancient-chinese/releases')
 
 CHANGELOG = [
+    {
+        'version': '0.12.12',
+        'date': '2026-08-29',
+        'title': 'Windows 关闭与更新修复',
+        'items': [
+            '修复 Windows 版点击右上角关闭按钮时保存队列等待自身，导致窗口无法退出的问题。',
+            'Windows 更新改为一次完成下载、校验、关闭、替换和重启，并统一使用清晰的更新文案，不再重复弹出安装确认。',
+            '慢启动详情在等待超过 8 秒后显示于进度条上方；显示前不再预留空行。',
+        ],
+    },
     {
         'version': '0.12.11',
         'date': '2026-08-29',

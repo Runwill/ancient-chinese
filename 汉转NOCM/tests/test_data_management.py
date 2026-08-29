@@ -373,6 +373,18 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertIn('data-resize-edge="bottom-right"', markup)
         self.assertIn("invoke('toggle_maximize_window')", script)
         self.assertIn("invoke('start_window_resize'", script)
+        self.assertIn('const pendingActions = actionQueue;', script)
+        self.assertIn("await runWindowAction('close');", script)
+        close_action = script.split("} else if (action === 'close') {", 1)[1].split(
+            '\n    }', 1)[0]
+        self.assertNotIn('await actionQueue', close_action)
+
+    def test_windows_update_is_presented_as_one_step_restart(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        self.assertIn("'下载并重启更新'", script)
+        self.assertIn("'下载并安装'", script)
+        self.assertNotIn("'立即安装'", script)
+        self.assertNotIn('程序将关闭、替换并自动重新启动', script)
 
     def test_editor_supports_persistent_ctrl_wheel_zoom(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -538,8 +550,12 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertIn('id="startup-stage"', markup)
         self.assertIn('id="startup-stage" class="startup-stage" aria-hidden="true"', markup)
         self.assertIn('class="startup-progress-block"', markup)
-        self.assertIn('.startup p { margin: 0 0 18px;', styles)
-        self.assertIn('.startup-progress-block { position: relative; width: 320px; height: 28px;', styles)
+        self.assertIn('.startup p { margin: 0 0 12px;', styles)
+        self.assertIn('.startup-progress-block { position: relative; width: 320px; height: 4px;', styles)
+        self.assertIn('.startup-stage-visible .startup-progress-block { height: 26px; }', styles)
+        stage_position = markup.index('id="startup-stage"')
+        progress_position = markup.index('id="startup-progress-track"')
+        self.assertLess(stage_position, progress_position)
         self.assertIn('const showStage = elapsed >= 8', script)
         self.assertIn("classList.toggle('startup-stage-visible', showStage)", script)
         self.assertIn('requestAnimationFrame(\n        () => requestAnimationFrame(resolve))', script)
