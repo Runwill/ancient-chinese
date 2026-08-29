@@ -1717,14 +1717,22 @@ class WebApi:
     @staticmethod
     def _split_punctuation(text):
         output = []
-        for char in text:
-            if char in _PUNCT_DOUBLE_NEWLINE:
-                output.append('\n\n')
-            elif char in _PUNCT_TO_NEWLINE:
-                output.append('\n')
-            else:
-                output.append(char)
-        return '\n'.join(line.strip() for line in ''.join(output).split('\n'))
+        normalized = str(text or '').replace('\r\n', '\n').replace('\r', '\n')
+        for raw_line in normalized.split('\n'):
+            brackets = find_bracket_ranges(raw_line)
+            transformed = []
+            for index, char in enumerate(raw_line):
+                if in_bracket(index, brackets):
+                    transformed.append(char)
+                elif char in _PUNCT_DOUBLE_NEWLINE:
+                    transformed.append('\n\n')
+                elif char in _PUNCT_TO_NEWLINE:
+                    transformed.append('\n')
+                else:
+                    transformed.append(char)
+            output.extend(
+                line.strip() for line in ''.join(transformed).split('\n'))
+        return '\n'.join(output)
 
     @staticmethod
     def _ignore_bracket_control_lines(text):

@@ -13,8 +13,8 @@
         || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     })();
   </script>
-  <link rel="icon" type="image/png" href="app-icon.png?v=0.12.10">
-  <link rel="stylesheet" href="styles.css?v=0.12.10">
+  <link rel="icon" type="image/png" href="app-icon.png?v=0.12.11">
+  <link rel="stylesheet" href="styles.css?v=0.12.11">
 </head>
 <body>
   <div id="startup" class="startup pywebview-drag-region">
@@ -27,8 +27,10 @@
     <h1>汉字转 PBOC 音标</h1>
     <span id="startup-version" class="startup-version"></span>
     <p id="startup-message">正在启动运行环境...</p>
-    <div id="startup-stage" class="startup-stage">连接应用后端 · 已用时 0 秒</div>
-    <div id="startup-progress-track" class="progress indeterminate"><span id="startup-progress"></span></div>
+    <div class="startup-progress-block">
+      <div id="startup-progress-track" class="progress indeterminate"><span id="startup-progress"></span></div>
+      <div id="startup-stage" class="startup-stage" aria-hidden="true">连接应用后端 · 已用时 0 秒</div>
+    </div>
     <pre id="startup-details" class="startup-details hidden"></pre>
     <div class="startup-actions">
       <button id="startup-retry" class="button primary hidden">重试</button>
@@ -39,8 +41,8 @@
   <main id="app" class="app hidden">
     <header id="app-titlebar" class="topbar pywebview-drag-region">
       <div class="brand pywebview-drag-region">
-        <img class="titlebar-icon titlebar-icon-light" src="app-icon.png?v=0.12.10" alt="">
-        <img class="titlebar-icon titlebar-icon-dark" src="app-icon-dark.png?v=0.12.10" alt="">
+        <img class="titlebar-icon titlebar-icon-light" src="app-icon.png?v=0.12.11" alt="">
+        <img class="titlebar-icon titlebar-icon-dark" src="app-icon-dark.png?v=0.12.11" alt="">
         <strong>汉字转 PBOC 音标</strong>
         <span id="document-title">未命名文稿</span>
         <span id="save-state" class="save-state">已自动保存</span>
@@ -105,7 +107,7 @@
             <button id="library-search-close" type="button" aria-label="关闭文稿搜索" title="关闭文稿搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
           </div>
           <div class="heading-actions">
-            <button id="library-search-button" class="icon-button small" title="搜索文稿" aria-label="搜索文稿"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></button>
+            <button id="library-search-button" class="icon-button small" title="搜索文稿 (Ctrl+Shift+F)" aria-label="搜索文稿"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></button>
             <button id="new-folder-button" class="icon-button small" title="新建文件夹" aria-label="新建文件夹"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3Z"></path><path d="M12 11v5M9.5 13.5h5"></path></svg></button>
             <button id="new-draft-button" class="icon-button small accent" title="新建文稿" aria-label="新建文稿"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h10l4 4v14H5Z"></path><path d="M14 3v5h5M12 11v6M9 14h6"></path></svg></button>
           </div>
@@ -199,16 +201,15 @@
       </header>
       <div class="export-controls">
         <div class="segmented" id="export-mode">
-          <button type="button" data-value="phon" class="active">PBOC</button>
-          <button type="button" data-value="suno">Suno</button>
-          <button type="button" data-value="raw">原文</button>
-          <button type="button" data-value="both">全部</button>
+          <button type="button" data-value="raw" aria-pressed="false">原文</button>
+          <button type="button" data-value="phon" class="active" aria-pressed="true">PBOC</button>
+          <button type="button" data-value="suno" aria-pressed="false">Suno</button>
         </div>
         <select id="export-scheme" class="select" hidden></select>
-        <button type="button" id="open-scheme-picker" class="scheme-picker-trigger">
+        <button type="button" id="open-scheme-picker" class="scheme-picker-trigger" data-suno-only>
           <span><strong id="selected-scheme-name">选择方案</strong></span>
         </button>
-        <button type="button" id="edit-scheme-button" class="button">编辑方案</button>
+        <button type="button" id="edit-scheme-button" class="button" data-suno-only>编辑方案</button>
         <div class="export-checks">
           <label class="check-control"><input id="punct-split" type="checkbox"><span>把标点转换为换行</span></label>
           <label class="check-control"><input id="clean-line-breaks" type="checkbox"><span>清除无效换行</span></label>
@@ -216,14 +217,9 @@
           <label class="check-control" data-suno-only><input id="remove-pharyngeal" type="checkbox"><span>删除所有咽化</span></label>
           <label class="check-control" data-suno-only><input id="remove-glottal-tone" type="checkbox"><span>删除喉塞音声调</span></label>
           <label class="check-control" data-suno-only><input id="extra-h-voiceless-sonorant" type="checkbox"><span>清响音前额外加 h</span></label>
-          <details class="export-experimental" data-debug-only data-suno-only>
-            <summary>实验选项</summary>
-            <div class="export-experimental-panel">
-              <label class="check-control"><input id="remove-tones" type="checkbox"><span>删除所有声调</span></label>
-              <label class="check-control"><input id="entry-before-glottal" type="checkbox"><span>喉塞音前的 p/t/k 入声改为上声</span></label>
-              <label class="check-control"><input id="departing-before-glottal" type="checkbox"><span>喉塞音前的去声改为上声</span></label>
-            </div>
-          </details>
+          <label class="check-control" data-debug-only data-suno-only><input id="remove-tones" type="checkbox"><span>删除所有声调</span></label>
+          <label class="check-control" data-debug-only data-suno-only><input id="entry-before-glottal" type="checkbox"><span>喉塞音前的 p/t/k 入声改为上声</span></label>
+          <label class="check-control" data-debug-only data-suno-only><input id="departing-before-glottal" type="checkbox"><span>喉塞音前的去声改为上声</span></label>
         </div>
       </div>
       <textarea id="export-output" class="export-output" spellcheck="false"></textarea>
@@ -380,6 +376,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.12.10"></script>
+  <script src="app.js?v=0.12.11"></script>
 </body>
 </html>

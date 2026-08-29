@@ -411,10 +411,39 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertNotIn('<span class="eyebrow">文稿保护</span>', markup)
         self.assertNotIn('<span class="eyebrow">正文工具</span>', markup)
         self.assertNotIn('<span class="eyebrow">运行诊断</span>', markup)
-        self.assertIn('class="export-experimental"', markup)
+        self.assertNotIn('class="export-experimental"', markup)
+        self.assertNotIn('<summary>实验选项</summary>', markup)
+        self.assertIn('data-debug-only data-suno-only><input id="remove-tones"', markup)
         self.assertIn('.compact-dialog header', styles)
         self.assertIn('.export-dialog header', styles)
         self.assertIn('border-bottom: 0', styles)
+
+    def test_export_content_buttons_are_multi_select_without_all_button(self):
+        markup = Path('web/index.html').read_text(encoding='utf-8')
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        export_buttons = markup.split('id="export-mode"', 1)[1].split(
+            '</div>', 1)[0]
+
+        self.assertEqual(export_buttons.count('<button'), 3)
+        self.assertIn('data-value="raw"', export_buttons)
+        self.assertIn('data-value="phon"', export_buttons)
+        self.assertIn('data-value="suno"', export_buttons)
+        self.assertNotIn('data-value="both"', export_buttons)
+        self.assertIn("const exportContents = new Set(['phon']);", script)
+        self.assertIn("exportContents.add(value)", script)
+        self.assertIn("renderMode('both')", script)
+
+    def test_interactive_text_and_conditional_toolbars_stay_stable(self):
+        styles = Path('web/styles.css').read_text(encoding='utf-8')
+        script = Path('web/app.js').read_text(encoding='utf-8')
+
+        self.assertIn('-webkit-user-select: none', styles)
+        self.assertIn('.folder-row,\n.draft-row,', styles)
+        self.assertIn('.utilitybar,\n.searchbar {', styles)
+        self.assertIn('min-height: 46px', styles)
+        self.assertIn('#export-mode { height: 34px; gap: 0; }', styles)
+        self.assertIn('#export-mode button { min-width: 62px; height: 32px;', styles)
+        self.assertIn("clearTimeout(node._removeTimer)", script)
 
     def test_android_loads_startup_page_before_backend_thread(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -429,6 +458,9 @@ class WebAssetContractTests(unittest.TestCase):
         with open(os.path.join(root, 'web', 'index.html'),
                   encoding='utf-8') as file:
             markup = file.read()
+        with open(os.path.join(root, 'web', 'styles.css'),
+                  encoding='utf-8') as file:
+            styles = file.read()
 
         load_page = 'webView.loadUrl("file:///android_asset/web/index.html?theme='
         self.assertLess(activity.index(load_page), activity.index('Thread {'))
@@ -441,6 +473,12 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertIn('fun invokeAsync(', activity)
         self.assertIn("invoke('start_initialize')", script)
         self.assertIn('id="startup-stage"', markup)
+        self.assertIn('id="startup-stage" class="startup-stage" aria-hidden="true"', markup)
+        self.assertIn('class="startup-progress-block"', markup)
+        self.assertIn('.startup p { margin: 0 0 18px;', styles)
+        self.assertIn('.startup-progress-block { position: relative; width: 320px; height: 28px;', styles)
+        self.assertIn('const showStage = elapsed >= 8', script)
+        self.assertIn("classList.toggle('startup-stage-visible', showStage)", script)
         self.assertIn('requestAnimationFrame(\n        () => requestAnimationFrame(resolve))', script)
 
 
@@ -728,6 +766,13 @@ class SchemeToolTests(unittest.TestCase):
         self.assertIn('data-option-choice', script)
         self.assertIn('Object.assign(schemeDraft.maps.onset, preset)', script)
         self.assertIn("schemeDraft.options.voiced_stop_style = 'custom'", script)
+
+    def test_library_search_shortcut_and_search_result_drag_guard_exist(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        self.assertIn('function focusLibrarySearch()', script)
+        self.assertIn('if (event.shiftKey) focusLibrarySearch();', script)
+        self.assertIn('if (!ungrouped) return;', script)
+        self.assertIn('Ctrl Shift F', script)
 
     def test_renaming_mapping_item_preserves_its_table_position(self):
         script = Path('web/app.js').read_text(encoding='utf-8')

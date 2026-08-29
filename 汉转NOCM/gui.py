@@ -750,16 +750,22 @@ class App(tk.Tk):
         if not text:
             return text
         out = []
-        for ch in text:
-            if ch in self._PUNCT_DOUBLE_NEWLINE:
-                out.append('\n\n')
-            elif ch in self._PUNCT_TO_NEWLINE:
-                out.append('\n')
-            else:
-                out.append(ch)
-        # 去除每行首尾空白，但保留空行（让多个换行得以保留）
-        lines = [l.strip() for l in ''.join(out).split('\n')]
-        return '\n'.join(lines)
+        normalized = str(text).replace('\r\n', '\n').replace('\r', '\n')
+        for raw_line in normalized.split('\n'):
+            brackets = find_bracket_ranges(raw_line)
+            transformed = []
+            for index, ch in enumerate(raw_line):
+                if in_bracket(index, brackets):
+                    transformed.append(ch)
+                elif ch in self._PUNCT_DOUBLE_NEWLINE:
+                    transformed.append('\n\n')
+                elif ch in self._PUNCT_TO_NEWLINE:
+                    transformed.append('\n')
+                else:
+                    transformed.append(ch)
+            out.extend(
+                line.strip() for line in ''.join(transformed).split('\n'))
+        return '\n'.join(out)
 
     def _build_both_text(self, punct_split):
         """构造「原文 + 音标」交替文本：每行原文下面紧跟一行音标。

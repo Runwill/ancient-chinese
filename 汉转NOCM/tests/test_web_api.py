@@ -68,7 +68,7 @@ class WebApiEditorTests(unittest.TestCase):
             started.set()
             release.wait(1)
             return {
-                'ok': True, 'current': '0.12.10', 'latest': '0.12.10',
+                'ok': True, 'current': '0.12.11', 'latest': '0.12.11',
                 'available': False,
             }
 
@@ -850,6 +850,26 @@ class WebApiEditorTests(unittest.TestCase):
 
         self.assertEqual(
             self.api._clean_line_breaks(source), 'text\n\nphon')
+
+    def test_punctuation_split_preserves_square_bracket_syntax(self):
+        self.assertEqual(
+            self.api._split_punctuation(
+                '[Verse,clear male vocal]\nx[note,a]y,z'),
+            '[Verse,clear male vocal]\nx[note,a]y\nz')
+
+        self.api.insert_text('[Verse,clear male vocal]\nx,x')
+        outputs = [
+            self.api.export_text('raw', punct_split=True),
+            self.api.export_text('phon', punct_split=True),
+        ]
+        with patch('web_api.load_scheme', return_value={}):
+            outputs.append(self.api.export_text(
+                'suno', 'test', punct_split=True))
+
+        for output in outputs:
+            self.assertEqual(
+                output.splitlines()[0], '[Verse,clear male vocal]')
+            self.assertEqual(len(output.splitlines()), 3)
 
     def test_clean_line_breaks_removes_blanks_after_control_lines(self):
         source = (

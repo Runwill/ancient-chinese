@@ -29,7 +29,7 @@
   let highlightMode = false;
   let search = { visible: false, query: '', scope: 'all', matches: [], index: 0 };
   let draftLibraryQuery = '';
-  let exportMode = 'phon';
+  const exportContents = new Set(['phon']);
   let exportOptionsInitialized = false;
   let imageExport = { title: '正文', lines: [], hidden: new Set(), ready: false };
   let schemeDraft = null;
@@ -66,11 +66,18 @@
   let startupStartedAt = 0;
 
   function toast(message, kind = '') {
-    const node = document.createElement('div');
-    node.className = `toast ${kind}`;
-    node.textContent = message;
-    $('#toast-stack').append(node);
-    setTimeout(() => node.remove(), 2600);
+    const stack = $('#toast-stack');
+    const className = `toast ${kind}`;
+    let node = [...stack.children].find(item =>
+      item.className === className && item.textContent === message);
+    if (!node) {
+      node = document.createElement('div');
+      node.className = className;
+      node.textContent = message;
+      stack.append(node);
+    }
+    clearTimeout(node._removeTimer);
+    node._removeTimer = setTimeout(() => node.remove(), 2600);
   }
 
   function queue(task) {
@@ -241,6 +248,14 @@
     }
   }
 
+  function focusLibrarySearch() {
+    if (window.matchMedia('(max-width: 700px)').matches) {
+      closeMobilePanels();
+      document.body.classList.add('mobile-library-open');
+    }
+    setLibrarySearchVisible(true);
+  }
+
   function applyResult(result) {
     if (!result) return;
     if (result.editor && result.drafts) {
@@ -406,9 +421,13 @@
       (Date.now() - startupStartedAt) / 1000));
     const step = Number(status.step) > 0
       ? `步骤 ${status.step}/${status.step_count || 6}` : '启动准备';
-    $('#startup-stage').textContent = [
+    const stage = $('#startup-stage');
+    stage.textContent = [
       step, status.detail, `已用时 ${elapsed} 秒`,
     ].filter(Boolean).join(' · ');
+    const showStage = elapsed >= 8 || status.phase === 'error';
+    $('#startup').classList.toggle('startup-stage-visible', showStage);
+    stage.setAttribute('aria-hidden', String(!showStage));
     const progress = Math.max(0, Math.min(100, Number(status.progress) || 0));
     $('#startup-progress').style.width = `${Math.max(4, progress)}%`;
     $('#startup-progress-track').classList.toggle(
@@ -438,6 +457,8 @@
     $('#startup-copy-error').classList.add('hidden');
     $('#startup-details').classList.add('hidden');
     $('#startup-details').textContent = '';
+    $('#startup').classList.remove('startup-stage-visible');
+    $('#startup-stage').setAttribute('aria-hidden', 'true');
     startupErrorReport = '';
     startupStartedAt = Date.now();
     startupStatus = {
@@ -473,6 +494,8 @@
     if (!result?.ok) {
       const message = result?.startup?.error || '启动失败';
       $('#startup-message').textContent = message;
+      $('#startup').classList.add('startup-stage-visible');
+      $('#startup-stage').setAttribute('aria-hidden', 'false');
       startupErrorReport = result?.startup?.details || '';
       if (startupErrorReport) {
         $('#startup-details').textContent = startupErrorReport;
@@ -991,6 +1014,7 @@
       row.addEventListener('drop', event => handleTreeDrop(event, row));
     });
     const ungrouped = $('.ungrouped-drop', root);
+    if (!ungrouped) return;
     ungrouped.ondragover = event => { if (dragPayload?.kind === 'draft') event.preventDefault(); };
     ungrouped.ondrop = event => {
       event.preventDefault();
@@ -1107,7 +1131,8 @@
     const hasSchemes = Boolean(availableSchemes.length);
     if (!hasSchemes) {
       state.selected_scheme = null;
-      if (exportMode === 'suno') exportMode = 'phon';
+      exportContents.delete('suno');
+      if (!exportContents.size) exportContents.add('phon');
     }
     const select = $('#export-scheme');
     select.innerHTML = availableSchemes.map(item => `<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('');
@@ -1222,24 +1247,39 @@
 
   async function refreshExport() {
     const hasSchemes = Boolean(state?.schemes?.some(item => !item.archived));
-    if (!hasSchemes && exportMode === 'suno') exportMode = 'phon';
-    const sunoOnly = exportMode === 'suno' && hasSchemes;
-    $('.export-controls').classList.toggle('suno-mode', sunoOnly);
-    $('#remove-pharyngeal').disabled = !sunoOnly;
-    $('#remove-tones').disabled = !sunoOnly;
-    $('#remove-glottal-tone').disabled = !sunoOnly || $('#remove-tones').checked;
-    $('#extra-h-voiceless-sonorant').disabled = !sunoOnly;
-    $('#entry-before-glottal').disabled = !sunoOnly;
-    $('#departing-before-glottal').disabled = !sunoOnly;
-    $('#export-output').value = await invoke(
-      'export_text', exportMode, $('#export-scheme').value,
+    if (!hasSchemes) exportContents.delete('suno');
+    if (!exportContents.size) exportContents.add('phon');
+    const includesSuno = exportContents.has('suno') && hasSchemes;
+    $('.export-controls').classList.toggle('suno-mode', includesSuno);
+    $('#remove-pharyngeal').disabled = !includesSuno;
+    $('#remove-tones').disabled = !includesSuno;
+    $('#remove-glottal-tone').disabled = !includesSuno || $('#remove-tones').checked;
+    $('#extra-h-voiceless-sonorant').disabled = !includesSuno;
+    $('#entry-before-glottal').disabled = !includesSuno;
+    $('#departing-before-glottal').disabled = !includesSuno;
+    const renderMode = mode => invoke(
+      'export_text', mode, $('#export-scheme').value,
       $('#punct-split').checked, $('#entry-before-glottal').checked,
       $('#departing-before-glottal').checked,
       $('#remove-pharyngeal').checked, $('#remove-tones').checked,
       $('#clean-line-breaks').checked, $('#remove-glottal-tone').checked,
       $('#extra-h-voiceless-sonorant').checked,
       $('#ignore-bracket-control-lines').checked);
-    $$('#export-mode button').forEach(button => button.classList.toggle('active', button.dataset.value === exportMode));
+    const blocks = [];
+    if (exportContents.has('raw') && exportContents.has('phon')) {
+      blocks.push(await renderMode('both'));
+    } else if (exportContents.has('raw')) {
+      blocks.push(await renderMode('raw'));
+    } else if (exportContents.has('phon')) {
+      blocks.push(await renderMode('phon'));
+    }
+    if (includesSuno) blocks.push(await renderMode('suno'));
+    $('#export-output').value = blocks.filter(Boolean).join('\n\n');
+    $$('#export-mode button').forEach(button => {
+      const active = exportContents.has(button.dataset.value);
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
   }
 
   const imageLineText = line => line.cells.map(cell => cell.char).join('');
@@ -2145,7 +2185,7 @@
           <span><i class="legend-swatch stale"></i>琥珀色：词库更新后读音有变化</span>
           <span><i class="legend-swatch highlight"></i>粉色：手动高亮</span>
         </div></section>
-        <section class="maintenance-section"><h3>查找与高亮</h3><p class="muted">Ctrl+F 打开查找；Enter 跳到下一个，Shift+Enter 返回上一个，Esc 关闭。进入高亮模式后点击正文中的字可添加或取消高亮，再次点击高亮按钮或按 Esc 退出。</p></section>`;
+        <section class="maintenance-section"><h3>查找与高亮</h3><p class="muted">Ctrl+F 打开正文查找，Ctrl+Shift+F 打开文稿库搜索；Enter 跳到下一个，Shift+Enter 返回上一个，Esc 关闭。进入高亮模式后点击正文中的字可添加或取消高亮，再次点击高亮按钮或按 Esc 退出。</p></section>`;
       return;
     }
     if (maintenanceTab === 'backup') {
@@ -2202,7 +2242,7 @@
       $$('[data-open-location]', root).forEach(button => button.onclick = () => invoke('open_location', button.dataset.openLocation));
       return;
     }
-    root.innerHTML = `<div class="shortcut-grid"><span>撤回</span><kbd>Ctrl Z</kbd><span>重做</span><kbd>Ctrl Y</kbd><span>复制</span><kbd>Ctrl C</kbd><span>剪切</span><kbd>Ctrl X</kbd><span>粘贴</span><kbd>Ctrl V</kbd><span>查找</span><kbd>Ctrl F</kbd><span>保存</span><kbd>Ctrl S</kbd><span>全选</span><kbd>Ctrl A</kbd><span>正文字号</span><kbd>Ctrl 滚轮</kbd></div>`;
+    root.innerHTML = `<div class="shortcut-grid"><span>撤回</span><kbd>Ctrl Z</kbd><span>重做</span><kbd>Ctrl Y</kbd><span>复制</span><kbd>Ctrl C</kbd><span>剪切</span><kbd>Ctrl X</kbd><span>粘贴</span><kbd>Ctrl V</kbd><span>正文查找</span><kbd>Ctrl F</kbd><span>文稿库搜索</span><kbd>Ctrl Shift F</kbd><span>保存</span><kbd>Ctrl S</kbd><span>全选</span><kbd>Ctrl A</kbd><span>正文字号</span><kbd>Ctrl 滚轮</kbd></div>`;
   }
 
   function renderDataChangeBatches() {
@@ -2601,7 +2641,7 @@
       if (event.target.closest?.('.inspector-shell, #mobile-inspector-button, .cell')) return;
       document.body.classList.remove('mobile-inspector-open');
     });
-    $('#library-search-button').onclick = () => setLibrarySearchVisible(true);
+    $('#library-search-button').onclick = focusLibrarySearch;
     $('#library-search-close').onclick = () => setLibrarySearchVisible(false);
     $('#library-search-input').oninput = event => {
       draftLibraryQuery = event.target.value;
@@ -2616,6 +2656,15 @@
         $('.library-search-results .draft-row')?.click();
       }
     };
+    document.addEventListener('keydown', event => {
+      if (event.defaultPrevented || event.isComposing) return;
+      const ctrl = event.ctrlKey || event.metaKey;
+      if (!ctrl || event.key.toLowerCase() !== 'f') return;
+      const inLibrary = Boolean(event.target.closest?.('.draft-sidebar'));
+      if (!event.shiftKey && !inLibrary) return;
+      event.preventDefault();
+      focusLibrarySearch();
+    });
     $('#tools-button').onclick = () => setUtilitybarVisible(
       $('#utilitybar').classList.contains('hidden'));
     $('#highlight-button').onclick = () => {
@@ -2682,10 +2731,6 @@
       $('#export-dialog').showModal();
       await refreshExport();
     };
-    document.addEventListener('pointerdown', event => {
-      const details = $('.export-experimental[open]');
-      if (details && !details.contains(event.target)) details.open = false;
-    });
     $('#open-scheme-picker').onclick = openSchemePicker;
     $('#import-scheme-picker').onclick = importSchemeFromPicker;
     $('#close-scheme-picker').onclick = () => $('#scheme-picker-dialog').close();
@@ -2719,8 +2764,14 @@
     $('#use-picked-scheme').onclick = usePickedScheme;
     $('#export-mode').onclick = async event => {
       const button = event.target.closest('button');
-      if (!button) return;
-      exportMode = button.dataset.value;
+      if (!button || button.disabled) return;
+      const value = button.dataset.value;
+      if (exportContents.has(value)) {
+        if (exportContents.size === 1) return toast('至少选择一种输出内容');
+        exportContents.delete(value);
+      } else {
+        exportContents.add(value);
+      }
       await refreshExport();
     };
     Object.values(EXPORT_OPTION_INPUTS).forEach(selector => {
@@ -2929,7 +2980,7 @@
     $('#search-next').onclick = () => jump(1);
     $('#search-input').onkeydown = event => {
       const ctrl = event.ctrlKey || event.metaKey;
-      if (ctrl && event.key.toLowerCase() === 'f') {
+      if (ctrl && event.key.toLowerCase() === 'f' && !event.shiftKey) {
         event.preventDefault();
         closeSearch();
       } else if (event.key === 'Enter') {
@@ -3129,7 +3180,11 @@
       else if (key === 'a') { event.preventDefault(); editAction('select_all'); }
       else if (key === 'c') { event.preventDefault(); copySelection(editor.selection ? selectionCopyMode : 'raw'); }
       else if (key === 'x') { event.preventDefault(); cutSelection(); }
-      else if (key === 'f') { event.preventDefault(); $('#search-button').click(); }
+      else if (key === 'f') {
+        event.preventDefault();
+        if (event.shiftKey) focusLibrarySearch();
+        else $('#search-button').click();
+      }
       else if (key === 's') { event.preventDefault(); $('#save-button').click(); }
       return;
     }
@@ -3164,7 +3219,7 @@
       manual_hl: false, stale: false, in_bracket: true,
     }));
     let mockGroupExpanded = true;
-    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.10 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
+    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.11 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
     const mockUpdate = {
       id: 'mock-reading-update', batch_id: 'b1',
       timestamp: '2026-08-22 23:55:03', filename: 'base.json.gz',
@@ -3203,6 +3258,7 @@
     };
     const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true, unselected_polyphonic: 2, manually_completed: false }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false, unselected_polyphonic: 0, manually_completed: true }];
     const previewChangelog = [
+      { version: '0.12.11', date: '2026-08-29', title: '搜索与导出界面修复', items: ['文稿库搜索新增 Ctrl+Shift+F 快捷键；焦点位于文稿库时也可直接按 Ctrl+F。', '修复搜索结果页错误绑定不存在的拖放区域，导致右下角重复报错的问题。', '移除导出页重复的“实验选项”展开按钮；开启调试选项后，实验性导出项直接与其他选项并列显示。', '导出内容改为“原文 / PBOC / Suno”连续分段多选组，组合选择自动生成对应内容，不再使用含义重复的“全部”；方案控件仅在选中 Suno 时显示。', '统一可点击控件的文本选区行为，连续点击按钮、文稿和文件夹时不再误选文字。', '修复 Suno 条件控件及二级工具栏切换造成的像素级布局跳动，并避免重复操作提示堆叠。', '精简启动页信息：正常启动只显示当前动作，步骤、文件与耗时详情会在等待超过 8 秒后出现，错误时立即显示。', '“把标点转换为换行”只处理正文标点，不再改写方括号控制行或行内方括号语法。'] },
       { version: '0.12.10', date: '2026-08-28', title: '浊塞音拼写支持自定义', items: ['浊塞音拼写改为“鼻音诱导 / 英美 / 自定义”三种状态，两种预设会明确写入映射表。', '手动编辑 b、d、g 会自动进入自定义，转写只使用当前映射，不再暗中覆盖。', '旧二值方案会自动迁移并保持原输出。'] },
       { version: '0.12.9', date: '2026-08-28', title: '启动进度细化', items: ['启动页显示真实步骤、当前文件、具体动作和已用时间。', '初始化在后台执行；网络不可用且本地数据完整时直接使用本地文件；Android 安装包同步包含启动日志模块。', 'Android 与 Python 统一使用异步桥接，检查更新、读取大型记录、备份导入和较大的导出任务不再阻塞界面。'] },
       { version: '0.12.8', date: '2026-08-28', title: 'PBOC 更名与界面整理', items: ['软件对外名称由 NOCM 改为 PBOC。', '应用采用蓝底白色“漢”字图标；加载标志和应用顶栏图标会跟随深浅主题变化，Windows 任务栏使用浅蓝底版本。', '文稿库以橙色左侧标识尚有多音字未选的文稿，以绿色左侧标识手动标记完成的文稿。', '文稿库标题栏新增搜索，可按文稿名称、正文摘要或文件名实时筛选。', '文稿与文件夹操作菜单会避开窗口边缘，靠近底部时自动向上展开。', 'Windows 正式版在无终端窗口模式下收集后台输出；可从“更多工具”查看，启动完成后也会在右下角显示本次启动输出。', 'Windows 原生标题栏整合进应用顶栏，图标与窗口控制集中在同一行，并保留拖动、双击最大化与边缘缩放。', '正文编辑区和文本导出页支持按住 Ctrl 滚动鼠标滚轮调整字号，缩放比例会自动保存。', '精简导出与确认弹窗，移除重复标题和无意义分隔线，并将实验性导出规则收纳到独立入口。', '查找、撤回、重做、高亮、批量与保存集中到可展开的“更多工具”行；查找范围位于左侧，查找与替换输入框位于右侧。', '作者与测试人员名称增加 Bilibili 主页链接。', '移动端下载更新时显示实时进度和文件大小。', '发现新版本后，问号按钮会持续显示更新提示色。', '深色模式从应用启动和加载界面开始生效。'] },
@@ -3238,7 +3294,7 @@
       { version: '0.9.1', date: '2026-07-20', title: 'HTML 界面全面调整', items: ['全面调整读音面板、拖动交互、滚动条和弹窗布局。'] },
       { version: '0.9.0', date: '2026-07-16', title: 'HTML 桌面界面预览版', items: ['界面迁移到 HTML 与 WebView2。'] },
     ];
-    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.10', ui_preferences: { inspector_width: 320, debug_mode: false }, changelog: previewChangelog });
+    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.11', ui_preferences: { inspector_width: 320, debug_mode: false }, changelog: previewChangelog });
     return new Proxy({
       initialize: async () => full(),
       start_initialize: async () => ({ phase: 'ready', message: '准备就绪', progress: 100, step: 6, step_count: 6, detail: '启动完成', indeterminate: false }),
@@ -3256,7 +3312,7 @@
       export_scheme_json: async () => ({ ok: true, path: '预览目录/current_suno.json' }),
       validate_scheme: async () => [], preview_scheme: async (_value, text) => ({ ok: true, issues: [], output: text }),
       compare_scheme: async () => ({ other: schemes[0], differences: [] }),
-      export_text: async mode => mode === 'raw' ? mock.raw : 'kˤro[n] kˤro[n]s tsa\ndzˤəʔ gˤaj tə tu',
+      export_text: async mode => mode === 'raw' ? mock.raw : mode === 'both' ? `${mock.raw}\nkˤro[n] kˤro[n]s tsa\ndzˤəʔ gˤaj tə tu` : 'kˤro[n] kˤro[n]s tsa\ndzˤəʔ gˤaj tə tu',
       get_image_export_data: async () => ({
         ok: true,
         title: mock.current_name,
@@ -3306,15 +3362,15 @@
       },
       get_polyphonic_summary: async () => [{ char: '关', count: 2, readings: { 'kˤro[n]s': 1, 'kˤro[n]': 1 }, options: [{ phonetic: 'kˤro[n]s' }, { phonetic: 'kˤro[n]' }] }],
       batch_apply_reading: async () => clone(mock), get_draft_history: async () => [{ id: 'demo.json', name: '关雎', modified: '2026-07-16T12:00:00', preview: '关关雎在河之洲' }],
-      get_diagnostics: async () => ({ app_version: '0.12.10', draft_schema_version: 3, scheme_schema_version: 3, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
+      get_diagnostics: async () => ({ app_version: '0.12.11', draft_schema_version: 3, scheme_schema_version: 3, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
       get_backend_logs: async () => ({ text: mockBackendLog, started_at: '2026-08-28T11:20:01+08:00', characters: mockBackendLog.length }),
       clear_backend_logs: async () => { mockBackendLog = ''; return { text: '', started_at: '2026-08-28T11:20:01+08:00', characters: 0 }; },
       import_old_library: async () => ({ ok: true, imported: 2, skipped: 1, renamed: 0, errors: [], state: full() }),
-      check_for_updates: async () => ({ ok: true, current: '0.12.10', latest: '0.12.10', available: false }),
-      start_update_check: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.10', latest: '0.12.10', available: false }, error: null }),
-      get_update_check_status: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.10', latest: '0.12.10', available: false }, error: null }),
-      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.10', platform: 'windows', path: 'preview-update.exe' } }),
-      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.10', platform: 'windows', path: 'preview-update.exe' } }),
+      check_for_updates: async () => ({ ok: true, current: '0.12.11', latest: '0.12.11', available: false }),
+      start_update_check: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.11', latest: '0.12.11', available: false }, error: null }),
+      get_update_check_status: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.11', latest: '0.12.11', available: false }, error: null }),
+      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.11', platform: 'windows', path: 'preview-update.exe' } }),
+      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.11', platform: 'windows', path: 'preview-update.exe' } }),
       install_downloaded_update: async () => ({ ok: true, scheduled: true }),
       get_data_change_batches: async () => ({ ok: true, exists: true, file_size: 77729928, total: 2, items: [
         { id: 'b2', timestamp: '2026-08-22 23:55:12', filename: 'extra.json.gz', count: 10427 },

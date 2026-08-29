@@ -73,6 +73,16 @@ body { color: var(--text); background: var(--bg); letter-spacing: 0; }
 body.resizing-inspector, body.resizing-inspector * { cursor: ew-resize !important; user-select: none !important; }
 button, input, select, textarea { font: inherit; letter-spacing: 0; }
 button { color: inherit; }
+button,
+summary,
+[role="button"],
+.folder-row,
+.draft-row,
+.check-control,
+.image-line-row {
+  -webkit-user-select: none;
+  user-select: none;
+}
 .hidden { display: none !important; }
 .mobile-only { display: none !important; }
 .muted { color: var(--muted); }
@@ -99,9 +109,11 @@ button { color: inherit; }
 }
 .startup h1 { margin: 18px 0 6px; font-size: 20px; }
 .startup-version { margin-bottom: 6px; color: var(--muted); font-size: 12px; }
-.startup p { margin: 0 0 5px; color: var(--text-2); }
-.startup-stage { min-height: 18px; margin-bottom: 13px; color: var(--muted); font-size: 11px; }
-.progress { width: 320px; height: 4px; overflow: hidden; background: var(--border); }
+.startup p { margin: 0 0 18px; color: var(--text-2); }
+.startup-progress-block { position: relative; width: 320px; height: 28px; }
+.startup-stage { position: absolute; top: 10px; left: 50%; width: min(680px, calc(100vw - 40px)); visibility: hidden; opacity: 0; color: var(--muted); font-size: 11px; transform: translateX(-50%); transition: opacity .16s ease; }
+.startup-stage-visible .startup-stage { visibility: visible; opacity: 1; }
+.progress { width: 100%; height: 4px; overflow: hidden; background: var(--border); }
 .progress span { display: block; width: 4%; height: 100%; background: var(--accent); transition: width .25s ease; }
 .progress.indeterminate span { width: 28% !important; animation: startup-indeterminate 1.15s ease-in-out infinite; }
 @keyframes startup-indeterminate { from { transform: translateX(-110%); } to { transform: translateX(370%); } }
@@ -179,28 +191,24 @@ button { color: inherit; }
 .button.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 #tools-button[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 
-.utilitybar {
+.utilitybar,
+.searchbar {
   grid-row: 2;
   min-height: 46px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 7px;
-  padding: 6px 18px;
+  padding: 5px 18px;
   background: var(--surface);
   border-bottom: 1px solid var(--divider);
 }
+.utilitybar {
+  justify-content: flex-end;
+  gap: 7px;
+}
 
 .searchbar {
-  grid-row: 2;
-  min-height: 48px;
-  display: flex;
-  align-items: center;
   gap: 9px;
   flex-wrap: wrap;
-  padding: 7px 18px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--divider);
 }
 .searchbar input { width: 210px; }
 .text-input, .select, .searchbar input {
@@ -411,6 +419,8 @@ body.highlight-mode-active .editor-scroll, body.highlight-mode-active .cell:not(
 .export-dialog header { min-height: 0; padding: 14px 16px 6px; border-bottom: 0; }
 .export-dialog footer { padding: 8px 16px 12px; border-top: 0; }
 .export-controls { padding: 6px 16px 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; border-bottom: 0; }
+#export-mode { height: 34px; gap: 0; }
+#export-mode button { min-width: 62px; height: 32px; min-height: 32px; border-radius: 0; }
 .scheme-picker-trigger { min-width: 0; width: auto; max-width: 210px; height: 34px; display: flex; align-items: center; justify-content: flex-start; padding: 0 10px; color: var(--text); text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; }
 .scheme-picker-trigger:hover, .scheme-picker-trigger:focus { border-color: var(--accent); }
 .scheme-picker-trigger > span:first-child { min-width: 0; max-width: 160px; }
@@ -418,19 +428,11 @@ body.highlight-mode-active .editor-scroll, body.highlight-mode-active .cell:not(
 .scheme-picker-trigger small { display: none; }
 #edit-scheme-button { min-height: 34px; padding: 0 10px; }
 .export-checks { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 7px 14px; }
-.export-experimental { position: relative; flex: 0 0 auto; }
-.export-experimental summary { height: 30px; display: flex; align-items: center; padding: 0 9px; color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 5px; cursor: pointer; font-size: 11px; list-style: none; }
-.export-experimental summary::-webkit-details-marker { display: none; }
-.export-experimental summary:hover, .export-experimental[open] summary { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
-.export-experimental-panel { position: absolute; z-index: 8; top: calc(100% + 6px); right: 0; width: min(340px, calc(100vw - 56px)); display: grid; gap: 10px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; box-shadow: var(--shadow); }
-.export-experimental-panel .check-control { white-space: nowrap; }
 .check-control { display: flex; align-items: center; gap: 7px; color: var(--text-2); cursor: pointer; }
 .check-control:has(input:disabled) { opacity: .45; cursor: not-allowed; }
 .check-control input { width: 16px; height: 16px; accent-color: var(--accent); }
 [data-debug-only] { display: none; }
 body.debug-mode [data-debug-only] { display: flex; }
-body.debug-mode details.export-experimental[data-debug-only] { display: none; }
-body.debug-mode .export-controls.suno-mode details.export-experimental[data-debug-only] { display: block; }
 .export-controls:not(.suno-mode) [data-suno-only] { display: none; }
 .export-output { min-height: 0; flex: 1; margin: 0; padding: 16px 18px; resize: none; color: var(--text); background: var(--surface); border: 0; outline: none; font-family: Cambria, "Microsoft YaHei", serif; font-size: calc(14px * var(--editor-zoom, 1)); line-height: 1.75; }
 
@@ -782,9 +784,9 @@ body.startup-output-visible .toast-stack { bottom: 210px; }
   .inspector-resizer { display: none; }
   .editor-scroll { padding: 18px 14px 72px; }
   .statusbar { padding-inline: 12px; }
-  .searchbar { max-height: 45vh; overflow: auto; padding: 7px 8px; }
+  .searchbar { max-height: 45vh; overflow: auto; padding-inline: 8px; }
   .searchbar input { flex: 1 1 145px; width: auto; }
-  .utilitybar { justify-content: center; padding: 6px 8px; }
+  .utilitybar { justify-content: center; padding-inline: 8px; }
   .utilitybar .toolbar-divider { display: none; }
   .dialog { width: calc(100vw - 16px); max-width: none; max-height: calc(100dvh - 16px); }
   .dialog > form, .dialog-layout, .scheme-layout { max-height: calc(100dvh - 16px); }
