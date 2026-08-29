@@ -4,7 +4,9 @@
   "description": "260804",
   "options": {
     "improve_pharyngeal": true,
-    "improve_syllable": false
+    "improve_syllable": false,
+    "voiced_stop_style": "custom",
+    "extra_h_voiceless_sonorant": false
   },
   "parse_order": {
     "tone": [
@@ -267,7 +269,8 @@
     "pre_normalize": [
       [
         "ʰ",
-        "h"
+        "h",
+        ""
       ]
     ],
     "residual_preprocess": [],
@@ -277,23 +280,28 @@
     "post_replace": [
       [
         "кw",
-        "кв"
+        "кв",
+        ""
       ],
       [
         "йα",
-        "я"
+        "я",
+        ""
       ],
       [
         "йए",
-        "е"
+        "е",
+        ""
       ],
       [
         "йү",
-        "ю"
+        "ю",
+        ""
       ],
       [
         "αw",
-        "औ"
+        "औ",
+        ""
       ],
       [
         {
@@ -310,14 +318,53 @@
             ]
           ]
         },
-        "əй"
+        "əй",
+        ""
       ]
     ]
   },
   "schema_version": 3,
-  "migrated_by": "0.12.10",
+  "migrated_by": "0.12.11",
   "app_version": "0.12.4",
   "archived": true,
   "created_at": "2026-08-04T12:57:22.183523+00:00",
-  "option_definitions": {}
+  "option_definitions": {
+    "voiced_stop_style": {
+      "type": "choice",
+      "label": "浊塞音拼写",
+      "description": "鼻音诱导：mб / nд / ŋг；英美：б / ντ / γκ；手动修改映射后使用自定义。",
+      "choices": [
+        {
+          "value": "nasal",
+          "label": "鼻音诱导"
+        },
+        {
+          "value": "english",
+          "label": "英美"
+        },
+        {
+          "value": "custom",
+          "label": "自定义"
+        }
+      ],
+      "presets": {
+        "nasal": {
+          "b": "mб",
+          "d": "nд",
+          "g": "ŋг"
+        },
+        "english": {
+          "b": "б",
+          "d": "ντ",
+          "g": "γκ"
+        }
+      }
+    },
+    "extra_h_voiceless_sonorant": {
+      "type": "boolean",
+      "label": "清响音前额外加 h",
+      "description": "转写清响音声母时，在方案输出前再添加一个 h。",
+      "group": "transcription"
+    }
+  }
 }

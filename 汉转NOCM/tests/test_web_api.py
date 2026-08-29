@@ -562,6 +562,33 @@ class WebApiEditorTests(unittest.TestCase):
         self.assertNotIn('unknown_option', options)
         self.assertEqual(preferences['export_options'], options)
 
+    def test_export_contents_and_copy_mode_are_normalized_and_persisted(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = os.path.join(root, '.ui_state.json')
+            with patch.object(web_api, '_UI_STATE_PATH', path):
+                contents = self.api.set_ui_preference(
+                    'export_contents', ['suno', 'invalid', 'raw', 'suno'])
+                copy_mode = self.api.set_ui_preference(
+                    'selection_copy_mode', 'phon')
+                auto_update = self.api.set_ui_preference(
+                    'auto_check_updates', False)
+                preferences = web_api._load_ui_preferences()
+
+        self.assertEqual(contents['value'], ['raw', 'suno'])
+        self.assertEqual(copy_mode['value'], 'phon')
+        self.assertIs(auto_update['value'], False)
+        self.assertEqual(preferences['export_contents'], ['raw', 'suno'])
+        self.assertEqual(preferences['selection_copy_mode'], 'phon')
+        self.assertIs(preferences['auto_check_updates'], False)
+
+    def test_empty_export_contents_falls_back_to_pboc(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = os.path.join(root, '.ui_state.json')
+            with patch.object(web_api, '_UI_STATE_PATH', path):
+                result = self.api.set_ui_preference('export_contents', [])
+
+        self.assertEqual(result['value'], ['phon'])
+
     def test_loading_draft_remembers_it_for_next_startup(self):
         loaded = ([['x']], [[{
             'phonetic': 'x1', 'is_poly': True, 'selected': 'none',
@@ -821,7 +848,7 @@ class WebApiEditorTests(unittest.TestCase):
         self.assertEqual(nocm, ' '.join(source))
         self.assertEqual(suno, 'ʔa kas kap kas ʔa ka')
 
-    def test_extra_h_before_voiceless_sonorant_only_changes_suno(self):
+    def test_scheme_extra_h_option_only_changes_suno(self):
         self.api.insert_text('x')
         self.api.buf.cell_info[0][0]['phonetic'] = 'm̥a'
         scheme = {
@@ -832,15 +859,12 @@ class WebApiEditorTests(unittest.TestCase):
             'parse_order': {
                 'onset': ['m̥'], 'nucleus': ['a'],
             },
+            'options': {'extra_h_voiceless_sonorant': True},
         }
 
-        nocm = self.api.export_text(
-            'phon', None, False, False, False, False, False,
-            False, False, True)
+        nocm = self.api.export_text('phon')
         with patch('web_api.load_scheme', return_value=scheme):
-            suno = self.api.export_text(
-                'suno', None, False, False, False, False, False,
-                False, False, True)
+            suno = self.api.export_text('suno')
 
         self.assertEqual(nocm, 'm̥a')
         self.assertEqual(suno, 'hhma')
@@ -927,6 +951,27 @@ class WebApiEditorTests(unittest.TestCase):
 
         self.assertEqual(
             result, '[Sample,lo-fi]\n[male]\nxx\nx1 x1')
+
+    def test_combined_suno_export_is_grouped_with_each_source_line(self):
+        self.api.insert_text('[Verse]\nxx\nyy')
+        scheme = {
+            'maps': {},
+            'rules': {'post_replace': [['x', 'X']]},
+        }
+
+        with patch('web_api.load_scheme', return_value=scheme):
+            result = self.api.export_text('raw+phon+suno')
+
+        self.assertEqual(
+            result,
+            '[Verse]\n'
+            'xx\n'
+            'x1 x1\n'
+            'X1 X1\n'
+            '\n'
+            'yy\n'
+            'y1 y1\n'
+            'y1 y1')
 
     def test_suno_export_preserves_spaces_and_letters_inside_brackets(self):
         self.api.insert_text('[Verse,clear male vocal]x')

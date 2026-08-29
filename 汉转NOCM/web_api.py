@@ -61,10 +61,10 @@ _EXPORT_OPTION_KEYS = {
     'remove_pharyngeal',
     'remove_tones',
     'remove_glottal_tone',
-    'extra_h_voiceless_sonorant',
     'entry_before_glottal',
     'departing_before_glottal',
 }
+_EXPORT_CONTENT_KEYS = ('raw', 'phon', 'suno')
 
 
 def _load_ui_preferences():
@@ -1092,18 +1092,6 @@ class WebApi:
         with self._lock:
             return validate_scheme(scheme)
 
-    def preview_scheme(self, scheme, text):
-        with self._lock:
-            issues = validate_scheme(scheme)
-            if any(item['severity'] == 'error' for item in issues):
-                return {'ok': False, 'issues': issues, 'output': ''}
-            try:
-                output = NocmTranscriber(scheme).convert_text(str(text or ''))
-                return {'ok': True, 'issues': issues, 'output': output}
-            except Exception as exc:
-                return {'ok': False, 'issues': issues, 'output': '',
-                        'message': str(exc)}
-
     def compare_scheme(self, scheme, other_scheme_id):
         with self._lock:
             other = load_scheme(other_scheme_id)
@@ -1232,7 +1220,25 @@ class WebApi:
             raw = buf.copy_raw().strip()
             phon = self._phonetic_text(buf)
             scheme_id = scheme_id or self.export_scheme_id
-            if mode == 'raw':
+            requested_modes = [
+                item for item in str(mode).split('+')
+                if item in {'raw', 'phon', 'suno'}
+            ]
+            combined = len(requested_modes) > 1
+            if combined:
+                scheme = None
+                if 'suno' in requested_modes:
+                    if not scheme_id:
+                        raise ValueError('没有可用方案，请先导入方案')
+                    scheme = load_scheme(scheme_id)
+                result = self._combined_text(
+                    buf, requested_modes, bool(punct_split), scheme,
+                    bool(entry_before_glottal),
+                    bool(departing_before_glottal),
+                    bool(remove_pharyngeal), bool(remove_tones),
+                    bool(remove_glottal_tone),
+                    bool(extra_h_before_voiceless_sonorant))
+            elif mode == 'raw':
                 result = raw
             elif mode == 'both':
                 result = self._both_text(buf, bool(punct_split))
@@ -1254,7 +1260,7 @@ class WebApi:
                     result = transcriber.convert_text(phon)
             else:
                 result = phon
-            if punct_split and mode != 'both':
+            if punct_split and mode != 'both' and not combined:
                 result = self._split_punctuation(result)
             if ignore_bracket_control_lines:
                 result = self._ignore_bracket_control_lines(result)
@@ -1360,7 +1366,8 @@ class WebApi:
 
     def set_ui_preference(self, key, value):
         if key not in ('inspector_width', 'editor_zoom', 'debug_mode',
-                       'export_options'):
+                       'auto_check_updates', 'export_options',
+                       'export_contents', 'selection_copy_mode'):
             raise ValueError('不支持的界面偏好')
         if key == 'inspector_width':
             normalized = max(230, min(520, int(value)))
@@ -1372,6 +1379,13 @@ class WebApi:
                 name: bool(source.get(name, False))
                 for name in _EXPORT_OPTION_KEYS
             }
+        elif key == 'export_contents':
+            source = value if isinstance(value, list) else []
+            normalized = [
+                name for name in _EXPORT_CONTENT_KEYS if name in source
+            ] or ['phon']
+        elif key == 'selection_copy_mode':
+            normalized = value if value in ('raw', 'phon') else 'raw'
         else:
             normalized = bool(value)
         with _UI_STATE_LOCK:
@@ -1610,32 +1624,98 @@ class WebApi:
     # Text rendering helpers ---------------------------------------------
 
     @staticmethod
+    def _phonetic_line(chars, infos, entry_before_glottal=False,
+                       departing_before_glottal=False,
+                       remove_pharyngeal=False, remove_tones=False,
+                       tone_map=None, tone_order=None,
+                       remove_glottal_tone=False):
+        brackets = find_bracket_ranges(chars)
+        phonetics = WebApi._line_phonetics(
+            chars, infos, brackets, entry_before_glottal,
+            departing_before_glottal, remove_pharyngeal,
+            remove_tones, tone_map, tone_order,
+            remove_glottal_tone)
+        parts, bracket_buf = [], []
+        for ci, char in enumerate(chars):
+            if in_bracket(ci, brackets):
+                bracket_buf.append(char)
+            else:
+                if bracket_buf:
+                    parts.append(''.join(bracket_buf))
+                    bracket_buf = []
+                parts.append(phonetics[ci])
+        if bracket_buf:
+            parts.append(''.join(bracket_buf))
+        return ' '.join(parts)
+
+    @staticmethod
     def _phonetic_text(buf, entry_before_glottal=False,
                        departing_before_glottal=False,
                        remove_pharyngeal=False, remove_tones=False,
                        tone_map=None, tone_order=None,
                        remove_glottal_tone=False):
-        lines = []
-        for chars, infos in zip(buf.buffer, buf.cell_info):
-            brackets = find_bracket_ranges(chars)
-            phonetics = WebApi._line_phonetics(
-                chars, infos, brackets, entry_before_glottal,
+        lines = [
+            WebApi._phonetic_line(
+                chars, infos, entry_before_glottal,
                 departing_before_glottal, remove_pharyngeal,
                 remove_tones, tone_map, tone_order,
                 remove_glottal_tone)
-            parts, bracket_buf = [], []
-            for ci, (char, info) in enumerate(zip(chars, infos)):
-                if in_bracket(ci, brackets):
-                    bracket_buf.append(char)
-                else:
-                    if bracket_buf:
-                        parts.append(''.join(bracket_buf))
-                        bracket_buf = []
-                    parts.append(phonetics[ci])
-            if bracket_buf:
-                parts.append(''.join(bracket_buf))
-            lines.append(' '.join(parts))
+            for chars, infos in zip(buf.buffer, buf.cell_info)
+        ]
         return '\n'.join(lines).strip()
+
+    @staticmethod
+    def _combined_text(buf, modes, punct_split=False, scheme=None,
+                       entry_before_glottal=False,
+                       departing_before_glottal=False,
+                       remove_pharyngeal=False, remove_tones=False,
+                       remove_glottal_tone=False,
+                       extra_h_before_voiceless_sonorant=False):
+        output = []
+        pending_blank = False
+        tone_map = (scheme or {}).get('maps', {}).get('tone')
+        tone_order = (scheme or {}).get('parse_order', {}).get('tone')
+        transcriber = NocmTranscriber(scheme) if scheme is not None else None
+
+        for chars, infos in zip(buf.buffer, buf.cell_info):
+            raw_line = ''.join(chars)
+            phon_line = WebApi._phonetic_line(
+                chars, infos, entry_before_glottal,
+                departing_before_glottal, remove_pharyngeal,
+                remove_tones, tone_map, tone_order,
+                remove_glottal_tone)
+            rendered = {'raw': raw_line, 'phon': phon_line}
+            if transcriber is not None:
+                rendered['suno'] = transcriber.convert_text(
+                    phon_line, bool(extra_h_before_voiceless_sonorant))
+            lines_by_mode = {
+                item: (WebApi._split_punctuation(rendered[item]).split('\n')
+                       if punct_split else [rendered[item]])
+                for item in modes
+            }
+            part_count = max(len(lines) for lines in lines_by_mode.values())
+            for part_index in range(part_count):
+                values = [
+                    lines_by_mode[item][part_index].strip()
+                    if part_index < len(lines_by_mode[item]) else ''
+                    for item in modes
+                ]
+                nonempty = [value for value in values if value]
+                if not nonempty:
+                    pending_blank = True
+                    continue
+                if pending_blank and output:
+                    output.append('')
+                pending_blank = False
+                control = (
+                    len(set(nonempty)) == 1
+                    and all(_BRACKET_CONTROL_LINE.fullmatch(value)
+                            for value in nonempty)
+                )
+                output.extend([nonempty[0]] if control else nonempty)
+                if not control:
+                    pending_blank = True
+        return '\n'.join(output).rstrip()
 
     @staticmethod
     def _line_phonetics(chars, infos, brackets, entry_before_glottal,

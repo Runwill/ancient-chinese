@@ -232,8 +232,8 @@ class SchemeEditor(tk.Toplevel):
         tabs.pack(fill=tk.X, padx=18)
         style(tabs, bg='bg_card')
         self.tab_var = tk.StringVar(value='maps')
-        self.map_tab = self._tab(tabs, '映射项', 'maps')
-        self.rule_tab = self._tab(tabs, '替换规则', 'rules')
+        self.map_tab = self._tab(tabs, '基础映射', 'maps')
+        self.rule_tab = self._tab(tabs, '附加替换', 'rules')
 
         self.stack = tk.Frame(self, bg=COLORS['bg_card'])
         self.stack.pack(fill=tk.BOTH, expand=True, padx=18, pady=(8, 14))

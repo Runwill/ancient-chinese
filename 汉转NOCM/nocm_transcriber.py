@@ -132,31 +132,60 @@ def migrate_scheme_data(scheme):
     scheme.setdefault('rules', {})
     options = scheme['options']
     definitions = scheme.setdefault('option_definitions', {})
+    presets = {
+        'nasal': {'b': 'mб', 'd': 'nд', 'g': 'ŋг'},
+        'english': {'b': 'б', 'd': 'ντ', 'g': 'γκ'},
+    }
+    voiced_stop_definition = {
+        'type': 'choice',
+        'label': '浊塞音拼写',
+        'description': ('鼻音诱导：mб / nд / ŋг；英美：б / ντ / γκ；'
+                        '手动修改映射后使用自定义。'),
+        'choices': [
+            {'value': 'nasal', 'label': '鼻音诱导'},
+            {'value': 'english', 'label': '英美'},
+            {'value': 'custom', 'label': '自定义'},
+        ],
+        'presets': presets,
+    }
+    extra_h_definition = {
+        'type': 'boolean',
+        'label': '清响音前额外加 h',
+        'description': '转写清响音声母时，在方案输出前再添加一个 h。',
+        'group': 'transcription',
+    }
     if ('english_voiced_stops' in options or
             'english_voiced_stops' in definitions):
         style = ('english' if bool(options.get('english_voiced_stops', False))
                  else 'nasal')
-        presets = {
-            'nasal': {'b': 'mб', 'd': 'nд', 'g': 'ŋг'},
-            'english': {'b': 'б', 'd': 'ντ', 'g': 'γκ'},
-        }
         scheme['maps'].setdefault('onset', {}).update(presets[style])
         options.pop('english_voiced_stops', None)
         definitions.pop('english_voiced_stops', None)
         options['voiced_stop_style'] = style
-        definitions['voiced_stop_style'] = {
-            'type': 'choice',
-            'label': '浊塞音拼写',
-            'description': ('鼻音诱导：mб / nд / ŋг；英美：б / ντ / γκ；'
-                            '手动修改映射后使用自定义。'),
-            'choices': [
-                {'value': 'nasal', 'label': '鼻音诱导'},
-                {'value': 'english', 'label': '英美'},
-                {'value': 'custom', 'label': '自定义'},
-            ],
-            'presets': presets,
-        }
+        definitions['voiced_stop_style'] = voiced_stop_definition
         changed = True
+    elif 'voiced_stop_style' not in definitions:
+        if options.get('voiced_stop_style') not in presets:
+            options['voiced_stop_style'] = 'custom'
+        definitions['voiced_stop_style'] = voiced_stop_definition
+        changed = True
+    elif options.get('voiced_stop_style') not in {*presets, 'custom'}:
+        options['voiced_stop_style'] = 'custom'
+        changed = True
+    if 'extra_h_voiceless_sonorant' not in options:
+        options['extra_h_voiceless_sonorant'] = False
+        changed = True
+    if 'extra_h_voiceless_sonorant' not in definitions:
+        definitions['extra_h_voiceless_sonorant'] = extra_h_definition
+        changed = True
+    for pairs in (scheme['rules'].values()
+                  if isinstance(scheme['rules'], dict) else []):
+        if not isinstance(pairs, list):
+            continue
+        for pair in pairs:
+            if isinstance(pair, list) and len(pair) == 2:
+                pair.append('')
+                changed = True
     scheme['schema_version'] = SCHEME_SCHEMA_VERSION
     if changed:
         scheme['migrated_by'] = __version__
@@ -245,7 +274,7 @@ def validate_scheme(scheme):
         add('error', 'id', '方案 ID 不能为空')
     maps = scheme.get('maps')
     if not isinstance(maps, dict):
-        add('error', 'maps', '映射表格式无效')
+        add('error', 'maps', '基础映射格式无效')
         maps = {}
     labels = scheme.get('labels', {})
     parse_order = scheme.get('parse_order', {})
@@ -274,7 +303,7 @@ def validate_scheme(scheme):
     seen_rules = set()
     rules = scheme.get('rules', {})
     if not isinstance(rules, dict):
-        add('error', 'rules', '替换规则格式无效')
+        add('error', 'rules', '附加替换格式无效')
         return issues
     for section, pairs in rules.items():
         if not isinstance(pairs, list):
@@ -282,8 +311,8 @@ def validate_scheme(scheme):
             continue
         for index, pair in enumerate(pairs):
             path = f'rules.{section}[{index}]'
-            if not isinstance(pair, list) or len(pair) != 2:
-                add('error', path, '替换规则必须包含查找和替换两项')
+            if not isinstance(pair, list) or len(pair) not in (2, 3):
+                add('error', path, '附加替换必须包含查找、替换和可选说明')
                 continue
             old = pair[0]
             if isinstance(old, dict) and old.get('type') == 'map_concat':
@@ -329,12 +358,12 @@ def diff_schemes(left, right):
         lm, rm = left_maps.get(section, {}), right_maps.get(section, {})
         for key in sorted(set(lm) | set(rm)):
             if lm.get(key) != rm.get(key):
-                add('映射', f'{section}.{key}', lm.get(key), rm.get(key))
+                add('基础映射', f'{section}.{key}', lm.get(key), rm.get(key))
     left_rules, right_rules = left.get('rules', {}), right.get('rules', {})
     for section in sorted(set(left_rules) | set(right_rules)):
         before, after = left_rules.get(section, []), right_rules.get(section, [])
         if before != after:
-            add('规则', section, before, after)
+            add('附加替换', section, before, after)
     return differences
 
 
@@ -396,7 +425,10 @@ class NocmTranscriber:
                 self.rules.get('syllable_relax', []), self.scheme))
         text = apply_replacements(text, replacement_pairs(
             self.rules.get('post_replace', []), self.scheme))
-        if (extra_h_before_voiceless_sonorant
+        extra_h = self.options.get(
+            'extra_h_voiceless_sonorant',
+            extra_h_before_voiceless_sonorant)
+        if (extra_h
                 and parsed.onset in _VOICELESS_SONORANT_ONSETS):
             text = f'h{text}'
         return text

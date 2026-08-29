@@ -413,9 +413,12 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertNotIn('<span class="eyebrow">运行诊断</span>', markup)
         self.assertNotIn('class="export-experimental"', markup)
         self.assertNotIn('<summary>实验选项</summary>', markup)
-        self.assertIn('data-debug-only data-suno-only><input id="remove-tones"', markup)
-        self.assertIn('.compact-dialog header', styles)
-        self.assertIn('.export-dialog header', styles)
+        self.assertIn(
+            'class="export-option-group" data-debug-only data-suno-only',
+            markup)
+        self.assertIn('<input id="remove-tones"', markup)
+        self.assertIn('.compact-dialog > form > header', styles)
+        self.assertIn('.export-dialog > form > header', styles)
         self.assertIn('border-bottom: 0', styles)
 
     def test_export_content_buttons_are_multi_select_without_all_button(self):
@@ -429,21 +432,81 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertIn('data-value="phon"', export_buttons)
         self.assertIn('data-value="suno"', export_buttons)
         self.assertNotIn('data-value="both"', export_buttons)
+        self.assertIn("const EXPORT_CONTENT_KEYS = ['raw', 'phon', 'suno'];", script)
         self.assertIn("const exportContents = new Set(['phon']);", script)
         self.assertIn("exportContents.add(value)", script)
+        self.assertIn("'export_contents', EXPORT_CONTENT_KEYS.filter", script)
+        self.assertIn('applyPersistentUiPreferences(result.ui_preferences)', script)
         self.assertIn("renderMode('both')", script)
+        self.assertIn('id="export-settings-toggle"', markup)
+        self.assertIn('id="export-settings-panel"', markup)
+        self.assertIn("renderMode(modes.join('+'))", script)
+        self.assertIn(
+            'body.debug-mode .export-controls:not(.suno-mode) '
+            '.export-option-group[data-suno-only] { display: none; }',
+            Path('web/styles.css').read_text(encoding='utf-8'))
+        self.assertIn(
+            "$('#remove-tones').disabled = !includesSuno || !debugEnabled",
+            script)
+
+    def test_selection_inspector_controls_use_complete_rows(self):
+        styles = Path('web/styles.css').read_text(encoding='utf-8')
+
+        self.assertIn(
+            'grid-template-columns: repeat(3, minmax(0, 1fr));', styles)
+        self.assertIn('#copy-mode { width: 100%; }', styles)
+        self.assertIn('#copy-mode button { min-width: 0; flex: 1 1 50%; }', styles)
 
     def test_interactive_text_and_conditional_toolbars_stay_stable(self):
         styles = Path('web/styles.css').read_text(encoding='utf-8')
         script = Path('web/app.js').read_text(encoding='utf-8')
+        markup = Path('web/index.html').read_text(encoding='utf-8')
 
         self.assertIn('-webkit-user-select: none', styles)
-        self.assertIn('.folder-row,\n.draft-row,', styles)
+        self.assertIn('body,\nbody * {', styles)
+        self.assertIn('[contenteditable="true"],\npre,\noutput,', styles)
+        self.assertIn('.data-change-values > div > span,', styles)
+        self.assertIn('.diff-value > :not(span),', styles)
         self.assertIn('.utilitybar,\n.searchbar {', styles)
         self.assertIn('min-height: 46px', styles)
         self.assertIn('#export-mode { height: 34px; gap: 0; }', styles)
         self.assertIn('#export-mode button { min-width: 62px; height: 32px;', styles)
+        self.assertIn('.export-scheme-controls { min-width: 0; margin-left: auto;', styles)
+        self.assertIn('background: transparent; border: 0; border-bottom: 1px solid var(--divider); border-radius: 0;', styles)
+        self.assertIn('class="export-scheme-controls"', markup)
+        self.assertNotIn('class="export-scheme-controls" data-suno-only', markup)
+        self.assertLess(markup.index('id="export-settings-toggle"'),
+                        markup.index('class="export-scheme-controls"'))
+        self.assertIn('class="scheme-picker-label">方案</span>', markup)
         self.assertIn("clearTimeout(node._removeTimer)", script)
+
+    def test_rules_use_one_header_and_one_mode_control_per_row(self):
+        styles = Path('web/styles.css').read_text(encoding='utf-8')
+        script = Path('web/app.js').read_text(encoding='utf-8')
+
+        self.assertIn('class="table-row rule header rule-list-header"', script)
+        self.assertIn('class="rule-mode-toggle ${mapped', script)
+        self.assertIn('data-rule-mode="${mapped', script)
+        self.assertNotIn('data-rule-field="mode"', script)
+        self.assertIn('.rule-mode-toggle:hover, .rule-mode-toggle.mapped', styles)
+
+    def test_scheme_tools_only_exposes_visual_comparison(self):
+        markup = Path('web/index.html').read_text(encoding='utf-8')
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        styles = Path('web/styles.css').read_text(encoding='utf-8')
+
+        self.assertIn('data-tab="tools" role="tab" aria-selected="false">方案比较', markup)
+        self.assertIn('class="diff-column-head"', script)
+        self.assertIn('class="diff-row-arrow"', script)
+        self.assertIn("improve_pharyngeal: '改善咽化组合'", script)
+        self.assertIn('class="diff-summary"', script)
+        self.assertIn('class="diff-scheme-menu"', script)
+        self.assertNotIn('<select id="diff-scheme"', script)
+        self.assertNotIn('scheme-preview-input', script)
+        self.assertNotIn('validation-summary', script)
+        self.assertNotIn('.dialog header {', styles)
+        self.assertIn('.dialog > .scheme-layout > header', styles)
+        self.assertIn('.diff-entry { min-height: 34px;', styles)
 
     def test_android_loads_startup_page_before_backend_thread(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -600,6 +663,10 @@ class SchemeToolTests(unittest.TestCase):
 
         self.assertTrue(changed)
         self.assertEqual(scheme['schema_version'], SCHEME_SCHEMA_VERSION)
+        self.assertIs(scheme['options']['extra_h_voiceless_sonorant'], False)
+        self.assertEqual(
+            scheme['option_definitions']['extra_h_voiceless_sonorant']['label'],
+            '清响音前额外加 h')
         self.assertFalse([i for i in validate_scheme(scheme)
                           if i['severity'] == 'error'])
 
@@ -634,6 +701,22 @@ class SchemeToolTests(unittest.TestCase):
             loaded = load_scheme('roundtrip')
 
         self.assertEqual(loaded['rules']['post_replace'][0][0], lookup)
+
+    def test_rule_description_survives_save_and_does_not_affect_output(self):
+        scheme = {
+            'id': 'described-rule',
+            'maps': {},
+            'rules': {'post_replace': [['x', 'y', '把 x 改写为 y']]},
+        }
+
+        with (tempfile.TemporaryDirectory() as root,
+              patch('nocm_transcriber.get_scheme_dir', return_value=root)):
+            save_scheme(scheme)
+            loaded = load_scheme('described-rule')
+
+        self.assertEqual(
+            loaded['rules']['post_replace'][0][2], '把 x 改写为 y')
+        self.assertEqual(NocmTranscriber(loaded).convert_text('x'), 'y')
 
     def test_schemes_are_sorted_by_creation_time(self):
         with (tempfile.TemporaryDirectory() as root,
@@ -670,6 +753,7 @@ class SchemeToolTests(unittest.TestCase):
         left = {'maps': {'onset': {'k': 'K'}}, 'rules': {}, 'options': {}}
         right = {'maps': {'onset': {'k': 'Q'}}, 'rules': {}, 'options': {}}
         differences = diff_schemes(left, right)
+        self.assertEqual(differences[0]['category'], '基础映射')
         self.assertEqual(differences[0]['key'], 'onset.k')
 
     def test_old_voiced_stop_boolean_migrates_to_nasal_preset(self):
@@ -719,6 +803,24 @@ class SchemeToolTests(unittest.TestCase):
         self.assertEqual(NocmTranscriber(scheme).convert_text('ba da ga'),
                          'B!A D!A G!A')
 
+    def test_missing_voiced_stop_option_defaults_to_custom_without_guessing(self):
+        onsets = {'b': 'mб', 'd': 'nд', 'g': 'ŋг', 'dz': 'nц'}
+        scheme, changed = migrate_scheme_data({
+            'schema_version': SCHEME_SCHEMA_VERSION,
+            'maps': {'onset': dict(onsets)},
+            'options': {'improve_pharyngeal': True},
+            'option_definitions': {},
+        })
+
+        self.assertTrue(changed)
+        self.assertEqual(scheme['options']['voiced_stop_style'], 'custom')
+        self.assertEqual(scheme['maps']['onset'], onsets)
+        definition = scheme['option_definitions']['voiced_stop_style']
+        self.assertEqual(definition['type'], 'choice')
+        self.assertEqual(
+            [item['value'] for item in definition['choices']],
+            ['nasal', 'english', 'custom'])
+
     def test_mapping_table_order_controls_overlapping_onsets(self):
         scheme = {
             'maps': {
@@ -763,16 +865,34 @@ class SchemeToolTests(unittest.TestCase):
 
     def test_scheme_editor_supports_voiced_stop_choice_and_custom_state(self):
         script = Path('web/app.js').read_text(encoding='utf-8')
+        markup = Path('web/index.html').read_text(encoding='utf-8')
+        styles = Path('web/styles.css').read_text(encoding='utf-8')
         self.assertIn('data-option-choice', script)
         self.assertIn('Object.assign(schemeDraft.maps.onset, preset)', script)
         self.assertIn("schemeDraft.options.voiced_stop_style = 'custom'", script)
+        self.assertIn("rows.length ? `<div class=\"data-table\">", script)
+        self.assertIn("rules.length ? `<div class=\"rule-list\">", script)
+        self.assertIn("['rules', '附加替换开关'", script)
+        self.assertIn("['output', '输出拼写'", script)
+        self.assertIn('data-tab="maps" role="tab" aria-selected="false">基础映射', markup)
+        self.assertIn('data-tab="rules" role="tab" aria-selected="false">附加替换', markup)
+        self.assertIn('data-rule-field="description"', script)
+        self.assertNotIn('id="extra-h-voiceless-sonorant"', markup)
+        self.assertIn("if (key === 's')", script)
+        self.assertIn("$('#save-scheme-button').click()", script)
+        self.assertIn('role="tablist"', markup)
+        self.assertIn('role="tabpanel"', markup)
+        self.assertIn('.scheme-save-status:empty { display: none; }', styles)
+        self.assertIn('.scheme-section.empty { margin-bottom: 8px; }', styles)
 
     def test_library_search_shortcut_and_search_result_drag_guard_exist(self):
         script = Path('web/app.js').read_text(encoding='utf-8')
         self.assertIn('function focusLibrarySearch()', script)
-        self.assertIn('if (event.shiftKey) focusLibrarySearch();', script)
+        self.assertIn("if ($$('dialog[open]').length) return;", script)
+        self.assertIn("$('#search-button').click();", script)
         self.assertIn('if (!ungrouped) return;', script)
-        self.assertIn('Ctrl Shift F', script)
+        self.assertIn('按当前焦点查找', script)
+        self.assertNotIn('Ctrl Shift F', script)
 
     def test_renaming_mapping_item_preserves_its_table_position(self):
         script = Path('web/app.js').read_text(encoding='utf-8')

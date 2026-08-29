@@ -17,6 +17,16 @@
     ['residual_replace', '剩余项替换'], ['pharyngeal_relax', '咽化改善'],
     ['syllable_relax', '音节改善'], ['post_replace', '最终替换']
   ];
+  const SCHEME_OPTION_GROUPS = [
+    ['rules', '附加替换开关', ['improve_pharyngeal', 'improve_syllable']],
+    ['output', '输出拼写', ['voiced_stop_style', 'extra_h_voiceless_sonorant']],
+  ];
+  const SCHEME_OPTION_LABELS = {
+    improve_pharyngeal: '改善咽化组合',
+    improve_syllable: '改善特殊音节',
+    voiced_stop_style: '浊塞音拼写',
+    extra_h_voiceless_sonorant: '清响音前额外加 h',
+  };
   const SECTION_NAMES = Object.fromEntries(MAP_SECTIONS);
 
   let api = null;
@@ -29,6 +39,7 @@
   let highlightMode = false;
   let search = { visible: false, query: '', scope: 'all', matches: [], index: 0 };
   let draftLibraryQuery = '';
+  const EXPORT_CONTENT_KEYS = ['raw', 'phon', 'suno'];
   const exportContents = new Set(['phon']);
   let exportOptionsInitialized = false;
   let imageExport = { title: '正文', lines: [], hidden: new Set(), ready: false };
@@ -188,6 +199,7 @@
     } else if (action === 'close') {
       clearTimeout(editorZoomSaveTimer);
       editorZoomSaveTimer = null;
+      await actionQueue;
       await invoke('set_ui_preference', 'editor_zoom', editorZoom);
       await invoke('close_window');
     }
@@ -356,10 +368,15 @@
     remove_pharyngeal: '#remove-pharyngeal',
     remove_tones: '#remove-tones',
     remove_glottal_tone: '#remove-glottal-tone',
-    extra_h_voiceless_sonorant: '#extra-h-voiceless-sonorant',
     entry_before_glottal: '#entry-before-glottal',
     departing_before_glottal: '#departing-before-glottal',
   };
+  const EXPORT_TEXT_OPTION_KEYS = new Set([
+    'punct_split', 'clean_line_breaks', 'ignore_bracket_control_lines'
+  ]);
+  const EXPORT_DEBUG_OPTION_KEYS = new Set([
+    'remove_tones', 'entry_before_glottal', 'departing_before_glottal'
+  ]);
 
   function readExportOptions() {
     return Object.fromEntries(Object.entries(EXPORT_OPTION_INPUTS).map(
@@ -382,6 +399,44 @@
       state.ui_preferences.export_options = options;
     }
     return queue(async () => invoke('set_ui_preference', 'export_options', options));
+  }
+
+  function applyPersistentUiPreferences(preferences) {
+    const contents = Array.isArray(preferences?.export_contents)
+      ? EXPORT_CONTENT_KEYS.filter(name => preferences.export_contents.includes(name))
+      : ['phon'];
+    exportContents.clear();
+    (contents.length ? contents : ['phon']).forEach(name => exportContents.add(name));
+    selectionCopyMode = ['raw', 'phon'].includes(preferences?.selection_copy_mode)
+      ? preferences.selection_copy_mode : 'raw';
+    applyExportOptionPreferences(preferences?.export_options);
+  }
+
+  function persistUiPreference(key, value) {
+    if (state) {
+      state.ui_preferences ||= {};
+      state.ui_preferences[key] = clone(value);
+    }
+    return queue(async () => invoke('set_ui_preference', key, value));
+  }
+
+  function updateExportSettingsSummary(includesSuno) {
+    const debugEnabled = document.body.classList.contains('debug-mode');
+    const count = Object.entries(EXPORT_OPTION_INPUTS).filter(([key, selector]) => {
+      if (!$(selector)?.checked) return false;
+      if (EXPORT_TEXT_OPTION_KEYS.has(key)) return true;
+      if (!includesSuno) return false;
+      return !EXPORT_DEBUG_OPTION_KEYS.has(key) || debugEnabled;
+    }).length;
+    $('#export-settings-count').textContent = count ? `已启用 ${count} 项` : '未启用';
+    $('#export-settings-toggle').classList.toggle('has-active-options', Boolean(count));
+  }
+
+  function setExportSettingsExpanded(expanded) {
+    const button = $('#export-settings-toggle');
+    const panel = $('#export-settings-panel');
+    button.setAttribute('aria-expanded', String(expanded));
+    panel.hidden = !expanded;
   }
 
   function bindInspectorResize() {
@@ -510,7 +565,7 @@
     applyInspectorWidth(result.ui_preferences?.inspector_width);
     applyEditorZoom(result.ui_preferences?.editor_zoom);
     applyDebugMode(result.ui_preferences?.debug_mode);
-    applyExportOptionPreferences(result.ui_preferences?.export_options);
+    applyPersistentUiPreferences(result.ui_preferences);
     $('#startup-version').textContent = `v${result.version || ''}`;
     setTheme(result.theme || 'light');
     $('#startup').classList.add('hidden');
@@ -694,6 +749,7 @@
         if (!button) return;
         selectionCopyMode = button.dataset.value;
         $$('#copy-mode button').forEach(item => item.classList.toggle('active', item === button));
+        persistUiPreference('selection_copy_mode', selectionCopyMode);
       });
       $('#copy-selection').onclick = () => copySelection(selectionCopyMode);
       $('#cut-selection').onclick = () => cutSelection();
@@ -1140,6 +1196,9 @@
     const selected = availableSchemes.find(item => item.id === state.selected_scheme)
       || availableSchemes[0];
     $('#selected-scheme-name').textContent = selected?.name || '没有可用方案';
+    $('#open-scheme-picker').setAttribute('aria-label', selected
+      ? `选择方案，当前为 ${selected.name}`
+      : '选择方案');
     $('#edit-scheme-button').disabled = !selected;
     $('[data-value="suno"]', $('#export-mode')).disabled = !hasSchemes;
   }
@@ -1250,31 +1309,32 @@
     if (!hasSchemes) exportContents.delete('suno');
     if (!exportContents.size) exportContents.add('phon');
     const includesSuno = exportContents.has('suno') && hasSchemes;
+    const debugEnabled = document.body.classList.contains('debug-mode');
     $('.export-controls').classList.toggle('suno-mode', includesSuno);
     $('#remove-pharyngeal').disabled = !includesSuno;
-    $('#remove-tones').disabled = !includesSuno;
-    $('#remove-glottal-tone').disabled = !includesSuno || $('#remove-tones').checked;
-    $('#extra-h-voiceless-sonorant').disabled = !includesSuno;
-    $('#entry-before-glottal').disabled = !includesSuno;
-    $('#departing-before-glottal').disabled = !includesSuno;
+    $('#remove-tones').disabled = !includesSuno || !debugEnabled;
+    $('#remove-glottal-tone').disabled = !includesSuno
+      || (debugEnabled && $('#remove-tones').checked);
+    $('#entry-before-glottal').disabled = !includesSuno || !debugEnabled;
+    $('#departing-before-glottal').disabled = !includesSuno || !debugEnabled;
     const renderMode = mode => invoke(
       'export_text', mode, $('#export-scheme').value,
-      $('#punct-split').checked, $('#entry-before-glottal').checked,
-      $('#departing-before-glottal').checked,
-      $('#remove-pharyngeal').checked, $('#remove-tones').checked,
+      $('#punct-split').checked, debugEnabled && $('#entry-before-glottal').checked,
+      debugEnabled && $('#departing-before-glottal').checked,
+      $('#remove-pharyngeal').checked, debugEnabled && $('#remove-tones').checked,
       $('#clean-line-breaks').checked, $('#remove-glottal-tone').checked,
-      $('#extra-h-voiceless-sonorant').checked,
+      false,
       $('#ignore-bracket-control-lines').checked);
-    const blocks = [];
-    if (exportContents.has('raw') && exportContents.has('phon')) {
-      blocks.push(await renderMode('both'));
-    } else if (exportContents.has('raw')) {
-      blocks.push(await renderMode('raw'));
-    } else if (exportContents.has('phon')) {
-      blocks.push(await renderMode('phon'));
+    const modes = ['raw', 'phon', 'suno'].filter(mode =>
+      exportContents.has(mode) && (mode !== 'suno' || includesSuno));
+    if (modes.length === 1) {
+      $('#export-output').value = await renderMode(modes[0]);
+    } else if (!includesSuno) {
+      $('#export-output').value = await renderMode('both');
+    } else {
+      $('#export-output').value = await renderMode(modes.join('+'));
     }
-    if (includesSuno) blocks.push(await renderMode('suno'));
-    $('#export-output').value = blocks.filter(Boolean).join('\n\n');
+    updateExportSettingsSummary(includesSuno);
     $$('#export-mode button').forEach(button => {
       const active = exportContents.has(button.dataset.value);
       button.classList.toggle('active', active);
@@ -1649,7 +1709,13 @@
     $('#scheme-id').value = schemeDraft.id || '';
     $('#scheme-name').value = schemeDraft.name || '';
     $('#scheme-description').value = schemeDraft.description || '';
-    $$('#scheme-tabs button').forEach(button => button.classList.toggle('active', button.dataset.tab === schemeTab));
+    $$('#scheme-tabs button').forEach(button => {
+      const active = button.dataset.tab === schemeTab;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', String(active));
+    });
+    $('#scheme-content').setAttribute('aria-label',
+      $(`#scheme-tabs [data-tab="${schemeTab}"]`)?.textContent || '方案内容');
     if (schemeTab === 'options') renderSchemeOptions();
     if (schemeTab === 'maps') renderSchemeMaps();
     if (schemeTab === 'rules') renderSchemeRules();
@@ -1658,11 +1724,11 @@
   }
 
   function renderSchemeOptions() {
-    const labels = { improve_pharyngeal: '改善咽化组合', improve_syllable: '改善特殊音节' };
+    const labels = SCHEME_OPTION_LABELS;
     const options = schemeDraft.options ||= {};
     const definitions = schemeDraft.option_definitions || {};
     const keys = [...new Set([...Object.keys(labels), ...Object.keys(options), ...Object.keys(definitions)])];
-    $('#scheme-content').innerHTML = `<div class="option-list">${keys.map(key => {
+    const optionRow = key => {
       const definition = definitions[key] || {};
       if (definition.type === 'choice') {
         const value = String(options[key] ?? definition.default ?? 'custom');
@@ -1675,7 +1741,18 @@
       const onLabel = definition.on_label;
       return `<div class="option-row"><div class="option-copy"><strong>${esc(definition.label || labels[key] || key)}</strong>${definition.description ? `<div class="muted">${esc(definition.description)}</div>` : ''}</div>
         <div class="option-control">${offLabel ? `<span class="option-state ${enabled ? '' : 'active'}">${esc(offLabel)}</span>` : ''}<label class="switch"><input type="checkbox" data-option="${esc(key)}" ${enabled ? 'checked' : ''} aria-label="${esc(definition.label || labels[key] || key)}"><span></span></label>${onLabel ? `<span class="option-state ${enabled ? 'active' : ''}">${esc(onLabel)}</span>` : ''}</div></div>`;
-    }).join('')}</div>`;
+    };
+    const grouped = new Set(SCHEME_OPTION_GROUPS.flatMap(([, , groupKeys]) => groupKeys));
+    const groups = SCHEME_OPTION_GROUPS.map(([id, title, groupKeys]) => ({
+      id, title, keys: groupKeys.filter(key => keys.includes(key))
+    }));
+    const otherKeys = keys.filter(key => !grouped.has(key));
+    if (otherKeys.length) groups.push({ id: 'other', title: '其他选项', keys: otherKeys });
+    $('#scheme-content').innerHTML = `<div class="option-groups">${groups.filter(group => group.keys.length).map(group => `
+      <section class="option-group" data-option-group="${esc(group.id)}">
+        <h3>${esc(group.title)}</h3>
+        <div class="option-list">${group.keys.map(optionRow).join('')}</div>
+      </section>`).join('')}</div>`;
     $$('[data-option]', $('#scheme-content')).forEach(input => input.onchange = () => {
       commitSchemeHistory();
       schemeDraft.options[input.dataset.option] = input.checked;
@@ -1719,20 +1796,20 @@
     schemeDraft.parse_order ||= {};
     $('#scheme-content').innerHTML = MAP_SECTIONS.map(([section, title]) => {
       const rows = mapOrder(section);
-      return `<section class="scheme-section" data-map-section="${section}">
+      return `<section class="scheme-section ${rows.length ? '' : 'empty'}" data-map-section="${section}">
         <div class="section-heading"><h3>${title}</h3><button class="button" data-add-map="${section}">新增项</button></div>
-        <div class="data-table"><div class="table-row map header"><span>PBOC 项</span><span>输出</span><span>中文说明</span><span>操作</span></div>
-        ${rows.map((source, index) => mapRowHtml(section, source, index)).join('')}</div></section>`;
+        ${rows.length ? `<div class="data-table"><div class="table-row map header"><span>PBOC 项</span><span>输出</span><span>中文说明</span><span>操作</span></div>
+        ${rows.map((source, index) => mapRowHtml(section, title, source, index)).join('')}</div>` : ''}</section>`;
     }).join('');
     bindSchemeMapEvents();
   }
 
-  function mapRowHtml(section, source, index) {
+  function mapRowHtml(section, title, source, index) {
     const target = schemeDraft.maps?.[section]?.[source] || '';
     const label = schemeDraft.labels?.[section]?.[source] || '';
     return `<div class="table-row map" data-section="${section}" data-index="${index}" data-source="${esc(source)}">
-      <label><input data-field="source" value="${esc(source)}"></label><label><input data-field="target" value="${esc(target)}"></label>
-      <label><input data-field="label" value="${esc(label)}"></label><span class="order-actions"><button type="button" class="icon-button small drag-handle" data-drag-map title="拖动排序；聚焦后可用方向键" aria-label="拖动排序"><i aria-hidden="true"></i></button><button class="icon-button small" data-delete-map title="删除" aria-label="删除">×</button></span></div>`;
+      <label><input data-field="source" value="${esc(source)}" aria-label="${esc(title)} PBOC 项"></label><label><input data-field="target" value="${esc(target)}" aria-label="${esc(title)}输出"></label>
+      <label><input data-field="label" value="${esc(label)}" aria-label="${esc(title)}中文说明"></label><span class="order-actions"><button type="button" class="icon-button small drag-handle" data-drag-map title="拖动排序；聚焦后可用方向键" aria-label="拖动排序"><i aria-hidden="true"></i></button><button class="icon-button small" data-delete-map title="删除" aria-label="删除">×</button></span></div>`;
   }
 
   function bindOrderDragging(selector, getItems, setItems, rerender) {
@@ -1885,26 +1962,26 @@
 
   function renderSchemeRules() {
     schemeDraft.rules ||= {};
-    $('#scheme-content').innerHTML = RULE_SECTIONS.map(([section, title]) => {
+    $('#scheme-content').innerHTML = `<div class="scheme-rule-sections">${RULE_SECTIONS.map(([section, title]) => {
       const rules = schemeDraft.rules[section] ||= [];
-      return `<section class="scheme-section" data-rule-section="${section}">
-        <div class="section-heading"><h3>${title}</h3><button class="button" data-add-rule="${section}">新增规则</button></div>
-        <div class="data-table"><div class="table-row rule header"><span>查找方式</span><span>查找</span><span>选择</span><span>替换为</span><span>操作</span></div>
-        ${rules.map((rule, index) => ruleRowHtml(section, rule, index)).join('')}</div></section>`;
-    }).join('');
+      return `<section class="scheme-section rule-section ${rules.length ? 'filled' : 'empty'}" data-rule-section="${section}">
+        <div class="section-heading"><h3>${title}${rules.length ? `<span>${rules.length}</span>` : ''}</h3><button class="button" data-add-rule="${section}">新增</button></div>
+        ${rules.length ? `<div class="rule-list"><div class="table-row rule header rule-list-header"><span>查找方式</span><span>查找</span><span>替换为</span><span>中文说明</span><span>操作</span></div>${rules.map((rule, index) => ruleRowHtml(section, title, rule, index)).join('')}</div>` : ''}</section>`;
+    }).join('')}</div>`;
     bindSchemeRuleEvents();
   }
 
-  function ruleRowHtml(section, rule, index) {
+  function ruleRowHtml(section, title, rule, index) {
     const old = rule?.[0] ?? '';
     const replacement = rule?.[1] ?? '';
+    const description = rule?.[2] ?? '';
     const mapped = typeof old === 'object' && old.type === 'map_concat';
     const lookup = mapped ? lookupPreview(old) : String(old);
-    return `<div class="table-row rule" data-section="${section}" data-index="${index}">
-      <label><select data-rule-field="mode"><option value="text" ${mapped ? '' : 'selected'}>硬编码文本</option><option value="map" ${mapped ? 'selected' : ''}>映射项拼接</option></select></label>
-      <label><input data-rule-field="old" value="${esc(lookup)}" ${mapped ? 'readonly' : ''}></label>
-      <span><button class="button" data-edit-lookup ${mapped ? '' : 'disabled'}>选择</button></span>
-      <label><input data-rule-field="new" value="${esc(replacement)}"></label>
+    return `<div class="table-row rule rule-card" data-section="${section}" data-index="${index}">
+      <div class="rule-field"><button type="button" class="rule-mode-toggle ${mapped ? 'mapped' : ''}" data-rule-mode="${mapped ? 'text' : 'map'}" title="切换为${mapped ? '直接文本' : '基础映射'}" aria-label="${esc(title)}查找方式：${mapped ? '基础映射' : '直接文本'}，点击切换">${mapped ? '基础映射' : '直接文本'}</button></div>
+      <div class="rule-field"><div class="rule-lookup-control"><input data-rule-field="old" value="${esc(lookup)}" ${mapped ? 'readonly' : ''} aria-label="${esc(title)}查找内容">${mapped ? '<button class="button" data-edit-lookup>选择</button>' : ''}</div></div>
+      <label class="rule-field"><input data-rule-field="new" value="${esc(replacement)}" aria-label="${esc(title)}替换内容"></label>
+      <label class="rule-field"><input data-rule-field="description" value="${esc(description)}" placeholder="可选" aria-label="${esc(title)}中文说明"></label>
       <span class="order-actions"><button type="button" class="icon-button small drag-handle" data-drag-rule title="拖动排序；聚焦后可用方向键" aria-label="拖动排序"><i aria-hidden="true"></i></button><button class="icon-button small" data-delete-rule title="删除" aria-label="删除">×</button></span></div>`;
   }
 
@@ -1915,7 +1992,7 @@
       renderSchemeRules);
     $$('[data-add-rule]').forEach(button => button.onclick = () => {
       commitSchemeHistory();
-      (schemeDraft.rules[button.dataset.addRule] ||= []).push(['', '']);
+      (schemeDraft.rules[button.dataset.addRule] ||= []).push(['', '', '']);
       renderSchemeRules();
       markSchemeDirty();
     });
@@ -1926,14 +2003,22 @@
       renderSchemeRules();
       markSchemeDirty();
     });
+    $$('[data-rule-mode]').forEach(button => button.onclick = () => {
+      const row = button.closest('.table-row');
+      const rule = schemeDraft.rules[row.dataset.section][Number(row.dataset.index)];
+      commitSchemeHistory();
+      rule[0] = button.dataset.ruleMode === 'map'
+        ? { type: 'map_concat', field: 'target', parts: [] }
+        : '';
+      renderSchemeRules();
+      markSchemeDirty();
+    });
     $$('[data-rule-field]').forEach(input => input.onchange = () => {
       const row = input.closest('.table-row');
       const rule = schemeDraft.rules[row.dataset.section][Number(row.dataset.index)];
       commitSchemeHistory();
-      if (input.dataset.ruleField === 'mode') {
-        rule[0] = input.value === 'map' ? { type: 'map_concat', field: 'target', parts: [] } : '';
-        renderSchemeRules();
-      } else if (input.dataset.ruleField === 'old') rule[0] = input.value;
+      if (input.dataset.ruleField === 'old') rule[0] = input.value;
+      else if (input.dataset.ruleField === 'description') rule[2] = input.value;
       else rule[1] = input.value;
       markSchemeDirty();
     });
@@ -1945,59 +2030,128 @@
   }
 
   function renderSchemeTools() {
-    const schemeOptions = (state.schemes || []).map(item => `<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('');
-    $('#scheme-content').innerHTML = `<div class="scheme-tools">
-      <section class="tool-pane">
-        <h3>结构校验</h3>
-        <div id="validation-summary" class="validation-summary">正在检查...</div>
-        <div id="validation-issues" class="issue-list"></div>
-        <div class="diff-controls"><select id="diff-scheme" class="select">${schemeOptions}</select><button id="run-diff" class="button">比较方案</button></div>
-        <div id="diff-list" class="diff-list"></div>
-      </section>
-      <section class="tool-pane">
-        <h3>即时预览</h3>
-        <textarea id="scheme-preview-input" class="preview-area" placeholder="输入 PBOC 音节，每个音节以空格分隔">kˤanʔ mra s-lə</textarea>
-        <div class="maintenance-actions" style="margin-top:8px"><button id="run-preview" class="button primary">运行预览</button></div>
-        <output id="scheme-preview-output" class="preview-output"></output>
-      </section>
+    const comparison = (state.schemes || []).find(item => item.id !== schemeDraft.id)
+      || state.schemes?.[0];
+    const schemeOptions = (state.schemes || []).map(item => `<button type="button" role="option" aria-selected="${item.id === comparison?.id}" class="diff-scheme-option ${item.id === comparison?.id ? 'active' : ''}" data-diff-scheme="${esc(item.id)}">${esc(item.name)}</button>`).join('');
+    $('#scheme-content').innerHTML = `<div class="scheme-compare">
+      <div class="diff-controls">
+        <div class="diff-side diff-current"><span>当前方案</span><strong>${esc(schemeDraft.name || schemeDraft.id || '未命名方案')}</strong></div>
+        <svg class="diff-direction" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M5 12h13"></path><path d="m14 8 4 4-4 4"></path></svg>
+        <div class="diff-side diff-target"><span>对比方案</span><div class="diff-scheme-picker">
+          <input id="diff-scheme" type="hidden" value="${esc(comparison?.id || '')}">
+          <button id="diff-scheme-trigger" type="button" class="diff-scheme-trigger" aria-haspopup="listbox" aria-expanded="false" ${comparison ? '' : 'disabled'}><strong id="diff-scheme-label">${esc(comparison?.name || '没有可用方案')}</strong><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"></path></svg></button>
+          <div id="diff-scheme-menu" class="diff-scheme-menu" role="listbox" aria-label="对比方案" hidden>${schemeOptions}</div>
+        </div></div>
+      </div>
+      <div id="diff-summary" class="diff-summary" aria-live="polite"></div>
+      <div id="diff-list" class="diff-list"><div class="diff-empty-state">正在比较…</div></div>
     </div>`;
-    $('#diff-scheme').value = state.selected_scheme || state.schemes?.[0]?.id || '';
-    $('#run-preview').onclick = runSchemePreview;
-    $('#run-diff').onclick = runSchemeDiff;
-    refreshSchemeValidation();
-  }
-
-  async function refreshSchemeValidation() {
-    commitSchemeMeta();
-    const issues = await invoke('validate_scheme', schemeDraft);
-    if (schemeTab !== 'tools') return issues;
-    const errors = issues.filter(item => item.severity === 'error').length;
-    const warnings = issues.length - errors;
-    $('#validation-summary').innerHTML = `<span>${errors} 个错误</span><span>${warnings} 个提醒</span>`;
-    $('#validation-issues').innerHTML = issues.length ? issues.map(item => `
-      <div class="issue ${item.severity}"><code>${esc(item.path || 'scheme')}</code>${esc(item.message)}</div>`).join('') : '<div class="muted">没有发现结构问题。</div>';
-    return issues;
-  }
-
-  async function runSchemePreview() {
-    commitSchemeMeta();
-    const result = await invoke('preview_scheme', schemeDraft, $('#scheme-preview-input').value);
-    $('#scheme-preview-output').textContent = result.ok ? (result.output || '（空输出）') : (result.message || '请先修复方案错误');
-    await refreshSchemeValidation();
+    const trigger = $('#diff-scheme-trigger');
+    const menu = $('#diff-scheme-menu');
+    const closeMenu = () => {
+      menu.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+    };
+    trigger.onclick = () => {
+      const opening = menu.hidden;
+      menu.hidden = !opening;
+      trigger.setAttribute('aria-expanded', String(opening));
+    };
+    trigger.onkeydown = event => {
+      if (!['ArrowDown', 'Enter', ' '].includes(event.key) || !menu.hidden) return;
+      event.preventDefault();
+      trigger.click();
+      menu.querySelector('.active, .diff-scheme-option')?.focus();
+    };
+    menu.onclick = event => {
+      const option = event.target.closest('[data-diff-scheme]');
+      if (!option) return;
+      $('#diff-scheme').value = option.dataset.diffScheme;
+      $('#diff-scheme-label').textContent = option.textContent;
+      $$('.diff-scheme-option', menu).forEach(item => {
+        const active = item === option;
+        item.classList.toggle('active', active);
+        item.setAttribute('aria-selected', String(active));
+      });
+      closeMenu();
+      runSchemeDiff();
+    };
+    menu.onkeydown = event => {
+      if (event.key !== 'Escape') return;
+      closeMenu();
+      trigger.focus();
+    };
+    if (comparison) runSchemeDiff();
   }
 
   async function runSchemeDiff() {
     commitSchemeMeta();
     const result = await invoke('compare_scheme', schemeDraft, $('#diff-scheme').value);
+    if (schemeTab !== 'tools') return;
     const items = result.differences || [];
-    $('#diff-list').innerHTML = items.length ? `<div class="diff-row header"><span>类别</span><span>项目</span><span>当前</span><span>对比方案</span></div>${items.map(item => `
-      <div class="diff-row"><span>${esc(item.category)}</span><span>${esc(item.key)}</span><span>${esc(displayValue(item.before))}</span><span>${esc(displayValue(item.after))}</span></div>`).join('')}` : '<div class="history-empty">两个方案没有差异。</div>';
+    const grouped = items.reduce((groups, item) => {
+      (groups[item.category] ||= []).push(item);
+      return groups;
+    }, {});
+    $('#diff-summary').innerHTML = items.length
+      ? `<strong>共 ${items.length} 处差异</strong>`
+      : '<strong>两个方案一致</strong><span>没有发现差异</span>';
+    $('#diff-list').innerHTML = items.length ? `<div class="diff-column-head" aria-hidden="true">
+        <span>差异项目</span>
+        <span>当前值</span>
+        <i></i>
+        <span>对比值</span>
+      </div>${['选项', '基础映射', '附加替换']
+        .filter(category => grouped[category]?.length)
+        .map(category => `<section class="diff-group">
+          <h3><span>${category}</span><small>${grouped[category].length} 项</small></h3>
+          ${grouped[category].map(item => `<article class="diff-entry">
+            <header><strong>${esc(diffItemLabel(item))}</strong></header>
+            <div class="diff-value before">${displayDiffValue(item.before, item.category, item)}</div>
+            <i class="diff-row-arrow" aria-hidden="true">→</i>
+            <div class="diff-value after">${displayDiffValue(item.after, item.category, item)}</div>
+          </article>`).join('')}</section>`).join('')}`
+      : '<div class="diff-empty-state"><strong>没有差异</strong><span>当前内容与所选方案完全一致。</span></div>';
   }
 
-  function displayValue(value) {
-    if (value === undefined || value === null) return '（无）';
-    if (typeof value === 'object') return JSON.stringify(value);
-    return String(value);
+  function diffItemLabel(item) {
+    if (item.category === '选项') {
+      return schemeDraft.option_definitions?.[item.key]?.label
+        || SCHEME_OPTION_LABELS[item.key] || item.key;
+    }
+    if (item.category === '附加替换') {
+      return Object.fromEntries(RULE_SECTIONS)[item.key] || item.key;
+    }
+    const divider = item.key.indexOf('.');
+    if (divider < 0) return item.key;
+    const section = item.key.slice(0, divider);
+    return `${SECTION_NAMES[section] || section} · ${item.key.slice(divider + 1)}`;
+  }
+
+  function displayDiffValue(value, category, item = null) {
+    if (value === undefined || value === null || value === '') {
+      return '<em>无</em>';
+    }
+    if (typeof value === 'boolean') return `<strong>${value ? '开启' : '关闭'}</strong>`;
+    if (category === '选项' && item) {
+      const choice = schemeDraft.option_definitions?.[item.key]?.choices
+        ?.find(option => String(option.value) === String(value));
+      if (choice) return `<strong>${esc(choice.label || choice.value)}</strong>`;
+    }
+    if (category === '附加替换' && Array.isArray(value)) {
+      if (!value.length) return '<em>无规则</em>';
+      return `<ol class="diff-rule-list">${value.map(rule => {
+        const source = rule?.[0];
+        const sourceText = typeof source === 'object'
+          ? `基础映射：${(source.parts || []).map(([section, key]) => `${SECTION_NAMES[section] || section} ${key}`).join(' + ') || '未选择'}`
+          : String(source || '空文本');
+        return `<li><code>${esc(sourceText)}</code><i>→</i><code>${esc(rule?.[1] ?? '')}</code>${rule?.[2] ? `<small>${esc(rule[2])}</small>` : ''}</li>`;
+      }).join('')}</ol>`;
+    }
+    if (typeof value === 'object') {
+      return `<pre>${esc(JSON.stringify(value, null, 2))}</pre>`;
+    }
+    return `<code>${esc(String(value))}</code>`;
   }
 
   function lookupPreview(expression) {
@@ -2151,15 +2305,13 @@
         <section class="maintenance-section"><h3>版本说明</h3>${(state.changelog || []).map(entry => `<div class="changelog-entry"><h4>v${esc(entry.version)} · ${esc(entry.title)}</h4><div class="muted">${esc(entry.date)}</div><ul>${entry.items.map(item => `<li>${esc(item)}</li>`).join('')}</ul></div>`).join('')}</section>`;
       $('#check-update').onclick = () => checkUpdates(false);
       $('#auto-check-updates').onchange = async event => {
-        state.ui_preferences ||= {};
-        state.ui_preferences.auto_check_updates = event.target.checked;
-        await invoke('set_ui_preference', 'auto_check_updates', event.target.checked);
+        await persistUiPreference('auto_check_updates', event.target.checked);
       };
       if (availableUpdate) renderUpdateResult(availableUpdate);
       $('#debug-mode-toggle').onchange = async event => {
         const enabled = event.target.checked;
         applyDebugMode(enabled);
-        await invoke('set_ui_preference', 'debug_mode', enabled);
+        await persistUiPreference('debug_mode', enabled);
         toast(`调试模式已${enabled ? '开启' : '关闭'}`);
       };
       $$('[data-external-url]', root).forEach(link => link.onclick = event => {
@@ -2174,7 +2326,7 @@
           <li>点击正文中的字，在右侧查看读音和释义；多音字可选择当前读音。</li>
           <li>同一个字出现多次时，可在读音右侧点击“全局”，逐处处理已有的手动选择。</li>
           <li>拖动、Shift+点击或 Shift+方向键可以选择文本；选区可复制原文或音标。</li>
-          <li>导出支持 PBOC、Suno、原文及组合内容，也可转换标点或清除无效换行；Suno 模式还可删除咽化、在清响音前额外添加 h。实验性声调选项可在“关于”的调试模式中开启。</li>
+          <li>导出支持 PBOC、Suno、原文及组合内容，也可转换标点、清除无效换行或删除咽化；清响音加 h 等输出拼写设置随方案保存。实验性声调选项可在“关于”的调试模式中开启。</li>
           <li>方括号 [] 内的内容保持原样，不参与转写。</li>
         </ol></section>
         <section class="maintenance-section"><h3>正文状态</h3><div class="state-legend">
@@ -2185,7 +2337,7 @@
           <span><i class="legend-swatch stale"></i>琥珀色：词库更新后读音有变化</span>
           <span><i class="legend-swatch highlight"></i>粉色：手动高亮</span>
         </div></section>
-        <section class="maintenance-section"><h3>查找与高亮</h3><p class="muted">Ctrl+F 打开正文查找，Ctrl+Shift+F 打开文稿库搜索；Enter 跳到下一个，Shift+Enter 返回上一个，Esc 关闭。进入高亮模式后点击正文中的字可添加或取消高亮，再次点击高亮按钮或按 Esc 退出。</p></section>`;
+        <section class="maintenance-section"><h3>查找与高亮</h3><p class="muted">Ctrl+F 会按当前焦点查找：焦点在正文中时打开正文查找，在正文外时打开文稿库搜索；Enter 跳到下一个，Shift+Enter 返回上一个，Esc 关闭。进入高亮模式后点击正文中的字可添加或取消高亮，再次点击高亮按钮或按 Esc 退出。</p></section>`;
       return;
     }
     if (maintenanceTab === 'backup') {
@@ -2242,7 +2394,7 @@
       $$('[data-open-location]', root).forEach(button => button.onclick = () => invoke('open_location', button.dataset.openLocation));
       return;
     }
-    root.innerHTML = `<div class="shortcut-grid"><span>撤回</span><kbd>Ctrl Z</kbd><span>重做</span><kbd>Ctrl Y</kbd><span>复制</span><kbd>Ctrl C</kbd><span>剪切</span><kbd>Ctrl X</kbd><span>粘贴</span><kbd>Ctrl V</kbd><span>正文查找</span><kbd>Ctrl F</kbd><span>文稿库搜索</span><kbd>Ctrl Shift F</kbd><span>保存</span><kbd>Ctrl S</kbd><span>全选</span><kbd>Ctrl A</kbd><span>正文字号</span><kbd>Ctrl 滚轮</kbd></div>`;
+    root.innerHTML = `<div class="shortcut-grid"><span>按当前焦点查找</span><kbd>Ctrl F</kbd><span>撤回</span><kbd>Ctrl Z</kbd><span>重做</span><kbd>Ctrl Y</kbd><span>复制</span><kbd>Ctrl C</kbd><span>剪切</span><kbd>Ctrl X</kbd><span>粘贴</span><kbd>Ctrl V</kbd><span>保存文稿 / 方案</span><kbd>Ctrl S</kbd><span>全选</span><kbd>Ctrl A</kbd><span>正文字号</span><kbd>Ctrl 滚轮</kbd></div>`;
   }
 
   function renderDataChangeBatches() {
@@ -2616,6 +2768,11 @@
         openMenu.hidden = true;
         $('#data-change-batch-trigger')?.setAttribute('aria-expanded', 'false');
       }
+      const diffMenu = $('#diff-scheme-menu:not([hidden])');
+      if (diffMenu && !event.target.closest('.diff-scheme-picker')) {
+        diffMenu.hidden = true;
+        $('#diff-scheme-trigger')?.setAttribute('aria-expanded', 'false');
+      }
     });
     $('#startup-copy-error').onclick = async () => {
       if (!startupErrorReport) return;
@@ -2660,8 +2817,7 @@
       if (event.defaultPrevented || event.isComposing) return;
       const ctrl = event.ctrlKey || event.metaKey;
       if (!ctrl || event.key.toLowerCase() !== 'f') return;
-      const inLibrary = Boolean(event.target.closest?.('.draft-sidebar'));
-      if (!event.shiftKey && !inLibrary) return;
+      if ($$('dialog[open]').length) return;
       event.preventDefault();
       focusLibrarySearch();
     });
@@ -2772,8 +2928,19 @@
       } else {
         exportContents.add(value);
       }
+      await persistUiPreference(
+        'export_contents', EXPORT_CONTENT_KEYS.filter(name => exportContents.has(name)));
       await refreshExport();
     };
+    $('#export-settings-toggle').onclick = () => {
+      setExportSettingsExpanded(
+        $('#export-settings-toggle').getAttribute('aria-expanded') !== 'true');
+    };
+    $('#export-dialog').addEventListener('click', event => {
+      if ($('#export-settings-panel').hidden
+          || event.target.closest('#export-settings-toggle, #export-settings-panel')) return;
+      setExportSettingsExpanded(false);
+    });
     Object.values(EXPORT_OPTION_INPUTS).forEach(selector => {
       $(selector).onchange = () => {
         persistExportOptions();
@@ -2980,7 +3147,7 @@
     $('#search-next').onclick = () => jump(1);
     $('#search-input').onkeydown = event => {
       const ctrl = event.ctrlKey || event.metaKey;
-      if (ctrl && event.key.toLowerCase() === 'f' && !event.shiftKey) {
+      if (ctrl && event.key.toLowerCase() === 'f') {
         event.preventDefault();
         closeSearch();
       } else if (event.key === 'Enter') {
@@ -3182,8 +3349,7 @@
       else if (key === 'x') { event.preventDefault(); cutSelection(); }
       else if (key === 'f') {
         event.preventDefault();
-        if (event.shiftKey) focusLibrarySearch();
-        else $('#search-button').click();
+        $('#search-button').click();
       }
       else if (key === 's') { event.preventDefault(); $('#save-button').click(); }
       return;
@@ -3208,6 +3374,7 @@
       if (!$('#scheme-dialog').open) return;
       if (!(event.ctrlKey || event.metaKey)) return;
       const key = event.key.toLowerCase();
+      if (key === 's') { event.preventDefault(); $('#save-scheme-button').click(); return; }
       if (key === 'z') { event.preventDefault(); schemeHistory(event.shiftKey ? 'redo' : 'undo'); }
       if (key === 'y') { event.preventDefault(); schemeHistory('redo'); }
     });
@@ -3245,24 +3412,25 @@
     ];
     const scheme = {
       id: 'current_suno', name: '清响音修改', description: '浏览器预览数据',
-      options: { improve_pharyngeal: true, improve_syllable: false, voiced_stop_style: 'nasal' },
+      options: { improve_pharyngeal: true, improve_syllable: false, voiced_stop_style: 'nasal', extra_h_voiceless_sonorant: false },
       option_definitions: {
         voiced_stop_style: {
-          type: 'choice', label: '浊塞音拼写', description: '选择预设或直接修改映射表。',
+          type: 'choice', label: '浊塞音拼写', description: '选择预设或直接修改基础映射。',
           choices: [{ value: 'nasal', label: '鼻音诱导' }, { value: 'english', label: '英美' }, { value: 'custom', label: '自定义' }],
           presets: { nasal: { b: 'mб', d: 'nд', g: 'ŋг' }, english: { b: 'б', d: 'ντ', g: 'γκ' } },
         },
+        extra_h_voiceless_sonorant: { type: 'boolean', label: '清响音前额外加 h', description: '转写清响音声母时，在方案输出前再添加一个 h。' },
       },
       maps: { onset: { k: 'к', t: 'т', b: 'mб', d: 'nд', g: 'ŋг' }, glide: { r: 'р' }, nucleus: { a: 'α' }, coda: { n: 'n' }, tone: { s: 's' }, residual: {} },
-      labels: {}, parse_order: {}, rules: { pre_normalize: [['ʰ', 'h']], residual_preprocess: [], residual_replace: [], pharyngeal_relax: [], syllable_relax: [], post_replace: [] }
+      labels: {}, parse_order: {}, rules: { pre_normalize: [['ʰ', 'h', '送气符号改写']], residual_preprocess: [], residual_replace: [], pharyngeal_relax: [], syllable_relax: [], post_replace: [] }
     };
     const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true, unselected_polyphonic: 2, manually_completed: false }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false, unselected_polyphonic: 0, manually_completed: true }];
     const previewChangelog = [
-      { version: '0.12.11', date: '2026-08-29', title: '搜索与导出界面修复', items: ['文稿库搜索新增 Ctrl+Shift+F 快捷键；焦点位于文稿库时也可直接按 Ctrl+F。', '修复搜索结果页错误绑定不存在的拖放区域，导致右下角重复报错的问题。', '移除导出页重复的“实验选项”展开按钮；开启调试选项后，实验性导出项直接与其他选项并列显示。', '导出内容改为“原文 / PBOC / Suno”连续分段多选组，组合选择自动生成对应内容，不再使用含义重复的“全部”；方案控件仅在选中 Suno 时显示。', '统一可点击控件的文本选区行为，连续点击按钮、文稿和文件夹时不再误选文字。', '修复 Suno 条件控件及二级工具栏切换造成的像素级布局跳动，并避免重复操作提示堆叠。', '精简启动页信息：正常启动只显示当前动作，步骤、文件与耗时详情会在等待超过 8 秒后出现，错误时立即显示。', '“把标点转换为换行”只处理正文标点，不再改写方括号控制行或行内方括号语法。'] },
-      { version: '0.12.10', date: '2026-08-28', title: '浊塞音拼写支持自定义', items: ['浊塞音拼写改为“鼻音诱导 / 英美 / 自定义”三种状态，两种预设会明确写入映射表。', '手动编辑 b、d、g 会自动进入自定义，转写只使用当前映射，不再暗中覆盖。', '旧二值方案会自动迁移并保持原输出。'] },
+      { version: '0.12.11', date: '2026-08-29', title: '搜索与导出界面修复', items: ['Ctrl+F 会按当前焦点自动选择搜索范围：焦点在正文中时查找正文，在正文外时搜索文稿库。', '修复搜索结果页错误绑定不存在的拖放区域，导致右下角重复报错的问题。', '移除导出页重复的“实验选项”展开按钮；开启调试选项后，实验性导出项直接与其他选项并列显示。', '导出内容改为“原文 / PBOC / Suno”连续分段多选组，组合选择自动生成对应内容，不再使用含义重复的“全部”；方案选择和编辑入口始终显示并可操作。', '导出内容组合、文本整理与发音处理选项、选区复制模式和自动更新开关会在重启后恢复；关闭应用前会等待尚未完成的偏好保存。', '全界面默认不再产生浏览器文本选区，仅输入、导出、日志、变更详情和比较结果等可复制内容保留文本选择。', '选区工具的“原文 / 音标”切换改为等宽两项，复制、剪切和删除保持同一行三列，不再出现空白列和错位换行。', '修复 Suno 条件控件及二级工具栏切换造成的像素级布局跳动，并避免重复操作提示堆叠。', '精简启动页信息：正常启动只显示当前动作，步骤、文件与耗时详情会在等待超过 8 秒后出现，错误时立即显示。', '“把标点转换为换行”只处理正文标点，不再改写方括号控制行或行内方括号语法。', '旧方案会补齐“浊塞音拼写”三值选项并保持原映射，缺少旧开关记录时使用“自定义”，不推断用户意图。', '精修方案编辑器：空分组不再显示无内容表头，Ctrl+S 可保存方案，并补齐页签和表格输入的辅助技术标签。', '导出设置改为紧凑分类浮层并保持位置固定，方案选择以轻量值样式集中在右侧；组合导出时，Suno 会与原文、PBOC 按正文行就地排列。', '方案编辑器统一使用“基础映射、附加替换、输出拼写”分层；清响音加 h 随方案保存，附加替换支持中文说明和紧凑表格式编辑。', '方案比较改为紧凑校勘表：项目、当前值和对比值按固定列阅读，选项与预设显示中文名称，并精简重复标签和色块；对比方案菜单会跟随深浅主题。'] },
+      { version: '0.12.10', date: '2026-08-28', title: '浊塞音拼写支持自定义', items: ['浊塞音拼写改为“鼻音诱导 / 英美 / 自定义”三种状态，两种预设会明确写入基础映射。', '手动编辑 b、d、g 基础映射会自动进入自定义，转写只使用当前内容，不再暗中覆盖。', '旧二值方案会自动迁移并保持原输出。'] },
       { version: '0.12.9', date: '2026-08-28', title: '启动进度细化', items: ['启动页显示真实步骤、当前文件、具体动作和已用时间。', '初始化在后台执行；网络不可用且本地数据完整时直接使用本地文件；Android 安装包同步包含启动日志模块。', 'Android 与 Python 统一使用异步桥接，检查更新、读取大型记录、备份导入和较大的导出任务不再阻塞界面。'] },
       { version: '0.12.8', date: '2026-08-28', title: 'PBOC 更名与界面整理', items: ['软件对外名称由 NOCM 改为 PBOC。', '应用采用蓝底白色“漢”字图标；加载标志和应用顶栏图标会跟随深浅主题变化，Windows 任务栏使用浅蓝底版本。', '文稿库以橙色左侧标识尚有多音字未选的文稿，以绿色左侧标识手动标记完成的文稿。', '文稿库标题栏新增搜索，可按文稿名称、正文摘要或文件名实时筛选。', '文稿与文件夹操作菜单会避开窗口边缘，靠近底部时自动向上展开。', 'Windows 正式版在无终端窗口模式下收集后台输出；可从“更多工具”查看，启动完成后也会在右下角显示本次启动输出。', 'Windows 原生标题栏整合进应用顶栏，图标与窗口控制集中在同一行，并保留拖动、双击最大化与边缘缩放。', '正文编辑区和文本导出页支持按住 Ctrl 滚动鼠标滚轮调整字号，缩放比例会自动保存。', '精简导出与确认弹窗，移除重复标题和无意义分隔线，并将实验性导出规则收纳到独立入口。', '查找、撤回、重做、高亮、批量与保存集中到可展开的“更多工具”行；查找范围位于左侧，查找与替换输入框位于右侧。', '作者与测试人员名称增加 Bilibili 主页链接。', '移动端下载更新时显示实时进度和文件大小。', '发现新版本后，问号按钮会持续显示更新提示色。', '深色模式从应用启动和加载界面开始生效。'] },
-      { version: '0.12.7', date: '2026-08-27', title: '方案解析顺序编辑', items: ['映射表新增拖动排序，表格顺序就是实际检测顺序。', '替换规则同样支持拖动排序，并严格按照界面顺序执行。', '编辑映射项、输出或中文说明时保留原位置，不会把修改项移到末尾。'] },
+      { version: '0.12.7', date: '2026-08-27', title: '方案解析顺序编辑', items: ['基础映射新增拖动排序，表格顺序就是实际检测顺序。', '附加替换同样支持拖动排序，并严格按照界面顺序执行。', '编辑映射项、输出或中文说明时保留原位置，不会把修改项移到末尾。'] },
       { version: '0.12.6', date: '2026-08-26', title: '应用自动更新与一键发布', items: ['启动后可自动检查更新，并直接下载适用于当前平台的安装包。', '更新包会进行 SHA-256 校验；Windows 自动替换重启，Android 交由系统安装。', '新增一键 GitHub Release 发布脚本。', '调整数据变更页批次与搜索控件，并移除诊断列表顶部多余的分隔线。', '批次选择改为软件统一样式的浮层菜单。'] },
       { version: '0.12.5', date: '2026-08-25', title: '数据变更查看器', items: ['维护页面新增可解析大体积日志的数据变更查看器，支持按批次分页、字段级新旧值对照和内容搜索。', '维护窗口合并标题与页面导航，数据变更页取消批次侧栏和重复标题栏，正文区域在宽窄窗口中都能获得更多空间。', '读音更新改为逐文稿、逐位置确认，可采用新读音、保留原读音、重新审阅或恢复确认前读音。', '文稿库文件夹增加开合图标并优化层级缩进；单击整行即可展开或折叠。'] },
       { version: '0.12.4', date: '2026-08-08', title: 'Windows 安装包文件名统一', items: ['Windows 发布程序改为“汉转PBOC-版本号.exe”，单独取出后也能识别版本。'] },
@@ -3310,9 +3478,27 @@
       save_scheme: async value => ({ ok: true, scheme: value, schemes, selected_scheme: value.id }),
       import_scheme_json: async () => ({ ok: true, scheme: clone(scheme), schemes, selected_scheme: scheme.id }),
       export_scheme_json: async () => ({ ok: true, path: '预览目录/current_suno.json' }),
-      validate_scheme: async () => [], preview_scheme: async (_value, text) => ({ ok: true, issues: [], output: text }),
-      compare_scheme: async () => ({ other: schemes[0], differences: [] }),
-      export_text: async mode => mode === 'raw' ? mock.raw : mode === 'both' ? `${mock.raw}\nkˤro[n] kˤro[n]s tsa\ndzˤəʔ gˤaj tə tu` : 'kˤro[n] kˤro[n]s tsa\ndzˤəʔ gˤaj tə tu',
+      validate_scheme: async () => [],
+      compare_scheme: async () => ({
+        other: schemes[1],
+        differences: [
+          { category: '选项', key: 'improve_pharyngeal', before: false, after: true },
+          { category: '基础映射', key: 'coda.j', before: 'й', after: 'ي' },
+          { category: '基础映射', key: 'coda.m', before: 'm', after: 'م' },
+          { category: '附加替换', key: 'post_replace', before: [['kh', 'х', '送气音']], after: [['kh', 'خ', '送气音']] },
+        ],
+      }),
+      export_text: async mode => {
+        const phonLines = ['kˤro[n] kˤro[n]s tsa', 'dzˤəʔ gˤaj tə tu'];
+        if (mode === 'raw') return mock.raw;
+        if (mode === 'both') return `${mock.raw}\n${phonLines.join('\n')}`;
+        if (!mode.includes('+')) return phonLines.join('\n');
+        const modes = mode.split('+');
+        const rawLines = mock.raw.split('\n');
+        const line = index => modes.map(item =>
+          item === 'raw' ? rawLines[index + 1] : phonLines[index]).join('\n');
+        return `${rawLines[0]}\n${line(0)}\n\n${line(1)}`;
+      },
       get_image_export_data: async () => ({
         ok: true,
         title: mock.current_name,

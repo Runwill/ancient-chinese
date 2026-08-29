@@ -5,7 +5,8 @@
   "options": {
     "improve_pharyngeal": true,
     "improve_syllable": true,
-    "voiced_stop_style": "english"
+    "voiced_stop_style": "english",
+    "extra_h_voiceless_sonorant": false
   },
   "option_definitions": {
     "voiced_stop_style": {
@@ -13,14 +14,37 @@
       "label": "浊塞音拼写",
       "description": "鼻音诱导：mб / nд / ŋг；英美：б / ντ / γκ；手动修改映射后使用自定义。",
       "choices": [
-        {"value": "nasal", "label": "鼻音诱导"},
-        {"value": "english", "label": "英美"},
-        {"value": "custom", "label": "自定义"}
+        {
+          "value": "nasal",
+          "label": "鼻音诱导"
+        },
+        {
+          "value": "english",
+          "label": "英美"
+        },
+        {
+          "value": "custom",
+          "label": "自定义"
+        }
       ],
       "presets": {
-        "nasal": {"b": "mб", "d": "nд", "g": "ŋг"},
-        "english": {"b": "б", "d": "ντ", "g": "γκ"}
+        "nasal": {
+          "b": "mб",
+          "d": "nд",
+          "g": "ŋг"
+        },
+        "english": {
+          "b": "б",
+          "d": "ντ",
+          "g": "γκ"
+        }
       }
+    },
+    "extra_h_voiceless_sonorant": {
+      "type": "boolean",
+      "label": "清响音前额外加 h",
+      "description": "转写清响音声母时，在方案输出前再添加一个 h。",
+      "group": "transcription"
     }
   },
   "parse_order": {
@@ -284,7 +308,8 @@
     "pre_normalize": [
       [
         "ʰ",
-        "h"
+        "h",
+        ""
       ]
     ],
     "residual_preprocess": [],
@@ -306,29 +331,35 @@
             ]
           ]
         },
-        "m"
+        "m",
+        ""
       ]
     ],
     "post_replace": [
       [
         "кw",
-        "кв"
+        "кв",
+        ""
       ],
       [
         "йα",
-        "я"
+        "я",
+        ""
       ],
       [
         "йए",
-        "е"
+        "е",
+        ""
       ],
       [
         "йუ",
-        "ю"
+        "ю",
+        ""
       ],
       [
         "αw",
-        "औ"
+        "औ",
+        ""
       ],
       [
         {
@@ -345,7 +376,8 @@
             ]
           ]
         },
-        "əй"
+        "əй",
+        ""
       ],
       [
         {
@@ -362,12 +394,13 @@
             ]
           ]
         },
-        "ขว"
+        "ขว",
+        ""
       ]
     ]
   },
   "schema_version": 3,
-  "migrated_by": "0.9.0",
+  "migrated_by": "0.12.11",
   "app_version": "0.11.4",
   "created_at": "2026-08-04T13:41:41.819277+00:00"
 }
