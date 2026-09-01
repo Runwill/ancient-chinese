@@ -130,6 +130,14 @@ def migrate_scheme_data(scheme):
     scheme.setdefault('labels', {})
     scheme.setdefault('parse_order', {})
     scheme.setdefault('rules', {})
+    if isinstance(scheme['parse_order'], dict):
+        for section, order in list(scheme['parse_order'].items()):
+            if not isinstance(order, list):
+                continue
+            unique_order = list(dict.fromkeys(order))
+            if unique_order != order:
+                scheme['parse_order'][section] = unique_order
+                changed = True
     options = scheme['options']
     definitions = scheme.setdefault('option_definitions', {})
     presets = {

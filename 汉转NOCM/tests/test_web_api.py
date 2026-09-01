@@ -658,6 +658,14 @@ class WebApiEditorTests(unittest.TestCase):
         self.assertEqual(open_mock.call_count, 2)
         open_mock.assert_any_call(source)
 
+    def test_about_release_link_opens_release_page(self):
+        with patch('webbrowser.open') as open_mock:
+            result = self.api.open_releases_page()
+
+        self.assertEqual(result, {'ok': True})
+        open_mock.assert_called_once_with(
+            'https://github.com/Runwill/ancient-chinese/releases')
+
     def test_loading_theme_preference_is_available_before_editor_startup(self):
         with patch('web_api.get_theme', return_value='dark'):
             self.assertEqual(

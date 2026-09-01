@@ -49,6 +49,7 @@
   let schemeTab = 'options';
   let schemeUndo = [];
   let schemeRedo = [];
+  let pendingSchemeInput = null;
   let lookupTarget = null;
   let mouseSelecting = false;
   let mouseMoved = false;
@@ -75,6 +76,11 @@
   let editorZoomSaveTimer = null;
   let startupStatus = null;
   let startupStartedAt = 0;
+  let activeCustomSelect = null;
+  const customSelectMenu = document.createElement('div');
+  customSelectMenu.className = 'custom-select-menu';
+  customSelectMenu.hidden = true;
+  customSelectMenu.setAttribute('role', 'listbox');
 
   function toast(message, kind = '') {
     const stack = $('#toast-stack');
@@ -97,6 +103,147 @@
       console.error(error);
     });
     return actionQueue;
+  }
+
+  function syncCustomSelect(select) {
+    const trigger = select?._customSelectTrigger;
+    if (!trigger) return;
+    const option = select.selectedOptions?.[0];
+    const label = option?.textContent?.trim() || '请选择';
+    $('.custom-select-value', trigger).textContent = label;
+    trigger.title = label;
+    trigger.disabled = select.disabled;
+    trigger.setAttribute('aria-disabled', String(select.disabled));
+  }
+
+  function closeCustomSelect({ focus = false } = {}) {
+    if (!activeCustomSelect) return;
+    const trigger = activeCustomSelect._customSelectTrigger;
+    trigger?.setAttribute('aria-expanded', 'false');
+    customSelectMenu.hidden = true;
+    customSelectMenu.replaceChildren();
+    activeCustomSelect = null;
+    if (focus) trigger?.focus();
+  }
+
+  function positionCustomSelectMenu(select) {
+    const trigger = select._customSelectTrigger;
+    const rect = trigger.getBoundingClientRect();
+    const margin = 6;
+    const availableBelow = window.innerHeight - rect.bottom - margin;
+    const availableAbove = rect.top - margin;
+    customSelectMenu.style.width = `${Math.max(120, rect.width)}px`;
+    customSelectMenu.style.maxHeight = `${Math.max(84, Math.min(240,
+      Math.max(availableBelow, availableAbove) - margin))}px`;
+    customSelectMenu.style.left = `${Math.max(margin, Math.min(
+      rect.left, window.innerWidth - Math.max(120, rect.width) - margin))}px`;
+    const menuHeight = customSelectMenu.getBoundingClientRect().height;
+    const openAbove = availableBelow < Math.min(menuHeight, 150)
+      && availableAbove > availableBelow;
+    customSelectMenu.classList.toggle('open-above', openAbove);
+    customSelectMenu.style.top = `${openAbove
+      ? Math.max(margin, rect.top - menuHeight - 4)
+      : Math.min(window.innerHeight - menuHeight - margin, rect.bottom + 4)}px`;
+  }
+
+  function customSelectOptions(select) {
+    const fragment = document.createDocumentFragment();
+    const appendOption = option => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'custom-select-option';
+      item.textContent = option.textContent;
+      item.dataset.value = option.value;
+      item.disabled = option.disabled;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', String(option.selected));
+      item.classList.toggle('selected', option.selected);
+      item.onclick = () => {
+        if (option.disabled) return;
+        select.value = option.value;
+        syncCustomSelect(select);
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        closeCustomSelect({ focus: true });
+      };
+      fragment.append(item);
+    };
+    [...select.children].forEach(child => {
+      if (child.tagName === 'OPTGROUP') {
+        const heading = document.createElement('div');
+        heading.className = 'custom-select-group';
+        heading.textContent = child.label;
+        fragment.append(heading);
+        [...child.children].forEach(appendOption);
+      } else if (child.tagName === 'OPTION') {
+        appendOption(child);
+      }
+    });
+    return fragment;
+  }
+
+  function openCustomSelect(select, focusOption = false) {
+    if (select.disabled) return;
+    if (activeCustomSelect === select) {
+      closeCustomSelect({ focus: true });
+      return;
+    }
+    closeCustomSelect();
+    activeCustomSelect = select;
+    customSelectMenu.replaceChildren(customSelectOptions(select));
+    const layer = select.closest('dialog[open]') || document.body;
+    layer.append(customSelectMenu);
+    customSelectMenu.hidden = false;
+    select._customSelectTrigger.setAttribute('aria-expanded', 'true');
+    positionCustomSelectMenu(select);
+    if (focusOption) {
+      ($('.custom-select-option.selected', customSelectMenu)
+        || $('.custom-select-option:not(:disabled)', customSelectMenu))?.focus();
+    }
+  }
+
+  function enhanceSelect(select) {
+    if (select._customSelectTrigger || select.hidden) return;
+    const wrapper = document.createElement('span');
+    wrapper.className = 'custom-select';
+    select.before(wrapper);
+    wrapper.append(select);
+    select.classList.add('native-select-control');
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'custom-select-trigger';
+    trigger.innerHTML = '<span class="custom-select-value"></span><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="m3 4.5 3 3 3-3"></path></svg>';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-label', select.getAttribute('aria-label') || '选择选项');
+    wrapper.append(trigger);
+    select._customSelectTrigger = trigger;
+    trigger.onclick = () => openCustomSelect(select);
+    trigger.onkeydown = event => {
+      if (event.key === 'Escape' && activeCustomSelect === select) {
+        event.preventDefault();
+        closeCustomSelect({ focus: true });
+        return;
+      }
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      if (activeCustomSelect !== select) openCustomSelect(select, true);
+      else {
+        ($('.custom-select-option.selected', customSelectMenu)
+          || $('.custom-select-option:not(:disabled)', customSelectMenu))?.focus();
+      }
+      if (!activeCustomSelect) return;
+      const options = $$('.custom-select-option:not(:disabled)', customSelectMenu);
+      if (event.key === 'End') options.at(-1)?.focus();
+      if (event.key === 'Home') options[0]?.focus();
+    };
+    select.addEventListener('change', () => syncCustomSelect(select));
+    syncCustomSelect(select);
+  }
+
+  function enhanceSelects(root = document) {
+    $$('.select', root).forEach(enhanceSelect);
   }
 
   async function invoke(method, ...args) {
@@ -610,10 +757,13 @@
     const highlightCount = editor.lines.reduce(
       (count, line) => count + line.filter(cell => cell.manual_hl).length, 0);
     highlightButton.classList.toggle('active', highlightMode);
-    highlightButton.textContent = highlightMode ? '退出高亮' : '高亮';
-    highlightButton.title = highlightMode ? '退出高亮模式 (Esc)' : '进入高亮模式';
+    highlightButton.setAttribute('aria-pressed', String(highlightMode));
+    highlightButton.setAttribute('aria-label', highlightMode
+      ? '退出高亮模式' : '标记正文（高亮模式）');
+    highlightButton.title = highlightMode
+      ? '退出高亮模式 (Esc)' : '标记正文（高亮模式）';
     $('#highlight-mode-banner').classList.toggle('hidden', !highlightMode);
-    $('#highlight-mode-count').textContent = `已标记 ${highlightCount} 字`;
+    $('#highlight-mode-count').textContent = `${highlightCount} 字`;
     document.body.classList.toggle('highlight-mode-active', highlightMode);
     $('#save-state').textContent = editor.dirty ? '正在保存...' : '已自动保存';
     const [line, column] = editor.cursor;
@@ -1673,7 +1823,7 @@
       openSchemePicker();
       return;
     }
-    schemeDraft = clone(await invoke('get_scheme', schemeId || $('#export-scheme').value || state.selected_scheme));
+    schemeDraft = clone(await invoke('get_scheme', schemeId || state.selected_scheme || $('#export-scheme').value));
     schemeUndo = [];
     schemeRedo = [];
     schemeTab = 'options';
@@ -1696,6 +1846,29 @@
     return clone(schemeDraft);
   }
 
+  function bindSchemeTextInput(input) {
+    const applyChange = input.onchange;
+    input._schemeCommittedValue = input.value;
+    input.addEventListener('input', () => {
+      pendingSchemeInput = input;
+      $('#scheme-undo').disabled = false;
+      $('#scheme-redo').disabled = true;
+      markSchemeDirty();
+    });
+    input.onchange = () => {
+      if (pendingSchemeInput === input) pendingSchemeInput = null;
+      if (input.value === input._schemeCommittedValue) return;
+      applyChange?.();
+      input._schemeCommittedValue = input.value;
+    };
+  }
+
+  function flushPendingSchemeInput() {
+    const input = pendingSchemeInput;
+    pendingSchemeInput = null;
+    if (input?.isConnected) input.onchange?.();
+  }
+
   function commitSchemeHistory() {
     schemeUndo.push(schemeSnapshot());
     if (schemeUndo.length > 200) schemeUndo.shift();
@@ -1704,6 +1877,7 @@
   }
 
   function schemeHistory(direction) {
+    flushPendingSchemeInput();
     const from = direction === 'undo' ? schemeUndo : schemeRedo;
     const to = direction === 'undo' ? schemeRedo : schemeUndo;
     if (!from.length) return;
@@ -1719,9 +1893,16 @@
   }
 
   function renderSchemeEditor() {
-    $('#scheme-id').value = schemeDraft.id || '';
-    $('#scheme-name').value = schemeDraft.name || '';
-    $('#scheme-description').value = schemeDraft.description || '';
+    pendingSchemeInput = null;
+    [
+      ['scheme-id', schemeDraft.id || ''],
+      ['scheme-name', schemeDraft.name || ''],
+      ['scheme-description', schemeDraft.description || ''],
+    ].forEach(([id, value]) => {
+      const input = $(`#${id}`);
+      input.value = value;
+      input._schemeCommittedValue = value;
+    });
     $$('#scheme-tabs button').forEach(button => {
       const active = button.dataset.tab === schemeTab;
       button.classList.toggle('active', active);
@@ -1798,7 +1979,12 @@
 
   function mapOrder(section) {
     const map = schemeDraft.maps?.[section] || {};
-    const order = [...(schemeDraft.parse_order?.[section] || [])].filter(key => key in map);
+    const seen = new Set();
+    const order = [...(schemeDraft.parse_order?.[section] || [])].filter(key => {
+      if (!(key in map) || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     Object.keys(map).forEach(key => { if (!order.includes(key)) order.push(key); });
     return order;
   }
@@ -1822,7 +2008,7 @@
     const label = schemeDraft.labels?.[section]?.[source] || '';
     return `<div class="table-row map" data-section="${section}" data-index="${index}" data-source="${esc(source)}">
       <label><input data-field="source" value="${esc(source)}" aria-label="${esc(title)} PBOC 项"></label><label><input data-field="target" value="${esc(target)}" aria-label="${esc(title)}输出"></label>
-      <label><input data-field="label" value="${esc(label)}" aria-label="${esc(title)}中文说明"></label><span class="order-actions"><button type="button" class="icon-button small drag-handle" data-drag-map title="拖动排序；聚焦后可用方向键" aria-label="拖动排序"><i aria-hidden="true"></i></button><button class="icon-button small" data-delete-map title="删除" aria-label="删除">×</button></span></div>`;
+      <label><input data-field="label" value="${esc(label)}" aria-label="${esc(title)}中文说明"></label><span class="order-actions"><button type="button" class="icon-button small drag-handle" data-drag-map title="拖动排序；聚焦后可用方向键" aria-label="拖动排序"><i aria-hidden="true"></i></button><button type="button" class="icon-button small copy-item" data-copy-map title="复制" aria-label="复制映射项"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5" y="5" width="7" height="7" rx="1"></rect><path d="M4 10H3.5A1.5 1.5 0 0 1 2 8.5v-5A1.5 1.5 0 0 1 3.5 2h5A1.5 1.5 0 0 1 10 3.5V4"></path></svg></button><button type="button" class="icon-button small" data-delete-map title="删除" aria-label="删除">×</button></span></div>`;
   }
 
   function bindOrderDragging(selector, getItems, setItems, rerender) {
@@ -1940,24 +2126,63 @@
       renderSchemeMaps();
       markSchemeDirty();
     });
+    $$('[data-copy-map]').forEach(button => button.onclick = () => {
+      const row = button.closest('.table-row');
+      const { section, source } = row.dataset;
+      commitSchemeHistory();
+      const order = mapOrder(section);
+      let copiedSource = `${source}_copy`;
+      let suffix = 2;
+      while (copiedSource in schemeDraft.maps[section]) {
+        copiedSource = `${source}_copy${suffix++}`;
+      }
+      schemeDraft.maps[section][copiedSource] = schemeDraft.maps[section][source];
+      const label = schemeDraft.labels?.[section]?.[source];
+      if (label) {
+        schemeDraft.labels[section] ||= {};
+        schemeDraft.labels[section][copiedSource] = label;
+      }
+      const sourceIndex = order.indexOf(source);
+      order.splice(sourceIndex + 1, 0, copiedSource);
+      schemeDraft.parse_order[section] = order;
+      renderSchemeMaps();
+      markSchemeDirty();
+      requestAnimationFrame(() => document.querySelector(
+        `[data-map-section="${CSS.escape(section)}"] [data-source="${CSS.escape(copiedSource)}"] input[data-field="source"]`)?.focus());
+    });
     $$('.table-row.map input').forEach(input => input.onchange = () => {
       const row = input.closest('.table-row');
       const { section } = row.dataset;
       const oldSource = row.dataset.source;
       const field = input.dataset.field;
-      commitSchemeHistory();
       if (field === 'target') {
+        commitSchemeHistory();
         schemeDraft.maps[section][oldSource] = input.value;
         markVoicedStopsCustom(section, oldSource);
       }
       if (field === 'label') {
+        commitSchemeHistory();
         schemeDraft.labels[section] ||= {};
         if (input.value) schemeDraft.labels[section][oldSource] = input.value;
         else delete schemeDraft.labels[section][oldSource];
       }
       if (field === 'source') {
         const source = input.value.trim();
-        if (!source || source === oldSource) return;
+        if (!source) {
+          input.value = oldSource;
+          toast('PBOC 项不能为空', 'error');
+          return;
+        }
+        if (source === oldSource) {
+          input.value = oldSource;
+          return;
+        }
+        if (Object.prototype.hasOwnProperty.call(schemeDraft.maps[section], source)) {
+          input.value = oldSource;
+          toast(`PBOC 项“${source}”已经存在`, 'error');
+          return;
+        }
+        commitSchemeHistory();
         markVoicedStopsCustom(section, oldSource, source);
         const order = mapOrder(section);
         const target = schemeDraft.maps[section][oldSource];
@@ -1971,6 +2196,7 @@
       }
       markSchemeDirty();
     });
+    $$('.table-row.map input').forEach(bindSchemeTextInput);
   }
 
   function renderSchemeRules() {
@@ -1995,7 +2221,7 @@
       <div class="rule-field"><div class="rule-lookup-control"><input data-rule-field="old" value="${esc(lookup)}" ${mapped ? 'readonly' : ''} aria-label="${esc(title)}查找内容">${mapped ? '<button class="button" data-edit-lookup>选择</button>' : ''}</div></div>
       <label class="rule-field"><input data-rule-field="new" value="${esc(replacement)}" aria-label="${esc(title)}替换内容"></label>
       <label class="rule-field"><input data-rule-field="description" value="${esc(description)}" placeholder="可选" aria-label="${esc(title)}中文说明"></label>
-      <span class="order-actions"><button type="button" class="icon-button small drag-handle" data-drag-rule title="拖动排序；聚焦后可用方向键" aria-label="拖动排序"><i aria-hidden="true"></i></button><button class="icon-button small" data-delete-rule title="删除" aria-label="删除">×</button></span></div>`;
+      <span class="order-actions"><button type="button" class="icon-button small drag-handle" data-drag-rule title="拖动排序；聚焦后可用方向键" aria-label="拖动排序"><i aria-hidden="true"></i></button><button type="button" class="icon-button small copy-item" data-copy-rule title="复制" aria-label="复制替换规则"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5" y="5" width="7" height="7" rx="1"></rect><path d="M4 10H3.5A1.5 1.5 0 0 1 2 8.5v-5A1.5 1.5 0 0 1 3.5 2h5A1.5 1.5 0 0 1 10 3.5V4"></path></svg></button><button type="button" class="icon-button small" data-delete-rule title="删除" aria-label="删除">×</button></span></div>`;
   }
 
   function bindSchemeRuleEvents() {
@@ -2016,6 +2242,17 @@
       renderSchemeRules();
       markSchemeDirty();
     });
+    $$('[data-copy-rule]').forEach(button => button.onclick = () => {
+      const row = button.closest('.table-row');
+      const section = row.dataset.section;
+      const index = Number(row.dataset.index);
+      commitSchemeHistory();
+      schemeDraft.rules[section].splice(index + 1, 0, clone(schemeDraft.rules[section][index]));
+      renderSchemeRules();
+      markSchemeDirty();
+      requestAnimationFrame(() => document.querySelector(
+        `[data-rule-section="${CSS.escape(section)}"] [data-index="${index + 1}"] input`)?.focus());
+    });
     $$('[data-rule-mode]').forEach(button => button.onclick = () => {
       const row = button.closest('.table-row');
       const rule = schemeDraft.rules[row.dataset.section][Number(row.dataset.index)];
@@ -2026,14 +2263,17 @@
       renderSchemeRules();
       markSchemeDirty();
     });
-    $$('[data-rule-field]').forEach(input => input.onchange = () => {
-      const row = input.closest('.table-row');
-      const rule = schemeDraft.rules[row.dataset.section][Number(row.dataset.index)];
-      commitSchemeHistory();
-      if (input.dataset.ruleField === 'old') rule[0] = input.value;
-      else if (input.dataset.ruleField === 'description') rule[2] = input.value;
-      else rule[1] = input.value;
-      markSchemeDirty();
+    $$('[data-rule-field]').forEach(input => {
+      input.onchange = () => {
+        const row = input.closest('.table-row');
+        const rule = schemeDraft.rules[row.dataset.section][Number(row.dataset.index)];
+        commitSchemeHistory();
+        if (input.dataset.ruleField === 'old') rule[0] = input.value;
+        else if (input.dataset.ruleField === 'description') rule[2] = input.value;
+        else rule[1] = input.value;
+        markSchemeDirty();
+      };
+      bindSchemeTextInput(input);
     });
     $$('[data-edit-lookup]').forEach(button => button.onclick = () => {
       const row = button.closest('.table-row');
@@ -2180,6 +2420,7 @@
     const rule = schemeDraft.rules[lookupTarget.section][lookupTarget.index];
     const expression = clone(rule[0]);
     $('#lookup-field').value = expression.field || 'target';
+    syncCustomSelect($('#lookup-field'));
     $('#lookup-parts').innerHTML = '';
     (expression.parts?.length ? expression.parts : [['onset', mapOrder('onset')[0] || '']]).forEach(part => addLookupPart(part));
     refreshLookupPreview();
@@ -2195,6 +2436,7 @@
     $('.lookup-section', row).onchange = () => { fillLookupKeys(row); refreshLookupPreview(); };
     $('.lookup-key', row).onchange = refreshLookupPreview;
     $('.icon-button', row).onclick = () => { row.remove(); refreshLookupPreview(); };
+    enhanceSelects(row);
   }
 
   function fillLookupKeys(row, selected = '') {
@@ -2203,6 +2445,7 @@
     const select = $('.lookup-key', row);
     select.innerHTML = keys.map(key => `<option value="${esc(key)}">${esc(key)}</option>`).join('');
     if (keys.includes(selected)) select.value = selected;
+    syncCustomSelect(select);
   }
 
   function collectLookupExpression() {
@@ -2276,6 +2519,7 @@
         const options = (item.options || []).map(option => optionPhonetic(option)).filter(Boolean);
         return `<div class="batch-row" data-char="${esc(item.char)}"><span class="batch-char">${esc(item.char)}</span><div><strong>${item.count} 处</strong><div class="batch-count">${esc(readings)}</div></div><select class="select batch-reading">${options.map(phon => `<option value="${esc(phon)}">${esc(phon)}</option>`).join('')}</select><button class="button" data-batch-apply>应用</button></div>`;
       }).join('')}` : '<div class="history-empty">当前正文没有多音字。</div>';
+    enhanceSelects(root);
     $$('[data-batch-apply]', root).forEach(button => button.onclick = async () => {
       const row = button.closest('.batch-row');
       const phonetic = $('.batch-reading', row).value;
@@ -2305,7 +2549,7 @@
     const root = $('#maintenance-content');
     root.className = 'maintenance-content';
     if (maintenanceTab === 'about') {
-      root.innerHTML = `<div class="about-hero"><div class="about-mark">漢</div><div><h3>汉字转 PBOC 音标</h3><p>版本 ${esc(state.version || '')}</p></div><button id="check-update" class="button">检查更新</button></div>
+      root.innerHTML = `<div class="about-hero"><div class="about-mark">漢</div><div><h3>汉字转 PBOC 音标</h3><p>版本 ${esc(state.version || '')}</p></div><div class="about-version-actions"><button id="open-release-page" class="button about-release-link">版本发布</button><button id="check-update" class="button">检查更新</button></div></div>
         <div id="update-result"></div>
         <section class="maintenance-section compact-section"><label class="check-control"><input id="auto-check-updates" type="checkbox" ${state.ui_preferences?.auto_check_updates !== false ? 'checked' : ''}><span>启动后自动检查更新</span></label></section>
         <section class="maintenance-section"><h3>制作信息</h3><dl class="about-credits">
@@ -2317,6 +2561,7 @@
         <section class="maintenance-section"><h3>调试</h3><label class="check-control"><input id="debug-mode-toggle" type="checkbox" ${state.ui_preferences?.debug_mode ? 'checked' : ''}><span>显示实验性导出选项</span></label><p class="muted">开启后显示“删除所有声调”以及喉塞音前声调调整选项。</p></section>
         <section class="maintenance-section"><h3>版本说明</h3>${(state.changelog || []).map(entry => `<div class="changelog-entry"><h4>v${esc(entry.version)} · ${esc(entry.title)}</h4><div class="muted">${esc(entry.date)}</div><ul>${entry.items.map(item => `<li>${esc(item)}</li>`).join('')}</ul></div>`).join('')}</section>`;
       $('#check-update').onclick = () => checkUpdates(false);
+      $('#open-release-page').onclick = () => invoke('open_releases_page');
       $('#auto-check-updates').onchange = async event => {
         await persistUiPreference('auto_check_updates', event.target.checked);
       };
@@ -2754,6 +2999,7 @@
   }
 
   function bindEvents() {
+    enhanceSelects();
     $$('[data-window-action]').forEach(button => {
       button.onclick = () => {
         if (button.dataset.windowAction === 'close') {
@@ -2776,6 +3022,11 @@
     });
     $('#startup-retry').onclick = initialize;
     document.addEventListener('pointerdown', event => {
+      if (activeCustomSelect
+          && !event.target.closest('.custom-select-trigger')
+          && !event.target.closest('.custom-select-menu')) {
+        closeCustomSelect();
+      }
       const openMenu = $('.data-change-batch-menu:not([hidden])');
       if (openMenu && !event.target.closest('.data-change-batch-popover')) {
         openMenu.hidden = true;
@@ -2787,6 +3038,29 @@
         $('#diff-scheme-trigger')?.setAttribute('aria-expanded', 'false');
       }
     });
+    customSelectMenu.addEventListener('keydown', event => {
+      const options = $$('.custom-select-option:not(:disabled)', customSelectMenu);
+      const index = options.indexOf(document.activeElement);
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeCustomSelect({ focus: true });
+        return;
+      }
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === 'Home' ? 0
+        : event.key === 'End' ? options.length - 1
+          : event.key === 'ArrowDown' ? Math.min(options.length - 1, index + 1)
+            : Math.max(0, index - 1);
+      options[next]?.focus();
+    });
+    document.addEventListener('scroll', event => {
+      if (activeCustomSelect && !event.target.closest?.('.custom-select-menu')) {
+        closeCustomSelect();
+      }
+    }, true);
+    window.addEventListener('resize', () => closeCustomSelect());
+    document.addEventListener('close', () => closeCustomSelect(), true);
     $('#startup-copy-error').onclick = async () => {
       if (!startupErrorReport) return;
       await writeClipboard(startupErrorReport);
@@ -2838,9 +3112,8 @@
       $('#utilitybar').classList.contains('hidden'));
     $('#highlight-button').onclick = () => {
       setHighlightMode(!highlightMode);
-      setUtilitybarVisible(false);
     };
-    $('#exit-highlight-mode').onclick = () => setHighlightMode(false);
+    $('#highlight-mode-banner').onclick = () => setHighlightMode(false);
     $('#batch-button').onclick = () => {
       setUtilitybarVisible(false);
       openBatchEditor();
@@ -2920,7 +3193,6 @@
         return;
       }
       if (event.target.closest('[data-edit-picked-scheme]')) {
-        $('#export-scheme').value = schemeId;
         $('#scheme-picker-dialog').close();
         openSchemeEditor(schemeId);
         return;
@@ -3066,6 +3338,7 @@
       }
     };
     $('#save-scheme-button').onclick = async () => {
+      flushPendingSchemeInput();
       const button = $('#save-scheme-button');
       button.disabled = true;
       button.textContent = '保存中…';
@@ -3114,8 +3387,16 @@
       renderSchemeEditor();
     };
     ['scheme-id', 'scheme-name', 'scheme-description'].forEach(id => {
-      $(`#${id}`).onchange = () => { commitSchemeHistory(); commitSchemeMeta(); markSchemeDirty(); };
+      const input = $(`#${id}`);
+      input.onchange = () => { commitSchemeHistory(); commitSchemeMeta(); markSchemeDirty(); };
+      bindSchemeTextInput(input);
     });
+    $('#scheme-dialog').addEventListener('pointerdown', event => {
+      const targetInput = event.target.closest('input, textarea');
+      if (pendingSchemeInput && targetInput !== pendingSchemeInput) {
+        flushPendingSchemeInput();
+      }
+    }, true);
     $('#add-lookup-part').onclick = () => addLookupPart();
     $('#lookup-field').onchange = refreshLookupPreview;
     $('#lookup-dialog').addEventListener('close', () => {
@@ -3387,7 +3668,12 @@
       if (!$('#scheme-dialog').open) return;
       if (!(event.ctrlKey || event.metaKey)) return;
       const key = event.key.toLowerCase();
-      if (key === 's') { event.preventDefault(); $('#save-scheme-button').click(); return; }
+      if (key === 's') {
+        event.preventDefault();
+        flushPendingSchemeInput();
+        $('#save-scheme-button').click();
+        return;
+      }
       if (key === 'z') { event.preventDefault(); schemeHistory(event.shiftKey ? 'redo' : 'undo'); }
       if (key === 'y') { event.preventDefault(); schemeHistory('redo'); }
     });
@@ -3399,7 +3685,7 @@
       manual_hl: false, stale: false, in_bracket: true,
     }));
     let mockGroupExpanded = true;
-    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.12 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
+    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.13 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
     const mockUpdate = {
       id: 'mock-reading-update', batch_id: 'b1',
       timestamp: '2026-08-22 23:55:03', filename: 'base.json.gz',
@@ -3439,6 +3725,7 @@
     };
     const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true, unselected_polyphonic: 2, manually_completed: false }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false, unselected_polyphonic: 0, manually_completed: true }];
     const previewChangelog = [
+      { version: '0.12.13', date: '2026-09-02', title: '方案编辑与标记交互修复', items: ['方案编辑器的下拉选择器改为跟随深浅主题的自绘菜单，并支持键盘操作、弹窗顶层显示和自动调整展开方向。', '基础映射和附加替换新增复制操作，副本会紧邻原项插入，便于在现有规则上继续修改。', '修复映射项重名后两行共用数据、修改一项会连带改变另一项的问题；旧方案中的重复解析顺序会在加载时安全清理。', '修复从方案列表编辑非当前方案后，导出页“编辑方案”仍错误打开最近编辑方案的问题。', '修复方案输入尚未失焦时撤回、重做和保存读取旧数据，导致保存后内容突然变化的问题。', '高亮标记提升为顶栏常驻按钮并采用标记笔图标；模式状态移入底部状态栏，不再遮挡正文或自动收起二级工具栏。', '关于页新增“版本发布”入口，可直接查看历史版本、说明和下载文件。'] },
       { version: '0.12.12', date: '2026-08-29', title: 'Windows 关闭与更新修复', items: ['修复 Windows 版点击右上角关闭按钮时保存队列等待自身，导致窗口无法退出的问题。', 'Windows 更新改为一次完成下载、校验、关闭、替换和重启，并统一使用清晰的更新文案，不再重复弹出安装确认。', '慢启动详情在等待超过 8 秒后显示于进度条上方；显示前不再预留空行。'] },
       { version: '0.12.11', date: '2026-08-29', title: '搜索与导出界面修复', items: ['Ctrl+F 会按当前焦点自动选择搜索范围：焦点在正文中时查找正文，在正文外时搜索文稿库。', '修复搜索结果页错误绑定不存在的拖放区域，导致右下角重复报错的问题。', '移除导出页重复的“实验选项”展开按钮；开启调试选项后，实验性导出项直接与其他选项并列显示。', '导出内容改为“原文 / PBOC / Suno”连续分段多选组，组合选择自动生成对应内容，不再使用含义重复的“全部”；方案选择和编辑入口始终显示并可操作。', '导出内容组合、文本整理与发音处理选项、选区复制模式和自动更新开关会在重启后恢复；关闭应用前会等待尚未完成的偏好保存。', '全界面默认不再产生浏览器文本选区，仅输入、导出、日志、变更详情和比较结果等可复制内容保留文本选择。', '选区工具的“原文 / 音标”切换改为等宽两项，复制、剪切和删除保持同一行三列，不再出现空白列和错位换行。', '修复 Suno 条件控件及二级工具栏切换造成的像素级布局跳动，并避免重复操作提示堆叠。', '精简启动页信息：正常启动只显示当前动作，步骤、文件与耗时详情会在等待超过 8 秒后出现，错误时立即显示。', '“把标点转换为换行”只处理正文标点，不再改写方括号控制行或行内方括号语法。', '旧方案会补齐“浊塞音拼写”三值选项并保持原映射，缺少旧开关记录时使用“自定义”，不推断用户意图。', '精修方案编辑器：空分组不再显示无内容表头，Ctrl+S 可保存方案，并补齐页签和表格输入的辅助技术标签。', '导出设置改为紧凑分类浮层并保持位置固定，方案选择以轻量值样式集中在右侧；组合导出时，Suno 会与原文、PBOC 按正文行就地排列。', '方案编辑器统一使用“基础映射、附加替换、输出拼写”分层；清响音加 h 随方案保存，附加替换支持中文说明和紧凑表格式编辑。', '方案比较改为紧凑校勘表：项目、当前值和对比值按固定列阅读，选项与预设显示中文名称，并精简重复标签和色块；对比方案菜单会跟随深浅主题。'] },
       { version: '0.12.10', date: '2026-08-28', title: '浊塞音拼写支持自定义', items: ['浊塞音拼写改为“鼻音诱导 / 英美 / 自定义”三种状态，两种预设会明确写入基础映射。', '手动编辑 b、d、g 基础映射会自动进入自定义，转写只使用当前内容，不再暗中覆盖。', '旧二值方案会自动迁移并保持原输出。'] },
@@ -3476,7 +3763,7 @@
       { version: '0.9.1', date: '2026-07-20', title: 'HTML 界面全面调整', items: ['全面调整读音面板、拖动交互、滚动条和弹窗布局。'] },
       { version: '0.9.0', date: '2026-07-16', title: 'HTML 桌面界面预览版', items: ['界面迁移到 HTML 与 WebView2。'] },
     ];
-    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.12', ui_preferences: { inspector_width: 320, debug_mode: false }, changelog: previewChangelog });
+    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.13', ui_preferences: { inspector_width: 320, debug_mode: false }, changelog: previewChangelog });
     return new Proxy({
       initialize: async () => full(),
       start_initialize: async () => ({ phase: 'ready', message: '准备就绪', progress: 100, step: 6, step_count: 6, detail: '启动完成', indeterminate: false }),
@@ -3562,15 +3849,16 @@
       },
       get_polyphonic_summary: async () => [{ char: '关', count: 2, readings: { 'kˤro[n]s': 1, 'kˤro[n]': 1 }, options: [{ phonetic: 'kˤro[n]s' }, { phonetic: 'kˤro[n]' }] }],
       batch_apply_reading: async () => clone(mock), get_draft_history: async () => [{ id: 'demo.json', name: '关雎', modified: '2026-07-16T12:00:00', preview: '关关雎在河之洲' }],
-      get_diagnostics: async () => ({ app_version: '0.12.12', draft_schema_version: 3, scheme_schema_version: 3, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
+      get_diagnostics: async () => ({ app_version: '0.12.13', draft_schema_version: 3, scheme_schema_version: 3, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
       get_backend_logs: async () => ({ text: mockBackendLog, started_at: '2026-08-28T11:20:01+08:00', characters: mockBackendLog.length }),
       clear_backend_logs: async () => { mockBackendLog = ''; return { text: '', started_at: '2026-08-28T11:20:01+08:00', characters: 0 }; },
       import_old_library: async () => ({ ok: true, imported: 2, skipped: 1, renamed: 0, errors: [], state: full() }),
-      check_for_updates: async () => ({ ok: true, current: '0.12.12', latest: '0.12.12', available: false }),
-      start_update_check: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.12', latest: '0.12.12', available: false }, error: null }),
-      get_update_check_status: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.12', latest: '0.12.12', available: false }, error: null }),
-      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.12', platform: 'windows', path: 'preview-update.exe' } }),
-      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.12', platform: 'windows', path: 'preview-update.exe' } }),
+      open_releases_page: async () => ({ ok: true }),
+      check_for_updates: async () => ({ ok: true, current: '0.12.13', latest: '0.12.13', available: false }),
+      start_update_check: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.13', latest: '0.12.13', available: false }, error: null }),
+      get_update_check_status: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.13', latest: '0.12.13', available: false }, error: null }),
+      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.13', platform: 'windows', path: 'preview-update.exe' } }),
+      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.13', platform: 'windows', path: 'preview-update.exe' } }),
       install_downloaded_update: async () => ({ ok: true, scheduled: true }),
       get_data_change_batches: async () => ({ ok: true, exists: true, file_size: 77729928, total: 2, items: [
         { id: 'b2', timestamp: '2026-08-22 23:55:12', filename: 'extra.json.gz', count: 10427 },

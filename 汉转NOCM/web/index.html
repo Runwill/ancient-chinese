@@ -13,8 +13,8 @@
         || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     })();
   </script>
-  <link rel="icon" type="image/png" href="app-icon.png?v=0.12.12">
-  <link rel="stylesheet" href="styles.css?v=0.12.12">
+  <link rel="icon" type="image/png" href="app-icon.png?v=0.12.13">
+  <link rel="stylesheet" href="styles.css?v=0.12.13">
 </head>
 <body>
   <div id="startup" class="startup pywebview-drag-region">
@@ -41,8 +41,8 @@
   <main id="app" class="app hidden">
     <header id="app-titlebar" class="topbar pywebview-drag-region">
       <div class="brand pywebview-drag-region">
-        <img class="titlebar-icon titlebar-icon-light" src="app-icon.png?v=0.12.12" alt="">
-        <img class="titlebar-icon titlebar-icon-dark" src="app-icon-dark.png?v=0.12.12" alt="">
+        <img class="titlebar-icon titlebar-icon-light" src="app-icon.png?v=0.12.13" alt="">
+        <img class="titlebar-icon titlebar-icon-dark" src="app-icon-dark.png?v=0.12.13" alt="">
         <strong>汉字转 PBOC 音标</strong>
         <span id="document-title">未命名文稿</span>
         <span id="save-state" class="save-state">已自动保存</span>
@@ -50,6 +50,7 @@
       <nav class="toolbar" aria-label="主要操作">
         <button class="icon-button mobile-only" id="mobile-library-button" title="文稿库" aria-label="文稿库"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3Z"></path></svg></button>
         <button class="icon-button" id="tools-button" title="更多工具" aria-label="更多工具" aria-expanded="false" aria-controls="utilitybar"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></button>
+        <button class="icon-button" id="highlight-button" title="标记正文（高亮模式）" aria-label="标记正文（高亮模式）" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 11-6 6v3h9l3-3"></path><path d="m22 12-4.5 4.5L7.5 6.5 12 2l10 10Z"></path></svg></button>
         <button class="icon-button" id="restart-button" title="重启应用" aria-label="重启应用"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"></path><path d="M21 3v5h-5"></path></svg></button>
         <button class="icon-button" id="theme-button" title="切换主题" aria-label="切换主题"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-1.1-.2-2.1-.5-3A7 7 0 0 1 12 3Z"></path></svg></button>
         <button class="icon-button" id="help-button" title="关于与维护" aria-label="关于与维护"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.8 9a2.4 2.4 0 0 1 4.6 1c0 1.8-2.4 2-2.4 3.6"></path><path d="M12 17h.01"></path></svg></button>
@@ -68,7 +69,6 @@
       <button class="icon-button" id="undo-button" title="撤回 (Ctrl+Z)" aria-label="撤回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg></button>
       <button class="icon-button" id="redo-button" title="重做 (Ctrl+Y)" aria-label="重做"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"></path><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path></svg></button>
       <span class="toolbar-divider" aria-hidden="true"></span>
-      <button class="button" id="highlight-button">高亮</button>
       <button class="button" id="batch-button">批量</button>
       <button class="button" id="save-button">保存</button>
       <span class="toolbar-divider" aria-hidden="true"></span>
@@ -90,11 +90,6 @@
       <button class="icon-button small" id="search-prev" title="上一个" aria-label="上一个">↑</button>
       <button class="icon-button small" id="search-next" title="下一个" aria-label="下一个">↓</button>
       <button class="icon-button small" id="search-close" title="关闭查找" aria-label="关闭查找"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
-    </section>
-
-    <section id="highlight-mode-banner" class="highlight-mode-banner hidden" role="status" aria-live="polite">
-      <span class="highlight-mode-copy"><i aria-hidden="true"></i><strong>高亮模式</strong><span>点击正文切换标记</span><b id="highlight-mode-count">0</b></span>
-      <button type="button" id="exit-highlight-mode" class="button">退出 <kbd>Esc</kbd></button>
     </section>
 
     <div class="workspace">
@@ -127,6 +122,7 @@
         <footer class="statusbar">
           <span id="cursor-status">第 1 行，第 1 列</span>
           <span id="selection-status"></span>
+          <button type="button" id="highlight-mode-banner" class="highlight-mode-status hidden" title="退出标记模式（Esc）"><i aria-hidden="true"></i><strong>标记模式</strong><span id="highlight-mode-count">0 字</span><kbd>Esc</kbd></button>
           <span class="flex-spacer"></span>
           <span id="editor-zoom-status" title="Ctrl + 滚轮调整编辑和导出正文字号">100%</span>
           <span id="autosave-status">自动保存已开启</span>
@@ -397,6 +393,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.12.12"></script>
+  <script src="app.js?v=0.12.13"></script>
 </body>
 </html>

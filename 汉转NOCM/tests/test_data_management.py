@@ -386,6 +386,39 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertNotIn("'立即安装'", script)
         self.assertNotIn('程序将关闭、替换并自动重新启动', script)
 
+    def test_about_page_links_to_release_history(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        styles = Path('web/styles.css').read_text(encoding='utf-8')
+        self.assertIn('id="open-release-page"', script)
+        self.assertIn('>版本发布</button>', script)
+        self.assertIn("$('#open-release-page').onclick = () => invoke('open_releases_page')", script)
+        self.assertIn('.about-version-actions { display: flex;', styles)
+        self.assertIn('.about-release-link { padding-inline: 7px;', styles)
+
+    def test_select_menus_use_the_application_popover(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        styles = Path('web/styles.css').read_text(encoding='utf-8')
+        self.assertIn('function enhanceSelect(select)', script)
+        self.assertIn('function openCustomSelect(select, focusOption = false)', script)
+        self.assertIn("select.dispatchEvent(new Event('change', { bubbles: true }))", script)
+        self.assertIn("const layer = select.closest('dialog[open]') || document.body;", script)
+        self.assertIn('.native-select-control { position: absolute !important;', styles)
+        self.assertIn('.custom-select-menu { position: fixed;', styles)
+        self.assertIn('.custom-select-option.selected::before', styles)
+        self.assertNotIn('.select option, .select optgroup', styles)
+
+    def test_scheme_rows_can_be_copied_next_to_the_source(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        styles = Path('web/styles.css').read_text(encoding='utf-8')
+        self.assertIn('data-copy-map', script)
+        self.assertIn('data-copy-rule', script)
+        self.assertIn('order.splice(sourceIndex + 1, 0, copiedSource);', script)
+        self.assertIn(
+            'schemeDraft.rules[section].splice(index + 1, 0, '
+            'clone(schemeDraft.rules[section][index]));', script)
+        self.assertIn('minmax(180px, 1.4fr) 88px;', styles)
+        self.assertIn('minmax(180px, 1fr) 84px;', styles)
+
     def test_editor_supports_persistent_ctrl_wheel_zoom(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         with open(os.path.join(root, 'web', 'index.html'),
@@ -901,6 +934,50 @@ class SchemeToolTests(unittest.TestCase):
         self.assertIn('.scheme-save-status:empty { display: none; }', styles)
         self.assertIn('.scheme-section.empty { margin-bottom: 8px; }', styles)
 
+    def test_editing_a_listed_scheme_does_not_change_the_export_scheme(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        picked_edit_block = script.split(
+            "if (event.target.closest('[data-edit-picked-scheme]')) {", 1
+        )[1].split('return;', 1)[0]
+        self.assertIn('openSchemeEditor(schemeId);', picked_edit_block)
+        self.assertNotIn("$('#export-scheme').value", picked_edit_block)
+        self.assertIn(
+            "schemeId || state.selected_scheme || $('#export-scheme').value",
+            script)
+
+    def test_scheme_inputs_flush_before_history_and_save_actions(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        self.assertIn('let pendingSchemeInput = null;', script)
+        self.assertIn('function bindSchemeTextInput(input)', script)
+        self.assertIn('function flushPendingSchemeInput()', script)
+        self.assertIn("$$('[data-rule-field]').forEach(input => {", script)
+        self.assertIn("$$('.table-row.map input').forEach(bindSchemeTextInput);", script)
+        history_block = script.split('function schemeHistory(direction) {', 1)[1]
+        self.assertTrue(history_block.lstrip().startswith(
+            'flushPendingSchemeInput();'))
+        save_block = script.split("$('#save-scheme-button').onclick = async () => {", 1)[1]
+        self.assertTrue(save_block.lstrip().startswith(
+            'flushPendingSchemeInput();'))
+
+    def test_highlight_action_is_persistent_in_the_primary_toolbar(self):
+        markup = Path('web/index.html').read_text(encoding='utf-8')
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        primary_toolbar = markup.split(
+            '<nav class="toolbar" aria-label="主要操作">', 1
+        )[1].split('</nav>', 1)[0]
+        utility_toolbar = markup.split(
+            '<section id="utilitybar"', 1
+        )[1].split('</section>', 1)[0]
+        self.assertIn('id="highlight-button"', primary_toolbar)
+        self.assertNotIn('id="highlight-button"', utility_toolbar)
+        self.assertIn('aria-pressed="false"', primary_toolbar)
+        self.assertIn("highlightButton.setAttribute('aria-pressed'", script)
+        self.assertNotIn('highlightButton.textContent', script)
+        self.assertIn('class="highlight-mode-status hidden"', markup)
+        self.assertNotIn('class="highlight-mode-banner', markup)
+        highlight_click = script.split("$('#highlight-button').onclick = () => {", 1)[1].split('};', 1)[0]
+        self.assertNotIn('setUtilitybarVisible(false)', highlight_click)
+
     def test_library_search_shortcut_and_search_result_drag_guard_exist(self):
         script = Path('web/app.js').read_text(encoding='utf-8')
         self.assertIn('function focusLibrarySearch()', script)
@@ -918,6 +995,28 @@ class SchemeToolTests(unittest.TestCase):
                         rename_block.index('delete schemeDraft.maps'))
         self.assertIn(
             'schemeDraft.parse_order[section] = order.map(', rename_block)
+
+    def test_mapping_item_rename_rejects_an_existing_source(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        rename_block = script.split("if (field === 'source') {", 1)[1].split(
+            'markSchemeDirty();', 1)[0]
+        self.assertIn(
+            'Object.prototype.hasOwnProperty.call(schemeDraft.maps[section], source)',
+            rename_block)
+        self.assertIn('input.value = oldSource;', rename_block)
+        self.assertLess(rename_block.index('hasOwnProperty.call'),
+                        rename_block.index('commitSchemeHistory();'))
+
+    def test_scheme_migration_removes_duplicate_mapping_order_entries(self):
+        scheme, changed = migrate_scheme_data({
+            'schema_version': SCHEME_SCHEMA_VERSION,
+            'maps': {'nucleus': {'ia': 'a', 'u': 'u'}},
+            'parse_order': {'nucleus': ['ia', 'u', 'ia', 'u']},
+        })
+
+        self.assertTrue(changed)
+        self.assertEqual(scheme['parse_order']['nucleus'], ['ia', 'u'])
+        self.assertEqual(scheme['maps']['nucleus'], {'ia': 'a', 'u': 'u'})
 
     def test_clear_sonorant_english_variant_matches_r_change_voiced_stops(self):
         clear_sonorant = load_scheme('hsth_change')
