@@ -11,11 +11,15 @@ $gradleVersion = '8.9'
 $gradleHome = Join-Path $toolsRoot "gradle-$gradleVersion"
 $commandToolsVersion = '11076708'
 
+# Windows PowerShell 5.1 does not load this assembly before the first
+# ZipFile use. Load it once so both cached and freshly downloaded archives
+# can be inspected before extraction.
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+
 function Get-Archive([string]$Url, [string]$Destination) {
     if ((Test-Path -LiteralPath $Destination) -and
         (Get-Item -LiteralPath $Destination).Length -gt 0) {
         try {
-            Add-Type -AssemblyName System.IO.Compression.FileSystem
             $archive = [System.IO.Compression.ZipFile]::OpenRead($Destination)
             $entryCount = $archive.Entries.Count
             $archive.Dispose()

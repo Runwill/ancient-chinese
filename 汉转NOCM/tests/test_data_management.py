@@ -277,6 +277,14 @@ class VersionMetadataTests(unittest.TestCase):
 
 
 class WebAssetContractTests(unittest.TestCase):
+    def test_android_builder_loads_zip_support_before_archive_validation(self):
+        script = Path('tools/build_android.ps1').read_text(encoding='utf-8')
+        assembly = 'Add-Type -AssemblyName System.IO.Compression.FileSystem'
+        self.assertEqual(script.count(assembly), 1)
+        self.assertLess(script.index(assembly), script.index('function Get-Archive'))
+        self.assertLess(script.index(assembly), script.index(
+            '[System.IO.Compression.ZipFile]::OpenRead'))
+
     def test_phonology_details_are_disclosed_from_current_reading(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         with open(os.path.join(root, 'web', 'app.js'),
