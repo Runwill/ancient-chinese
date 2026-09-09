@@ -1,6 +1,7 @@
 """Tests for versioned persistence, backup restore, and scheme tooling."""
 
 import json
+import gzip
 import hashlib
 import io
 import os
@@ -15,6 +16,7 @@ import draft_io
 import folder_manager
 import library_import
 import update_manager
+import web_api
 from app_version import (CHANGELOG, DRAFT_SCHEMA_VERSION,
                          SCHEME_SCHEMA_VERSION, __version__)
 from nocm_transcriber import (NocmTranscriber, diff_schemes,
@@ -25,6 +27,60 @@ from nocm_transcriber import (NocmTranscriber, diff_schemes,
 
 
 class DataDownloadTests(unittest.TestCase):
+    def test_phonological_position_is_split_with_contextual_explanations(self):
+        details = data_loader.parse_phonological_position('幫三C尤平')
+
+        self.assertEqual(
+            [part['value'] for part in details['parts']],
+            ['幫母', '开合中立', '三等', 'C类', '尤韵', '平声'])
+        explanations = '\n'.join(item['text'] for item in details['explanations'])
+        self.assertIn('幫母：唇音、全清、塞音', explanations)
+        self.assertIn('全清：不送气清音', explanations)
+        self.assertTrue(details['explanations'][1]['indent'])
+        self.assertIn('不独立区分圆唇特征', explanations)
+        self.assertIn('不等同于固定的 /j/', explanations)
+        self.assertNotIn('也不是声调', explanations)
+        self.assertNotIn('辨析：', explanations)
+        self.assertIn('C类：三等内部分类，属非前元音类', explanations)
+        self.assertIn('重纽', explanations)
+        self.assertIn('尤韵：流摄、阴声韵', explanations)
+        self.assertIn('一般无鼻音或塞音韵尾', explanations)
+        self.assertNotIn('韵：包括韵腹、韵尾等特征', explanations)
+        self.assertIn('摄：归并了韵腹、韵尾等的韵类', explanations)
+        self.assertIn('平声：中古四声之一，属舒声', explanations)
+        self.assertNotIn('调值：', explanations)
+
+        open_details = data_loader.parse_phonological_position('見開三C魚去')
+        self.assertEqual(open_details['parts'][1]['value'], '開口')
+        open_explanations = '\n'.join(
+            item['text'] for item in open_details['explanations'])
+        self.assertIn('開口：无合口圆唇成分', open_explanations)
+        self.assertIn('不是口腔开度', open_explanations)
+
+        uncategorized = data_loader.parse_phonological_position('見三魚平')
+        self.assertIn(
+            '类别：此三等地位未标A／B／C类别。',
+            [item['text'] for item in uncategorized['explanations']])
+
+    def test_invalid_phonological_position_is_not_guessed(self):
+        self.assertIsNone(data_loader.parse_phonological_position('未知地位'))
+
+    def test_loaded_readings_preserve_phonological_metadata(self):
+        with (tempfile.TemporaryDirectory() as root,
+              patch.object(data_loader, 'get_data_dir', return_value=root)):
+            with gzip.open(os.path.join(root, 'base.json.gz'), 'wt',
+                           encoding='utf-8') as file:
+                json.dump([{'z': '夫', 'y': 'pa'}], file, ensure_ascii=False)
+            with gzip.open(os.path.join(root, 'extra.json.gz'), 'wt',
+                           encoding='utf-8') as file:
+                json.dump([{'c': '幫三C虞平', 'm': '夫', 'd': []}], file,
+                          ensure_ascii=False)
+
+            mapping = data_loader.load_map_from_json_gz()
+
+        self.assertEqual(mapping['夫'][0]['position'], '幫三C虞平')
+        self.assertEqual(mapping['夫'][0]['series_head'], '夫')
+
     def test_existing_local_data_is_used_when_remote_check_fails(self):
         with (tempfile.TemporaryDirectory() as root,
               patch.object(data_loader, '_get_remote_last_modified',
@@ -221,6 +277,28 @@ class VersionMetadataTests(unittest.TestCase):
 
 
 class WebAssetContractTests(unittest.TestCase):
+    def test_phonology_details_are_disclosed_from_current_reading(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, 'web', 'app.js'),
+                  encoding='utf-8') as file:
+            script = file.read()
+        with open(os.path.join(root, 'web', 'styles.css'),
+                  encoding='utf-8') as file:
+            styles = file.read()
+        self.assertIn('id="phonology-detail-trigger"', script)
+        self.assertIn('id="phonology-detail"${expanded', script)
+        self.assertIn('phonologyDetailsOpen = expanded', script)
+        self.assertIn("persistUiPreference('phonology_details_open', expanded)",
+                      script)
+        self.assertIn('<dt>${esc(part.label)}</dt>', script)
+        self.assertNotIn('class="reading-meta-key"', script)
+        self.assertIn('.phonology-details * {', styles)
+        self.assertIn('user-select: text', styles.split(
+            '.phonology-details * {', 1)[1].split('}', 1)[0])
+        global_rule = styles.split('.reading-global {', 1)[1].split('}', 1)[0]
+        self.assertIn('flex: 0 0 auto', global_rule)
+        self.assertIn('white-space: nowrap', global_rule)
+
     def test_image_preview_stage_selector_exists_in_markup(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         with open(os.path.join(root, 'web', 'index.html'),
@@ -359,6 +437,8 @@ class WebAssetContractTests(unittest.TestCase):
         with open(os.path.join(root, 'web', 'styles.css'),
                   encoding='utf-8') as file:
             styles = file.read()
+        with open(os.path.join(root, 'web_api.py'), encoding='utf-8') as file:
+            web_api_source = file.read()
 
         self.assertIn('frameless=True', desktop_entry)
         self.assertIn('easy_drag=False', desktop_entry)
@@ -373,11 +453,81 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertIn('data-resize-edge="bottom-right"', markup)
         self.assertIn("invoke('toggle_maximize_window')", script)
         self.assertIn("invoke('start_window_resize'", script)
+        self.assertIn('event.preventDefault();', script)
+        self.assertIn('wintypes.HWND(handle)', web_api_source)
+        self.assertIn('window.events.shown += self._enable_windows_resize_frame',
+                      web_api_source)
+        self.assertIn('style | 0x00040000', web_api_source)
+        self.assertIn('0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020',
+                      web_api_source)
+        self.assertIn('user32.GetAsyncKeyState(0x01)', web_api_source)
+        self.assertIn('user32.SetWindowPos(', web_api_source)
+        self.assertIn("ctypes.WinDLL('user32'", web_api_source)
+        self.assertNotIn('user32 = ctypes.windll.user32', web_api_source)
+        self.assertIn('height: 7px; cursor: ns-resize', styles)
+        self.assertIn('width: 12px; height: 12px', styles)
         self.assertIn('const pendingActions = actionQueue;', script)
         self.assertIn("await runWindowAction('close');", script)
         close_action = script.split("} else if (action === 'close') {", 1)[1].split(
             '\n    }', 1)[0]
         self.assertNotIn('await actionQueue', close_action)
+
+    def test_frameless_window_resize_math_tracks_each_edge_and_minimum(self):
+        rect = (100, 100, 1300, 900)
+        calculate = web_api._calculate_window_resize_bounds
+
+        self.assertEqual(
+            calculate('bottom-right', rect, 120, 80, 960, 600),
+            (100, 100, 1320, 880))
+        self.assertEqual(
+            calculate('top-left', rect, 300, 300, 960, 600),
+            (340, 300, 960, 600))
+        self.assertEqual(
+            calculate('right', rect, -500, 0, 960, 600),
+            (100, 100, 960, 800))
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows native frame test')
+    def test_hidden_frameless_window_receives_native_resize_frame(self):
+        import ctypes
+        from ctypes import wintypes
+
+        import clr
+        clr.AddReference('System.Windows.Forms')
+        from System.Windows.Forms import Form, FormBorderStyle
+
+        form = Form()
+        previous_window = web_api._APP_WINDOW
+        try:
+            form.FormBorderStyle = getattr(FormBorderStyle, 'None')
+            handle = int(form.Handle.ToInt64())
+            user32 = ctypes.WinDLL('user32', use_last_error=True)
+            user32.GetWindowLongPtrW.argtypes = [
+                wintypes.HWND, ctypes.c_int]
+            user32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
+            before = user32.GetWindowLongPtrW(
+                wintypes.HWND(handle), -16)
+            web_api._APP_WINDOW = type(
+                'HiddenWindow', (), {'native': form})()
+            api = object.__new__(web_api.WebApi)
+
+            self.assertFalse(before & 0x00040000)
+            self.assertTrue(api._enable_windows_resize_frame())
+            after = user32.GetWindowLongPtrW(wintypes.HWND(handle), -16)
+            self.assertTrue(after & 0x00040000)
+        finally:
+            web_api._APP_WINDOW = previous_window
+            form.Dispose()
+
+    def test_dialogs_close_only_after_clicking_the_backdrop(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        binding = script.split(
+            'function bindDialogBackdropDismissal() {', 1)[1].split(
+            'function bindEvents() {', 1)[0]
+        self.assertIn("$$('.dialog').forEach(dialog => {", binding)
+        self.assertIn('event.target === dialog', binding)
+        self.assertIn("dialog.close('cancel')", binding)
+        self.assertIn("dialog.addEventListener('pointercancel'", binding)
+        self.assertIn('bindDialogBackdropDismissal();', script)
 
     def test_windows_update_is_presented_as_one_step_restart(self):
         script = Path('web/app.js').read_text(encoding='utf-8')
@@ -583,9 +733,10 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertIn('id="startup-stage"', markup)
         self.assertIn('id="startup-stage" class="startup-stage" aria-hidden="true"', markup)
         self.assertIn('class="startup-progress-block"', markup)
-        self.assertIn('.startup p { margin: 0 0 12px;', styles)
+        self.assertIn('.startup p { margin: 0 0 16px;', styles)
         self.assertIn('.startup-progress-block { position: relative; width: 320px; height: 4px;', styles)
-        self.assertIn('.startup-stage-visible .startup-progress-block { height: 26px; }', styles)
+        self.assertNotIn('.startup-stage-visible .startup-progress-block', styles)
+        self.assertIn('bottom: 2px;', styles)
         stage_position = markup.index('id="startup-stage"')
         progress_position = markup.index('id="startup-progress-track"')
         self.assertLess(stage_position, progress_position)
@@ -986,6 +1137,17 @@ class SchemeToolTests(unittest.TestCase):
         self.assertIn('if (!ungrouped) return;', script)
         self.assertIn('按当前焦点查找', script)
         self.assertNotIn('Ctrl Shift F', script)
+
+    def test_draft_and_folder_rows_support_double_click_rename(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        binding = script.split('function bindDraftTree() {', 1)[1].split(
+            'function handleTreeDrop(', 1)[0]
+        self.assertIn("event.target.closest('.draft-row, .folder-row')", binding)
+        self.assertIn('root.ondblclick = event => {', binding)
+        self.assertIn('clearTimeout(treeClickTimer);', binding)
+        self.assertIn('renameTreeItem(row.dataset.kind, row.dataset.id);', binding)
+        self.assertIn("kind === 'group' ? 'toggle_group' : 'load_draft'", binding)
+        self.assertIn("event.target.closest('[data-menu], button, input, textarea, select, a')", binding)
 
     def test_renaming_mapping_item_preserves_its_table_position(self):
         script = Path('web/app.js').read_text(encoding='utf-8')

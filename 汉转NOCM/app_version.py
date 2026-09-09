@@ -7,7 +7,7 @@ import sys
 
 
 APP_NAME = '汉字转 PBOC 音标'
-__version__ = '0.12.13'
+__version__ = '0.12.14'
 
 DRAFT_SCHEMA_VERSION = 3
 SCHEME_SCHEMA_VERSION = 3
@@ -19,6 +19,16 @@ RELEASES_PAGE_URL = (
     'https://github.com/Runwill/ancient-chinese/releases')
 
 CHANGELOG = [
+    {
+        'version': '0.12.14',
+        'date': '2026-09-09',
+        'title': '音韵详情与文稿库交互',
+        'items': [
+            '当前读音可展开音韵详情，拆分声母、开合、等、类别、韵和声调，并显示声首；说明补全发音部位与清浊、圆唇特征、介音与主元音、重纽、韵摄与韵尾、舒声与促声等知识，展开状态会保存，详情文字可以选择复制。',
+            '文稿和文件夹支持双击重命名；单击仍分别用于打开文稿和展开或折叠文件夹，操作菜单和拖放区域不会误触重命名。',
+            '修复 Windows 无边框窗口无法从边缘拖动缩放的问题，并恢复原生尺寸边框；重命名等对话框支持点击背景取消，慢启动详情出现时不再挤动加载布局。',
+        ],
+    },
     {
         'version': '0.12.13',
         'date': '2026-09-02',

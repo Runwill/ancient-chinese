@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import threading
+import time
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -20,7 +21,8 @@ from constants import find_bracket_ranges, get_theme, in_bracket, set_theme
 from data_loader import (download_and_update, get_current_data_revision,
                          get_data_change_batches, get_data_change_entries,
                          get_data_dir, get_reading_change_events,
-                         load_map_from_json_gz)
+                         load_map_from_json_gz,
+                         parse_phonological_position)
 from draft_io import (delete_draft, draft_has_pending_updates, get_draft_name,
                       list_draft_history, list_drafts, list_recent_drafts,
                       load_draft, rename_draft, restore_draft_history,
@@ -65,6 +67,21 @@ _EXPORT_OPTION_KEYS = {
     'departing_before_glottal',
 }
 _EXPORT_CONTENT_KEYS = ('raw', 'phon', 'suno')
+
+
+def _calculate_window_resize_bounds(edge, rect, delta_x, delta_y,
+                                    min_width, min_height):
+    """Return x, y, width and height for a frameless edge drag."""
+    left, top, right, bottom = rect
+    if 'left' in edge:
+        left = min(left + delta_x, right - min_width)
+    elif 'right' in edge:
+        right = max(right + delta_x, left + min_width)
+    if 'top' in edge:
+        top = min(top + delta_y, bottom - min_height)
+    elif 'bottom' in edge:
+        bottom = max(bottom + delta_y, top + min_height)
+    return left, top, right - left, bottom - top
 
 
 def _load_ui_preferences():
@@ -130,6 +147,7 @@ class WebApi:
         self.export_scheme_id = load_preferred_scheme_id()
         self.scroll_top = 0
         self._window_maximized = False
+        self._window_resize_thread = None
         self._lock = threading.RLock()
         self._startup = {
             'phase': 'ready' if mapping else 'waiting',
@@ -157,6 +175,38 @@ class WebApi:
         _APP_WINDOW = window
         window.events.maximized += lambda: self._set_window_maximized(True)
         window.events.restored += lambda: self._set_window_maximized(False)
+        window.events.shown += self._enable_windows_resize_frame
+
+    def _enable_windows_resize_frame(self):
+        """Restore the native resize frame without restoring a title bar."""
+        native = getattr(_APP_WINDOW, 'native', None) if _APP_WINDOW else None
+        if os.name != 'nt' or native is None:
+            return False
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            native_handle = native.Handle
+            handle = int(native_handle.ToInt64()) if hasattr(
+                native_handle, 'ToInt64') else int(native_handle)
+            hwnd = wintypes.HWND(handle)
+            user32 = ctypes.WinDLL('user32', use_last_error=True)
+            user32.GetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int]
+            user32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
+            user32.SetWindowLongPtrW.argtypes = [
+                wintypes.HWND, ctypes.c_int, ctypes.c_ssize_t]
+            user32.SetWindowLongPtrW.restype = ctypes.c_ssize_t
+            user32.SetWindowPos.argtypes = [
+                wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+                ctypes.c_int, ctypes.c_int, wintypes.UINT]
+            user32.SetWindowPos.restype = wintypes.BOOL
+            style = user32.GetWindowLongPtrW(hwnd, -16)
+            user32.SetWindowLongPtrW(hwnd, -16, style | 0x00040000)
+            return bool(user32.SetWindowPos(
+                hwnd, wintypes.HWND(), 0, 0, 0, 0,
+                0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020))
+        except Exception:
+            return False
 
     def _set_window_maximized(self, maximized):
         self._window_maximized = bool(maximized)
@@ -601,6 +651,12 @@ class WebApi:
             info = buf.cell_info[line][column]
             pending_updates = self._refresh_cell_update_state(char, info)
             options = copy.deepcopy(self.mapping.get(char) or [])
+            for option in options:
+                if not isinstance(option, dict) or not option.get('position'):
+                    continue
+                position_details = parse_phonological_position(
+                    option['position'])
+                option['position_details'] = position_details
             same_char_count = sum(row.count(char) for row in buf.buffer)
             return {
                 'line': line,
@@ -1367,7 +1423,8 @@ class WebApi:
     def set_ui_preference(self, key, value):
         if key not in ('inspector_width', 'editor_zoom', 'debug_mode',
                        'auto_check_updates', 'export_options',
-                       'export_contents', 'selection_copy_mode'):
+                       'export_contents', 'selection_copy_mode',
+                       'phonology_details_open'):
             raise ValueError('不支持的界面偏好')
         if key == 'inspector_width':
             normalized = max(230, min(520, int(value)))
@@ -1421,23 +1478,82 @@ class WebApi:
         return {'ok': True}
 
     def start_window_resize(self, edge):
-        hit_tests = {
-            'left': 10, 'right': 11, 'top': 12,
-            'top-left': 13, 'top-right': 14, 'bottom': 15,
-            'bottom-left': 16, 'bottom-right': 17,
+        edge = str(edge)
+        valid_edges = {
+            'left', 'right', 'top', 'bottom',
+            'top-left', 'top-right', 'bottom-left', 'bottom-right',
         }
-        hit_test = hit_tests.get(str(edge))
         native = getattr(_APP_WINDOW, 'native', None) if _APP_WINDOW else None
-        if os.name != 'nt' or not hit_test or native is None or self._window_maximized:
+        if (os.name != 'nt' or edge not in valid_edges or native is None
+                or self._window_maximized):
             return {'ok': False}
+        if self._window_resize_thread and self._window_resize_thread.is_alive():
+            return {'ok': False, 'error': '窗口正在缩放'}
         try:
             import ctypes
-            handle = int(native.Handle.ToInt64())
-            ctypes.windll.user32.ReleaseCapture()
-            ctypes.windll.user32.SendMessageW(handle, 0x00A1, hit_test, 0)
+            from ctypes import wintypes
+
+            class Point(ctypes.Structure):
+                _fields_ = [('x', wintypes.LONG), ('y', wintypes.LONG)]
+
+            class Rect(ctypes.Structure):
+                _fields_ = [
+                    ('left', wintypes.LONG), ('top', wintypes.LONG),
+                    ('right', wintypes.LONG), ('bottom', wintypes.LONG),
+                ]
+
+            native_handle = native.Handle
+            handle = int(native_handle.ToInt64()) if hasattr(
+                native_handle, 'ToInt64') else int(native_handle)
+            # Keep these signatures isolated. Mutating ctypes.windll.user32
+            # would also change pywebview's shared SetWindowPos function.
+            user32 = ctypes.WinDLL('user32', use_last_error=True)
+            user32.GetCursorPos.argtypes = [ctypes.POINTER(Point)]
+            user32.GetCursorPos.restype = wintypes.BOOL
+            user32.GetWindowRect.argtypes = [
+                wintypes.HWND, ctypes.POINTER(Rect)]
+            user32.GetWindowRect.restype = wintypes.BOOL
+            user32.GetAsyncKeyState.argtypes = [ctypes.c_int]
+            user32.GetAsyncKeyState.restype = wintypes.SHORT
+            user32.SetWindowPos.argtypes = [
+                wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+                ctypes.c_int, ctypes.c_int, wintypes.UINT]
+            user32.SetWindowPos.restype = wintypes.BOOL
+
+            origin = Point()
+            window_rect = Rect()
+            hwnd = wintypes.HWND(handle)
+            if (not user32.GetCursorPos(ctypes.byref(origin))
+                    or not user32.GetWindowRect(hwnd, ctypes.byref(window_rect))):
+                return {'ok': False, 'error': '无法读取窗口位置'}
+            initial_rect = (
+                window_rect.left, window_rect.top,
+                window_rect.right, window_rect.bottom)
+            min_width = max(1, int(native.MinimumSize.Width))
+            min_height = max(1, int(native.MinimumSize.Height))
+
+            def track_resize():
+                cursor = Point()
+                try:
+                    while user32.GetAsyncKeyState(0x01) & 0x8000:
+                        if not user32.GetCursorPos(ctypes.byref(cursor)):
+                            break
+                        bounds = _calculate_window_resize_bounds(
+                            edge, initial_rect,
+                            cursor.x - origin.x, cursor.y - origin.y,
+                            min_width, min_height)
+                        user32.SetWindowPos(
+                            hwnd, wintypes.HWND(), *bounds, 0x0004 | 0x0010)
+                        time.sleep(1 / 60)
+                except Exception:
+                    pass
+
+            self._window_resize_thread = threading.Thread(
+                target=track_resize, name='pboc-window-resize', daemon=True)
+            self._window_resize_thread.start()
             return {'ok': True}
-        except Exception:
-            return {'ok': False}
+        except Exception as exc:
+            return {'ok': False, 'error': str(exc)}
 
     def get_diagnostics(self):
         return diagnostic_info()

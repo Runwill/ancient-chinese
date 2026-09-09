@@ -244,6 +244,22 @@ class WebApiEditorTests(unittest.TestCase):
         self.assertEqual(details['char'], 'x')
         self.assertEqual(details['same_char_count'], 2)
 
+    def test_cell_details_include_parsed_position_for_current_reading(self):
+        self.api.mapping['x'][0].update({
+            'position': '幫三C尤平',
+            'series_head': '不',
+        })
+        self.api.insert_text('x')
+
+        details = self.api.get_cell_details(0, 0)
+
+        position = details['options'][0]['position_details']
+        self.assertEqual(position['raw'], '幫三C尤平')
+        self.assertEqual(position['parts'][0]['value'], '幫母')
+        self.assertEqual(details['options'][0]['series_head'], '不')
+        self.assertFalse(any(
+            '声首：' in item['text'] for item in position['explanations']))
+
     def test_unknown_han_has_missing_phonetic_warning(self):
         editor = self.api.insert_text('甲，A[乙]')
 
@@ -572,14 +588,18 @@ class WebApiEditorTests(unittest.TestCase):
                     'selection_copy_mode', 'phon')
                 auto_update = self.api.set_ui_preference(
                     'auto_check_updates', False)
+                phonology_open = self.api.set_ui_preference(
+                    'phonology_details_open', True)
                 preferences = web_api._load_ui_preferences()
 
         self.assertEqual(contents['value'], ['raw', 'suno'])
         self.assertEqual(copy_mode['value'], 'phon')
         self.assertIs(auto_update['value'], False)
+        self.assertIs(phonology_open['value'], True)
         self.assertEqual(preferences['export_contents'], ['raw', 'suno'])
         self.assertEqual(preferences['selection_copy_mode'], 'phon')
         self.assertIs(preferences['auto_check_updates'], False)
+        self.assertIs(preferences['phonology_details_open'], True)
 
     def test_empty_export_contents_falls_back_to_pboc(self):
         with tempfile.TemporaryDirectory() as root:

@@ -29,12 +29,168 @@ _DATA_CHANGE_ENTRY = re.compile(r'^  \[(?P<kind>新增|删除|修改)]\s*(?P<bod
 _DATA_CHANGE_INDEX_CACHE = {'signature': None, 'items': []}
 _READING_CHANGE_CACHE = {'signature': None, 'events': {}}
 _DATA_CHANGE_FIELD_LABELS = {
-    'c': '音韵地位', 'm': '字头', 'd': '释义',
+    'c': '音韵地位', 'm': '声首', 'd': '释义',
     'z': '汉字', 'y': '音标',
     '總出現次數': '总出现次数', '見西周': '见西周',
     '少見詞出處': '少见词出处',
     '推導中古音': '推导中古音', '推導普通話': '推导普通话',
 }
+
+_MIDDLE_CHINESE_INITIALS = '幫滂並明端透定泥來知徹澄孃精清從心邪莊初崇生俟章昌常書船日見溪羣疑影曉匣云以'
+_MIDDLE_CHINESE_RIMES = '東冬鍾江支脂之微魚虞模齊祭泰佳皆夬灰咍廢真臻文殷元魂痕寒刪山先仙蕭宵肴豪歌麻陽唐庚耕清青蒸登尤侯幽侵覃談鹽添咸銜嚴凡'
+_LABIAL_INITIALS = set('幫滂並明')
+_BLUNT_INITIALS = set('幫滂並明見溪羣疑影曉匣云')
+_ROUNDING_NEUTRAL_RIMES = set('東冬鍾江模尤侯')
+_YIN_RIMES = set('支脂之微魚虞模齊祭泰佳皆夬灰咍廢蕭宵肴豪歌麻侯尤幽')
+_INITIAL_PLACES = {
+    **{initial: '唇音' for initial in '幫滂並明'},
+    **{initial: '舌头音' for initial in '端透定泥'},
+    **{initial: '舌上音' for initial in '知徹澄孃'},
+    **{initial: '齿头音' for initial in '精清從心邪'},
+    **{initial: '正齿音' for initial in '莊初崇生俟章昌常書船'},
+    **{initial: '牙音' for initial in '見溪羣疑'},
+    **{initial: '喉音' for initial in '影曉匣云以'},
+    '來': '半舌音', '日': '半齿音',
+}
+_INITIAL_VOICING = {
+    **{initial: '全清' for initial in '幫端知精心莊生章書見影曉'},
+    **{initial: '次清' for initial in '滂透徹清初昌溪'},
+    **{initial: '全浊' for initial in '並定澄從邪崇俟常船羣匣'},
+    **{initial: '次浊' for initial in '明泥孃來日疑云以'},
+}
+_INITIAL_MANNERS = {
+    **{initial: '塞音' for initial in '幫滂並端透定知徹澄見溪羣影'},
+    **{initial: '鼻音' for initial in '明泥孃疑'},
+    **{initial: '塞擦音' for initial in '精清從莊初崇章昌常'},
+    **{initial: '擦音' for initial in '心邪生俟書船曉匣'},
+    '來': '边音', '日': '响音', '云': '近音', '以': '近音',
+}
+_VOICING_NOTES = {
+    '全清': '不送气清音',
+    '次清': '送气清音',
+    '全浊': '浊阻碍音',
+    '次浊': '鼻音、边音等浊响音',
+}
+_RIME_GROUPS = {
+    '通': '東冬鍾', '江': '江', '止': '支脂之微', '遇': '魚虞模',
+    '蟹': '齊祭泰佳皆夬灰咍廢', '臻': '真臻文殷魂痕',
+    '山': '元寒刪山先仙', '效': '蕭宵肴豪', '果': '歌', '假': '麻',
+    '宕': '陽唐', '梗': '庚耕清青', '曾': '蒸登', '流': '尤侯幽',
+    '深': '侵', '咸': '覃談鹽添咸銜嚴凡',
+}
+_RIME_TO_GROUP = {
+    rime: group for group, rimes in _RIME_GROUPS.items() for rime in rimes
+}
+_POSITION_PATTERN = re.compile(
+    rf'^([{_MIDDLE_CHINESE_INITIALS}])([開合]?)([一二三四])'
+    rf'([ABC]?)([{_MIDDLE_CHINESE_RIMES}])([平上去入])$')
+
+
+def parse_phonological_position(value: str) -> Optional[Dict[str, Any]]:
+    """拆分《切韵》音韵地位描述，并生成适合界面展示的解释。"""
+    raw = str(value or '').strip()
+    match = _POSITION_PATTERN.fullmatch(raw)
+    if not match:
+        return None
+    initial, rounding, division, category, rime, tone = match.groups()
+    group = _RIME_TO_GROUP.get(rime)
+    parts = [
+        {'key': 'initial', 'label': '声母', 'value': f'{initial}母'},
+        {'key': 'rounding', 'label': '开合',
+         'value': f'{rounding}口' if rounding else '开合中立'},
+        {'key': 'division', 'label': '等', 'value': f'{division}等'},
+        {'key': 'category', 'label': '类别',
+         'value': f'{category}类' if category else '不分类'},
+        {'key': 'rime', 'label': '韵', 'value': f'{rime}韵'},
+        {'key': 'tone', 'label': '声调', 'value': f'{tone}声'},
+    ]
+    initial_voicing = _INITIAL_VOICING.get(initial)
+    initial_traits = '、'.join(filter(None, (
+        _INITIAL_PLACES.get(initial), initial_voicing,
+        _INITIAL_MANNERS.get(initial))))
+    explanations = [{
+        'text': f'{initial}母：{initial_traits}。',
+    }]
+    if initial_voicing:
+        explanations.append({
+            'text': f'{initial_voicing}：{_VOICING_NOTES[initial_voicing]}。',
+            'indent': True,
+        })
+    if initial == '來':
+        explanations.append({'text': '拟音：舌边近音 /l/。', 'indent': True})
+    if rounding:
+        if rounding == '開':
+            explanations.append({'text': '開口：无合口圆唇成分。'})
+        else:
+            explanations.append({'text': '合口：有圆唇成分。'})
+        explanations.append({
+            'text': '开合：区分圆唇特征，不是口腔开度。',
+            'indent': True,
+        })
+    elif initial in _LABIAL_INITIALS:
+        explanations.append({'text':
+            f'开合：未标。{initial}母属唇音，不独立区分圆唇特征。'})
+    elif rime in _ROUNDING_NEUTRAL_RIMES:
+        explanations.append({'text':
+            f'开合：未标。{rime}韵不独立区分圆唇特征。'})
+    else:
+        explanations.append({'text': '开合：未标。'})
+    explanations.append({'text':
+        f'{division}等：韵图等类，关联介音、主元音等音质差异。'
+        '不等同于固定的 /j/，不是声调。'})
+    if category == 'C':
+        explanations.append({'text': 'C类：三等内部分类，属非前元音类。'})
+        explanations.append({'text': 'A、B类：前元音类。', 'indent': True})
+        explanations.append({
+            'text': '重纽：唇、牙、喉音三等的A／B对立。',
+            'indent': True,
+        })
+    elif category:
+        explanations.append({'text':
+            f'{category}类：三等内部分类，属前元音类。'})
+        explanations.append({'text': 'C类：非前元音类。', 'indent': True})
+        explanations.append({
+            'text': '重纽：唇、牙、喉音三等的A／B对立。',
+            'indent': True,
+        })
+    elif division != '三':
+        explanations.append({'text':
+            '类别：A／B／C仅用于唇、牙、喉音的三等地位，此处不适用。'})
+    elif initial not in _BLUNT_INITIALS:
+        explanations.append({'text':
+            f'类别：{initial}母不参与三等地位的A／B／C分类。'})
+    else:
+        explanations.append({'text': '类别：此三等地位未标A／B／C类别。'})
+    rime_kind = '阴声韵' if rime in _YIN_RIMES else (
+        '入声韵' if tone == '入' else '阳声韵')
+    kind_note = {
+        '阴声韵': '一般无鼻音或塞音韵尾',
+        '阳声韵': '通常具有鼻音韵尾',
+        '入声韵': '与塞音韵尾相配',
+    }[rime_kind]
+    if group:
+        explanations.append({'text':
+            f'{rime}韵：{group}摄、{rime_kind}。'})
+    else:
+        explanations.append({'text': f'{rime}韵：{rime_kind}。'})
+    explanations.append({
+        'text': f'{rime_kind}：{kind_note}。',
+        'indent': True,
+    })
+    if group:
+        explanations.append({
+            'text': '摄：归并了韵腹、韵尾等的韵类。',
+            'indent': True,
+        })
+    if tone == '入':
+        explanations.append({'text': '入声：中古四声之一，属促声，与塞音韵尾相配。'})
+    else:
+        explanations.append({'text': f'{tone}声：中古四声之一，属舒声。'})
+    return {
+        'raw': raw,
+        'parts': parts,
+        'explanations': explanations,
+    }
 
 
 def _local_path(filename: str) -> str:
@@ -304,7 +460,7 @@ def _structure_data_change_entry(entry):
             'old': old_value, 'new': new_value,
         }]
         unchanged = 0
-        headword = None
+        series_head = None
     return {
         **entry,
         'display_label': (f'{headword} · {entry["label"]}'
@@ -655,8 +811,16 @@ def load_map_from_json_gz(on_status=None, on_progress=None) -> Optional[Dict[str
             continue
 
         note = None
+        position = None
+        headword = None
         if extra_data and i < len(extra_data):
             ext = extra_data[i]
+            position_val = ext.get('c')
+            if isinstance(position_val, str) and position_val.strip():
+                position = position_val.strip()
+            series_head_val = ext.get('m')
+            if isinstance(series_head_val, str) and series_head_val.strip():
+                series_head = series_head_val.strip()
             parts = []
             d = ext.get('d')
             if d and isinstance(d, list):
@@ -675,7 +839,12 @@ def load_map_from_json_gz(on_status=None, on_progress=None) -> Optional[Dict[str
             if parts:
                 note = '\n'.join(parts)
 
-        mapping.setdefault(ch, []).append({'phonetic': phonetic, 'note': note})
+        option = {'phonetic': phonetic, 'note': note}
+        if position:
+            option['position'] = position
+        if series_head:
+            option['series_head'] = series_head
+        mapping.setdefault(ch, []).append(option)
         if on_progress and (i % 500 == 0 or i + 1 == total):
             on_progress((i + 1) * 100 // total)
 
