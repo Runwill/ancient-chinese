@@ -84,8 +84,21 @@
   customSelectMenu.hidden = true;
   customSelectMenu.setAttribute('role', 'listbox');
 
+  function raiseToastStack(stack) {
+    if (typeof stack.showPopover === 'function') {
+      stack.setAttribute('popover', 'manual');
+      if (stack.matches(':popover-open')) stack.hidePopover();
+      stack.showPopover();
+      return;
+    }
+    const dialogs = [...$$('dialog[open]')];
+    const host = dialogs[dialogs.length - 1] || document.body;
+    if (stack.parentElement !== host) host.append(stack);
+  }
+
   function toast(message, kind = '') {
     const stack = $('#toast-stack');
+    raiseToastStack(stack);
     const className = `toast ${kind}`;
     let node = [...stack.children].find(item =>
       item.className === className && item.textContent === message);
@@ -96,7 +109,13 @@
       stack.append(node);
     }
     clearTimeout(node._removeTimer);
-    node._removeTimer = setTimeout(() => node.remove(), 2600);
+    node._removeTimer = setTimeout(() => {
+      node.remove();
+      if (!stack.children.length && typeof stack.hidePopover === 'function'
+          && stack.matches(':popover-open')) {
+        stack.hidePopover();
+      }
+    }, 2600);
   }
 
   function queue(task) {
@@ -3001,13 +3020,27 @@
       downloadedUpdate = downloaded;
       const installed = await invoke('install_downloaded_update', downloaded.path);
       if (installed?.permission_required) {
-        toast('请允许此应用安装更新，然后返回并点击“继续安装”');
-        if (availableUpdate) renderUpdateResult(availableUpdate);
+        renderUpdateOutcome(
+          '请在系统设置中允许安装未知应用，返回后继续安装。',
+          '继续安装');
+      } else if (installed?.installer_opened) {
+        renderUpdateOutcome('系统安装器已打开，请在系统界面完成安装。', '重新打开');
       }
     } catch (error) {
-      toast(error.message || '更新失败', 'error');
-      if (availableUpdate) renderUpdateResult(availableUpdate);
+      const message = error.message || '更新失败';
+      invoke('report_update_error', message).catch(() => {});
+      renderUpdateOutcome(`更新失败：${message}`, '重试', true);
     }
+  }
+
+  function renderUpdateOutcome(message, actionLabel, failed = false) {
+    const actions = $('#update-result .maintenance-actions');
+    if (!actions) return;
+    actions.innerHTML = `<div class="update-download-outcome ${failed ? 'error' : ''}" role="status">
+      <span>${esc(message)}</span>
+      <button id="retry-update-install" type="button" class="button">${esc(actionLabel)}</button>
+    </div>`;
+    $('#retry-update-install').onclick = installAvailableUpdate;
   }
 
   function formatDownloadSize(value) {
@@ -3025,9 +3058,11 @@
     const detail = total
       ? `${percent}% · ${formatDownloadSize(downloaded)} / ${formatDownloadSize(total)}`
       : (status.phase === 'checking' ? '请稍候' : formatDownloadSize(downloaded));
+    const track = status.phase === 'checking' ? '' : `
+      <div class="update-download-track ${total ? '' : 'indeterminate'}"><span style="width:${total ? percent : 100}%"></span></div>`;
     actions.innerHTML = `<div class="update-download-status" role="status" aria-live="polite">
       <div class="update-download-copy"><span>${esc(status.message || '正在下载安装包…')}</span><span>${esc(detail)}</span></div>
-      <div class="update-download-track ${total ? '' : 'indeterminate'}"><span style="width:${total ? percent : 38}%"></span></div>
+      ${track}
     </div>`;
   }
 
@@ -3750,7 +3785,7 @@
       manual_hl: false, stale: false, in_bracket: true,
     }));
     let mockGroupExpanded = true;
-    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.14 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
+    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.15 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
     const mockUpdate = {
       id: 'mock-reading-update', batch_id: 'b1',
       timestamp: '2026-08-22 23:55:03', filename: 'base.json.gz',
@@ -3836,6 +3871,7 @@
     };
     const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true, unselected_polyphonic: 2, manually_completed: false }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false, unselected_polyphonic: 0, manually_completed: true }];
     const previewChangelog = [
+      { version: '0.12.15', date: '2026-09-09', title: '更新状态与提示修复', items: ['获取更新信息时不再用反复清空的进度条表示等待；开始下载后才显示安装包的实际百分比与文件大小。', '下载失败、安装授权和系统安装器启动结果会持续显示在更新区域，并提供重试、继续安装或重新打开操作；更新错误同步写入后台输出。', '右下角提示提升到窗口顶层，在关于、导出和方案编辑等模态窗口打开时不再被遮罩遮挡。'] },
       { version: '0.12.14', date: '2026-09-09', title: '音韵详情与文稿库交互', items: ['当前读音可展开音韵详情，拆分声母、开合、等、类别、韵和声调，并显示声首；说明补全发音部位与清浊、圆唇特征、介音与主元音、重纽、韵摄与韵尾、舒声与促声等知识，展开状态会保存，详情文字可以选择复制。', '文稿和文件夹支持双击重命名；单击仍分别用于打开文稿和展开或折叠文件夹，操作菜单和拖放区域不会误触重命名。', '修复 Windows 无边框窗口无法从边缘拖动缩放的问题，并恢复原生尺寸边框；重命名等对话框支持点击背景取消，慢启动详情出现时不再挤动加载布局。'] },
       { version: '0.12.13', date: '2026-09-02', title: '方案编辑与标记交互修复', items: ['方案编辑器的下拉选择器改为跟随深浅主题的自绘菜单，并支持键盘操作、弹窗顶层显示和自动调整展开方向。', '基础映射和附加替换新增复制操作，副本会紧邻原项插入，便于在现有规则上继续修改。', '修复映射项重名后两行共用数据、修改一项会连带改变另一项的问题；旧方案中的重复解析顺序会在加载时安全清理。', '修复从方案列表编辑非当前方案后，导出页“编辑方案”仍错误打开最近编辑方案的问题。', '修复方案输入尚未失焦时撤回、重做和保存读取旧数据，导致保存后内容突然变化的问题。', '高亮标记提升为顶栏常驻按钮并采用标记笔图标；模式状态移入底部状态栏，不再遮挡正文或自动收起二级工具栏。', '关于页新增“版本发布”入口，可直接查看历史版本、说明和下载文件。'] },
       { version: '0.12.12', date: '2026-08-29', title: 'Windows 关闭与更新修复', items: ['修复 Windows 版点击右上角关闭按钮时保存队列等待自身，导致窗口无法退出的问题。', 'Windows 更新改为一次完成下载、校验、关闭、替换和重启，并统一使用清晰的更新文案，不再重复弹出安装确认。', '慢启动详情在等待超过 8 秒后显示于进度条上方；显示前不再预留空行。'] },
@@ -3875,7 +3911,7 @@
       { version: '0.9.1', date: '2026-07-20', title: 'HTML 界面全面调整', items: ['全面调整读音面板、拖动交互、滚动条和弹窗布局。'] },
       { version: '0.9.0', date: '2026-07-16', title: 'HTML 桌面界面预览版', items: ['界面迁移到 HTML 与 WebView2。'] },
     ];
-    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.14', ui_preferences: { inspector_width: 320, debug_mode: false, phonology_details_open: false }, changelog: previewChangelog });
+    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.15', ui_preferences: { inspector_width: 320, debug_mode: false, phonology_details_open: false }, changelog: previewChangelog });
     return new Proxy({
       initialize: async () => full(),
       start_initialize: async () => ({ phase: 'ready', message: '准备就绪', progress: 100, step: 6, step_count: 6, detail: '启动完成', indeterminate: false }),
@@ -3961,16 +3997,16 @@
       },
       get_polyphonic_summary: async () => [{ char: '关', count: 2, readings: { 'kˤro[n]s': 1, 'kˤro[n]': 1 }, options: [{ phonetic: 'kˤro[n]s' }, { phonetic: 'kˤro[n]' }] }],
       batch_apply_reading: async () => clone(mock), get_draft_history: async () => [{ id: 'demo.json', name: '关雎', modified: '2026-07-16T12:00:00', preview: '关关雎在河之洲' }],
-      get_diagnostics: async () => ({ app_version: '0.12.14', draft_schema_version: 3, scheme_schema_version: 3, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
+      get_diagnostics: async () => ({ app_version: '0.12.15', draft_schema_version: 3, scheme_schema_version: 3, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
       get_backend_logs: async () => ({ text: mockBackendLog, started_at: '2026-08-28T11:20:01+08:00', characters: mockBackendLog.length }),
       clear_backend_logs: async () => { mockBackendLog = ''; return { text: '', started_at: '2026-08-28T11:20:01+08:00', characters: 0 }; },
       import_old_library: async () => ({ ok: true, imported: 2, skipped: 1, renamed: 0, errors: [], state: full() }),
       open_releases_page: async () => ({ ok: true }),
-      check_for_updates: async () => ({ ok: true, current: '0.12.14', latest: '0.12.14', available: false }),
-      start_update_check: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.14', latest: '0.12.14', available: false }, error: null }),
-      get_update_check_status: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.14', latest: '0.12.14', available: false }, error: null }),
-      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.14', platform: 'windows', path: 'preview-update.exe' } }),
-      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.14', platform: 'windows', path: 'preview-update.exe' } }),
+      check_for_updates: async () => ({ ok: true, current: '0.12.15', latest: '0.12.15', available: false }),
+      start_update_check: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.15', latest: '0.12.15', available: false }, error: null }),
+      get_update_check_status: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.15', latest: '0.12.15', available: false }, error: null }),
+      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.15', platform: 'windows', path: 'preview-update.exe' } }),
+      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.15', platform: 'windows', path: 'preview-update.exe' } }),
       install_downloaded_update: async () => ({ ok: true, scheduled: true }),
       get_data_change_batches: async () => ({ ok: true, exists: true, file_size: 77729928, total: 2, items: [
         { id: 'b2', timestamp: '2026-08-22 23:55:12', filename: 'extra.json.gz', count: 10427 },

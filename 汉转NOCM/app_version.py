@@ -7,7 +7,7 @@ import sys
 
 
 APP_NAME = '汉字转 PBOC 音标'
-__version__ = '0.12.14'
+__version__ = '0.12.15'
 
 DRAFT_SCHEMA_VERSION = 3
 SCHEME_SCHEMA_VERSION = 3
@@ -19,6 +19,16 @@ RELEASES_PAGE_URL = (
     'https://github.com/Runwill/ancient-chinese/releases')
 
 CHANGELOG = [
+    {
+        'version': '0.12.15',
+        'date': '2026-09-09',
+        'title': '更新状态与提示修复',
+        'items': [
+            '获取更新信息时不再用反复清空的进度条表示等待；开始下载后才显示安装包的实际百分比与文件大小。',
+            '下载失败、安装授权和系统安装器启动结果会持续显示在更新区域，并提供重试、继续安装或重新打开操作；更新错误同步写入后台输出。',
+            '右下角提示提升到窗口顶层，在关于、导出和方案编辑等模态窗口打开时不再被遮罩遮挡。',
+        ],
+    },
     {
         'version': '0.12.14',
         'date': '2026-09-09',

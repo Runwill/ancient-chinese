@@ -537,12 +537,40 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertIn("dialog.addEventListener('pointercancel'", binding)
         self.assertIn('bindDialogBackdropDismissal();', script)
 
+    def test_toasts_are_raised_above_modal_dialog_backdrops(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        styles = Path('web/styles.css').read_text(encoding='utf-8')
+        raising = script.split('function raiseToastStack(stack) {', 1)[1].split(
+            'function toast(message', 1)[0]
+
+        self.assertIn("stack.setAttribute('popover', 'manual')", raising)
+        self.assertIn('stack.showPopover()', raising)
+        self.assertIn("$$('dialog[open]')", raising)
+        self.assertIn('raiseToastStack(stack);', script)
+        toast_rule = styles.split('.toast-stack {', 1)[1].split('}', 1)[0]
+        self.assertIn('background: transparent', toast_rule)
+        self.assertIn('border: 0', toast_rule)
+
     def test_windows_update_is_presented_as_one_step_restart(self):
         script = Path('web/app.js').read_text(encoding='utf-8')
         self.assertIn("'下载并重启更新'", script)
         self.assertIn("'下载并安装'", script)
         self.assertNotIn("'立即安装'", script)
         self.assertNotIn('程序将关闭、替换并自动重新启动', script)
+
+    def test_update_wait_and_outcomes_are_not_transient(self):
+        script = Path('web/app.js').read_text(encoding='utf-8')
+        styles = Path('web/styles.css').read_text(encoding='utf-8')
+
+        self.assertIn("status.phase === 'checking' ? ''", script)
+        self.assertIn('function renderUpdateOutcome(', script)
+        self.assertIn("renderUpdateOutcome(`更新失败：${message}`, '重试', true)",
+                      script)
+        self.assertIn('系统安装器已打开，请在系统界面完成安装。', script)
+        self.assertIn("invoke('report_update_error', message)", script)
+        self.assertNotIn('transform: translateX(-110%)', styles.split(
+            '.update-download-track.indeterminate', 1)[1].split(
+                '.maintenance-content', 1)[0])
 
     def test_about_page_links_to_release_history(self):
         script = Path('web/app.js').read_text(encoding='utf-8')

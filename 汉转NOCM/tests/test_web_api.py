@@ -97,6 +97,10 @@ class WebApiEditorTests(unittest.TestCase):
         self.assertIn('后台测试输出', snapshot['text'])
         self.assertGreater(snapshot['characters'], 0)
 
+        self.api.report_update_error('安装器无法打开')
+        self.assertIn('更新失败：安装器无法打开',
+                      self.api.get_backend_logs()['text'])
+
         cleared = self.api.clear_backend_logs()
         self.assertEqual(cleared['text'], '')
         self.assertEqual(cleared['characters'], 0)

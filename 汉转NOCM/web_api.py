@@ -43,7 +43,8 @@ from nocm_transcriber import (DEFAULT_SCHEME_ID, NocmTranscriber, diff_schemes,
                               validate_scheme)
 from update_manager import (check_for_updates, diagnostic_info, download_update,
                             launch_windows_update, validate_downloaded_update)
-from runtime_log import clear_runtime_logs, get_runtime_logs
+from runtime_log import (clear_runtime_logs, get_runtime_logs,
+                         write_runtime_log)
 
 
 _PUNCT_TO_NEWLINE = '，。！？；：、,!?;:…—○'
@@ -1626,6 +1627,8 @@ class WebApi:
                         phase='ready', message='更新包已下载并通过校验',
                         progress=100, result=result, error=None)
             except Exception as exc:
+                write_runtime_log(
+                    f'更新下载失败：{str(exc) or type(exc).__name__}')
                 with self._lock:
                     self._update_download.update(
                         phase='error', message='更新下载失败',
@@ -1641,6 +1644,15 @@ class WebApi:
     def get_update_download_status(self):
         with self._lock:
             return copy.deepcopy(self._update_download)
+
+    def report_update_error(self, message):
+        """Keep update failures available in the in-app backend log."""
+        detail = str(message or '未知错误').strip()
+        with self._lock:
+            already_logged = self._update_download.get('error') == detail
+        if not already_logged:
+            write_runtime_log(f'更新失败：{detail}')
+        return {'ok': True}
 
     def install_downloaded_update(self, path):
         verified = validate_downloaded_update(path)
