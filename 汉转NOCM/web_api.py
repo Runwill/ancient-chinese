@@ -176,38 +176,6 @@ class WebApi:
         _APP_WINDOW = window
         window.events.maximized += lambda: self._set_window_maximized(True)
         window.events.restored += lambda: self._set_window_maximized(False)
-        window.events.shown += self._enable_windows_resize_frame
-
-    def _enable_windows_resize_frame(self):
-        """Restore the native resize frame without restoring a title bar."""
-        native = getattr(_APP_WINDOW, 'native', None) if _APP_WINDOW else None
-        if os.name != 'nt' or native is None:
-            return False
-        try:
-            import ctypes
-            from ctypes import wintypes
-
-            native_handle = native.Handle
-            handle = int(native_handle.ToInt64()) if hasattr(
-                native_handle, 'ToInt64') else int(native_handle)
-            hwnd = wintypes.HWND(handle)
-            user32 = ctypes.WinDLL('user32', use_last_error=True)
-            user32.GetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int]
-            user32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
-            user32.SetWindowLongPtrW.argtypes = [
-                wintypes.HWND, ctypes.c_int, ctypes.c_ssize_t]
-            user32.SetWindowLongPtrW.restype = ctypes.c_ssize_t
-            user32.SetWindowPos.argtypes = [
-                wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
-                ctypes.c_int, ctypes.c_int, wintypes.UINT]
-            user32.SetWindowPos.restype = wintypes.BOOL
-            style = user32.GetWindowLongPtrW(hwnd, -16)
-            user32.SetWindowLongPtrW(hwnd, -16, style | 0x00040000)
-            return bool(user32.SetWindowPos(
-                hwnd, wintypes.HWND(), 0, 0, 0, 0,
-                0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020))
-        except Exception:
-            return False
 
     def _set_window_maximized(self, maximized):
         self._window_maximized = bool(maximized)

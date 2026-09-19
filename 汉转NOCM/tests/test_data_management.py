@@ -463,11 +463,8 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertIn("invoke('start_window_resize'", script)
         self.assertIn('event.preventDefault();', script)
         self.assertIn('wintypes.HWND(handle)', web_api_source)
-        self.assertIn('window.events.shown += self._enable_windows_resize_frame',
-                      web_api_source)
-        self.assertIn('style | 0x00040000', web_api_source)
-        self.assertIn('0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020',
-                      web_api_source)
+        self.assertNotIn('_enable_windows_resize_frame', web_api_source)
+        self.assertNotIn('style | 0x00040000', web_api_source)
         self.assertIn('user32.GetAsyncKeyState(0x01)', web_api_source)
         self.assertIn('user32.SetWindowPos(', web_api_source)
         self.assertIn("ctypes.WinDLL('user32'", web_api_source)
@@ -493,38 +490,6 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertEqual(
             calculate('right', rect, -500, 0, 960, 600),
             (100, 100, 960, 800))
-
-    @unittest.skipUnless(os.name == 'nt', 'Windows native frame test')
-    def test_hidden_frameless_window_receives_native_resize_frame(self):
-        import ctypes
-        from ctypes import wintypes
-
-        import clr
-        clr.AddReference('System.Windows.Forms')
-        from System.Windows.Forms import Form, FormBorderStyle
-
-        form = Form()
-        previous_window = web_api._APP_WINDOW
-        try:
-            form.FormBorderStyle = getattr(FormBorderStyle, 'None')
-            handle = int(form.Handle.ToInt64())
-            user32 = ctypes.WinDLL('user32', use_last_error=True)
-            user32.GetWindowLongPtrW.argtypes = [
-                wintypes.HWND, ctypes.c_int]
-            user32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
-            before = user32.GetWindowLongPtrW(
-                wintypes.HWND(handle), -16)
-            web_api._APP_WINDOW = type(
-                'HiddenWindow', (), {'native': form})()
-            api = object.__new__(web_api.WebApi)
-
-            self.assertFalse(before & 0x00040000)
-            self.assertTrue(api._enable_windows_resize_frame())
-            after = user32.GetWindowLongPtrW(wintypes.HWND(handle), -16)
-            self.assertTrue(after & 0x00040000)
-        finally:
-            web_api._APP_WINDOW = previous_window
-            form.Dispose()
 
     def test_dialogs_close_only_after_clicking_the_backdrop(self):
         script = Path('web/app.js').read_text(encoding='utf-8')

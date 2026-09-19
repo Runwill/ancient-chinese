@@ -7,7 +7,7 @@ import sys
 
 
 APP_NAME = '汉字转 PBOC 音标'
-__version__ = '0.12.15'
+__version__ = '0.12.16'
 
 DRAFT_SCHEMA_VERSION = 3
 SCHEME_SCHEMA_VERSION = 3
@@ -19,6 +19,14 @@ RELEASES_PAGE_URL = (
     'https://github.com/Runwill/ancient-chinese/releases')
 
 CHANGELOG = [
+    {
+        'version': '0.12.16',
+        'date': '2026-09-20',
+        'title': 'Windows 窗口边框修复',
+        'items': [
+            '移除 Windows 无边框窗口顶部异常出现的浅色边条，同时保留四边与四角拖动缩放。',
+        ],
+    },
     {
         'version': '0.12.15',
         'date': '2026-09-09',
