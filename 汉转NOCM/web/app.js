@@ -27,11 +27,11 @@
       'dialect_xitu_dongqin_dong', 'dialect_xitu_dongqin_dong_coda',
       'dialect_xitu_qinzheng_only', 'dialect_xitu_qinzheng_only_coda',
       'dialect_xitu_qinzheng_only_zheng', 'dialect_xitu_qinzheng_only_zheng_coda',
-      'dialect_xitu_you_xiao_first', 'dialect_xitu_you_xiao_first_target',
       'dialect_xitu_you_xiao_first_e', 'dialect_xitu_you_xiao_first_e_target',
+      'dialect_xitu_you_xiao_first', 'dialect_xitu_you_xiao_first_target',
+      'dialect_xitu_you_xiao_second_a', 'dialect_xitu_you_xiao_second_a_target',
       'dialect_xitu_you_xiao_second', 'dialect_xitu_you_xiao_second_target',
-      'dialect_xitu_you_xiao_second_coda', 'dialect_xitu_you_xiao_second_a',
-      'dialect_xitu_you_xiao_second_a_target',
+      'dialect_xitu_you_xiao_second_coda',
       'dialect_xitu_zhijue', 'dialect_xitu_zhijue_target',
       'dialect_xitu_zhijue_u', 'dialect_xitu_zhijue_u_target',
       'dialect_xitu_jizhi', 'dialect_xitu_jizhi_target',
@@ -168,6 +168,10 @@
   let highlightMode = false;
   let search = { visible: false, query: '', scope: 'all', matches: [], index: 0 };
   let draftLibraryQuery = '';
+  let draftLibrarySearchAppliedQuery = '';
+  let draftLibrarySearchMatches = null;
+  let draftLibrarySearchTimer = null;
+  let draftLibrarySearchRequest = 0;
   let draftDialectDraft = null;
   let draftDialectFilename = null;
   const EXPORT_CONTENT_KEYS = ['raw', 'phon', 'suno'];
@@ -574,6 +578,10 @@
       $('#library-search-input').select();
     } else {
       draftLibraryQuery = '';
+      draftLibrarySearchAppliedQuery = '';
+      draftLibrarySearchMatches = null;
+      draftLibrarySearchRequest += 1;
+      clearTimeout(draftLibrarySearchTimer);
       $('#library-search-input').value = '';
       renderDraftTree();
     }
@@ -1395,9 +1403,15 @@
     const root = $('#draft-tree');
     const query = draftLibraryQuery.trim().toLocaleLowerCase();
     if (query) {
-      const matches = state.drafts.filter(draft => [
+      const exactMatches = state.drafts.filter(draft => [
         draft.name, draft.preview, draft.filename,
       ].some(value => String(value || '').toLocaleLowerCase().includes(query)));
+      const matchedNames = draftLibrarySearchAppliedQuery === query
+        && draftLibrarySearchMatches
+        ? new Set(draftLibrarySearchMatches) : null;
+      const matches = matchedNames
+        ? state.drafts.filter(draft => matchedNames.has(draft.filename))
+        : exactMatches;
       const results = matches.map(item => draftHtml(item, '', false, true)).join('');
       root.innerHTML = `<div class="tree-section-label">搜索结果 · ${matches.length}</div><div class="library-search-results">${results || '<div class="folder-empty">没有匹配的文稿</div>'}</div>`;
       bindDraftTree();
@@ -1557,7 +1571,24 @@
     if (!root || !draftDialectDraft) return;
     const options = draftDialectDraft.options || {};
     const definitions = draftDialectDraft.definitions || {};
-    const follow = $('#draft-dialect-follow')?.checked;
+    const mode = draftDialectDraft.mode || 'scheme';
+    const note = {
+      scheme: '完全沿用方案默认值。',
+      masters: '仅单独设置各音变方案的总开关；其中细项沿用方案默认值。',
+      all: '单独设置音变方案及其细项。',
+    }[mode] || '';
+    const noteElement = $('#draft-dialect-note');
+    if (noteElement) noteElement.textContent = note;
+    $$('[data-draft-dialect-mode]').forEach(button => {
+      const selected = button.dataset.draftDialectMode === mode;
+      button.classList.toggle('active', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+    const masterOptions = draftDialectDraft.master_options || {};
+    if (mode === 'scheme') {
+      root.innerHTML = '';
+      return;
+    }
     const html = DRAFT_DIALECT_GROUPS.filter(
       ([master]) => !HIDDEN_SCHEME_OPTION_GROUPS.has(master)
     ).map(([master, title]) => {
@@ -1574,17 +1605,36 @@
         (SCHEME_OPTION_ORDER.get(a) ?? Number.MAX_SAFE_INTEGER)
         - (SCHEME_OPTION_ORDER.get(b) ?? Number.MAX_SAFE_INTEGER)
       ));
-      const enabled = Boolean(options[master]);
-      const childHtml = children.map(([key, item]) => {
-        const value = options[key] ?? item.default ?? '';
-        if (item.type === 'text') return `<label class="draft-dialect-child ${!enabled || follow ? 'is-disabled' : ''}"><span>${esc(item.label || key)}</span><input class="text-input" type="text" data-draft-dialect-text="${esc(key)}" value="${esc(value)}" ${!enabled || follow ? 'disabled' : ''}></label>`;
-        return `<label class="draft-dialect-child ${!enabled || follow ? 'is-disabled' : ''}"><span>${esc(item.label || key)}</span><input type="checkbox" data-draft-dialect-option="${esc(key)}" ${options[key] ? 'checked' : ''} ${!enabled || follow ? 'disabled' : ''}></label>`;
-      }).join('');
-      return `<section class="draft-dialect-group"><div class="draft-dialect-heading"><div><strong>${esc(title)}</strong><div class="muted">${esc(definition.description || '')}</div></div><label class="switch"><input type="checkbox" data-draft-dialect-option="${esc(master)}" ${enabled ? 'checked' : ''} ${follow ? 'disabled' : ''} aria-label="启用${esc(title)}"><span></span></label></div>${childHtml ? `<div class="draft-dialect-children">${childHtml}</div>` : ''}</section>`;
+      const enabled = Boolean(mode === 'masters'
+        ? masterOptions[master] : options[master]);
+      const parentKey = (key, item) => item.parent || (
+        /_(target|coda|tone)$/.test(key)
+          ? key.replace(/_(target|coda|tone)$/, '')
+          : ''
+      );
+      const childHtml = children
+        .filter(([key, item]) => item.type !== 'text' || !parentKey(key, item))
+        .map(([key, item]) => {
+          const childEnabled = Boolean(options[key]);
+          const fields = children.filter(([fieldKey, field]) => (
+            field.type === 'text' && parentKey(fieldKey, field) === key
+          ));
+          const fieldsHtml = fields.map(([fieldKey, field]) => {
+            const value = options[fieldKey] ?? field.default ?? '';
+            const disabled = !enabled || !childEnabled;
+            return `<span class="draft-dialect-inline-field" title="${esc(field.label || fieldKey)}"><input class="text-input" type="text" data-draft-dialect-text="${esc(fieldKey)}" value="${esc(value)}" aria-label="${esc(field.label || fieldKey)}" ${disabled ? 'disabled' : ''}></span>`;
+          }).join('');
+          const disabled = !enabled;
+          return `<div class="draft-dialect-child ${disabled ? 'is-disabled' : ''}"><span class="draft-dialect-child-label">${esc(item.label || key)}</span><div class="draft-dialect-child-controls">${fieldsHtml}<label class="switch"><input type="checkbox" data-draft-dialect-option="${esc(key)}" ${childEnabled ? 'checked' : ''} ${disabled ? 'disabled' : ''} aria-label="启用${esc(item.label || key)}"><span></span></label></div></div>`;
+        }).join('');
+      return `<section class="draft-dialect-group"><div class="draft-dialect-heading"><div><strong>${esc(title)}</strong><div class="muted">${esc(definition.description || '')}</div></div><label class="switch"><input type="checkbox" data-draft-dialect-option="${esc(master)}" ${enabled ? 'checked' : ''} aria-label="启用${esc(title)}"><span></span></label></div>${mode === 'all' && childHtml ? `<div class="draft-dialect-children">${childHtml}</div>` : ''}</section>`;
     }).filter(Boolean).join('');
     root.innerHTML = html || '<p class="muted">当前方案没有可用的音变选项。</p>';
     $$('[data-draft-dialect-option]', root).forEach(input => input.onchange = () => {
       draftDialectDraft.options[input.dataset.draftDialectOption] = input.checked;
+      if (input.dataset.draftDialectOption in (draftDialectDraft.master_options || {})) {
+        draftDialectDraft.master_options[input.dataset.draftDialectOption] = input.checked;
+      }
       renderDraftDialectOptions();
     });
     $$('[data-draft-dialect-text]', root).forEach(input => input.onchange = () => {
@@ -1596,8 +1646,9 @@
     if (!filename) return;
     const result = await invoke('get_draft_dialect_options', filename);
     draftDialectFilename = filename;
-    draftDialectDraft = clone(result || { options: {}, definitions: {}, override: false });
-    $('#draft-dialect-follow').checked = !draftDialectDraft.override;
+    draftDialectDraft = clone(result || { options: {}, definitions: {}, override: false, mode: 'scheme' });
+    const mode = draftDialectDraft.mode || (draftDialectDraft.override ? 'all' : 'scheme');
+    draftDialectDraft.mode = mode;
     renderDraftDialectOptions();
     $('#draft-dialect-dialog').showModal();
   }
@@ -1875,6 +1926,7 @@
       const content = line.cells.map(cell => {
         const classes = [
           'image-line-mini-cell', cell.is_poly ? 'poly' : '',
+          cell.dialect_changed ? 'dialect-changed' : '',
           cell.missing_phonetic ? 'missing' : '',
           cell.selected && cell.selected !== 'none' ? `selected-${cell.selected}` : '',
           cell.manual_hl ? 'manual-highlight' : '', cell.stale ? 'stale' : '',
@@ -1906,6 +1958,7 @@
       orange: color('orange'), orangeSoft: color('orange-soft'),
       green: color('green'), greenSoft: color('green-soft'),
       blue: color('blue'), blueSoft: color('blue-soft'),
+      accent: color('accent'),
       pink: color('pink'), pinkSoft: color('pink-soft'),
       unknown: color('unknown'), unknownSoft: color('unknown-soft'),
       border: color('border'), muted: color('muted'),
@@ -1981,7 +2034,8 @@
     context.fillText(cell.char === '\t' ? '　' : cell.char, x + spec.cellWidth / 2, y + spec.charCenterY);
 
     context.font = `${spec.phonSize}px Cambria, "Times New Roman", serif`;
-    context.fillStyle = cell.missing_phonetic ? colors.unknown : colors.text2;
+    context.fillStyle = cell.missing_phonetic ? colors.unknown
+      : cell.dialect_changed ? colors.accent : colors.text2;
     context.fillText(
       fitCanvasText(context, cell.phonetic, spec.cellWidth - 6),
       x + spec.cellWidth / 2, y + spec.phonCenterY);
@@ -2320,6 +2374,15 @@
     const definitions = schemeDraft.option_definitions || {};
     const keys = [...new Set([...Object.keys(labels), ...Object.keys(options), ...Object.keys(definitions)])]
       .filter(key => !isDebugOnlyOption(key, definitions));
+    // Older saved schemes may have target metadata without `parent`. Keep
+    // those values attached to their boolean option in the editor as well.
+    const optionParentKey = (key, definition = definitions[key] || {}) => (
+      definition.parent || (
+        /_(target|coda|tone)$/.test(key)
+          ? key.replace(/_(target|coda|tone)$/, '')
+          : ''
+      )
+    );
     const optionRow = key => {
       const definition = definitions[key] || {};
       if (definition.type === 'choice') {
@@ -2372,7 +2435,8 @@
       const disabled = Boolean(masterKey && !options[masterKey]);
       const childFields = Object.entries(definitions)
         .filter(([childKey, childDefinition]) => (
-          childDefinition.parent === key && keys.includes(childKey)));
+          optionParentKey(childKey, childDefinition) === key
+          && keys.includes(childKey)));
       const inlineFields = childFields.map(([childKey, childDefinition]) => {
         const value = String(options[childKey] ?? childDefinition.default ?? '');
         const fieldDisabled = disabled || !enabled;
@@ -2394,7 +2458,7 @@
       .filter(([id]) => id.startsWith('dialect') === phonologyTab)
       .map(([id, title, groupKeys, master]) => ({
       id, title, master, keys: groupKeys.filter(key => (
-        keys.includes(key) && !definitions[key]?.parent))
+        keys.includes(key) && !optionParentKey(key)))
       }));
     const otherKeys = keys.filter(key => !allGrouped.has(key)
       && key.startsWith('dialect') === phonologyTab);
@@ -3608,7 +3672,24 @@
     $('#library-search-close').onclick = () => setLibrarySearchVisible(false);
     $('#library-search-input').oninput = event => {
       draftLibraryQuery = event.target.value;
+      draftLibrarySearchAppliedQuery = '';
+      draftLibrarySearchMatches = null;
+      const requestId = ++draftLibrarySearchRequest;
+      clearTimeout(draftLibrarySearchTimer);
       renderDraftTree();
+      const query = draftLibraryQuery.trim();
+      if (!query) return;
+      draftLibrarySearchTimer = setTimeout(async () => {
+        try {
+          const result = await invoke('search_drafts', query);
+          if (requestId !== draftLibrarySearchRequest
+              || query !== draftLibraryQuery.trim()
+              || !result?.ok) return;
+          draftLibrarySearchAppliedQuery = query.toLocaleLowerCase();
+          draftLibrarySearchMatches = result.filenames || [];
+          renderDraftTree();
+        } catch (_) { /* immediate name and preview matches remain available */ }
+      }, 140);
     };
     $('#library-search-input').onkeydown = event => {
       if (event.key === 'Escape') {
@@ -3679,16 +3760,22 @@
     $('#help-button').onclick = () => openMaintenance();
     $('#close-maintenance').onclick = () => $('#maintenance-dialog').close();
     $('#close-history').onclick = () => $('#history-dialog').close();
-    $('#draft-dialect-follow').onchange = () => renderDraftDialectOptions();
+    $('#draft-dialect-modes').onclick = event => {
+      const button = event.target.closest('[data-draft-dialect-mode]');
+      if (!button || !draftDialectDraft) return;
+      draftDialectDraft.mode = button.dataset.draftDialectMode;
+      renderDraftDialectOptions();
+    };
     $('#save-draft-dialect').onclick = async () => {
       if (!draftDialectFilename || !draftDialectDraft) return;
-      const options = $('#draft-dialect-follow').checked ? null : draftDialectDraft.options;
-      const result = await invoke('set_draft_dialect_options', draftDialectFilename, options);
+      const mode = draftDialectDraft.mode || 'scheme';
+      const options = mode === 'scheme' ? null : draftDialectDraft.options;
+      const result = await invoke('set_draft_dialect_options', draftDialectFilename, options, mode);
       draftDialectDraft = null;
       draftDialectFilename = null;
       $('#draft-dialect-dialog').close();
       applyResult(result);
-      toast(options ? '文稿音变已保存' : '已恢复跟随方案音变');
+      toast(mode === 'scheme' ? '已恢复跟随方案音变' : '文稿音变已保存');
     };
     $('#close-batch').onclick = () => $('#batch-dialog').close();
     $('#maintenance-tabs').onclick = event => {
@@ -3765,7 +3852,6 @@
     $('#copy-export-button').onclick = async () => { await writeClipboard($('#export-output').value); richClipboard = null; toast('导出内容已复制'); };
     $('#open-image-export-button').onclick = openImageExport;
     $('#close-image-export').onclick = () => $('#image-export-dialog').close();
-    $('#cancel-image-export').onclick = () => $('#image-export-dialog').close();
     $('#image-line-list').onchange = event => {
       const input = event.target.closest('[data-image-line]');
       if (!input) return;
@@ -4265,6 +4351,8 @@
       manual_hl: false, stale: false, in_bracket: true,
     }));
     let mockGroupExpanded = true;
+    let mockDraftDialectOptions = null;
+    let mockDraftDialectMode = 'scheme';
     let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.17 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
     const mockUpdate = {
       id: 'mock-reading-update', batch_id: 'b1',
@@ -4395,7 +4483,7 @@
     const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true, unselected_polyphonic: 2, manually_completed: false }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false, unselected_polyphonic: 0, manually_completed: true }];
     const mockUiPreferences = { inspector_width: 320, phonology_details_open: false, debug_mode: false };
     const previewChangelog = [
-      { version: '0.12.17', date: '2026-10-07', title: '文稿库与导出界面细节修复', items: ['文稿库中的音变名称改为紧跟文稿标题显示，不再占据标题行右侧。', '修复导出设置浮层在窄窗口中向外溢出、选项文字被裁切的问题。', '统一音变选项说明，简化韵尾修改表述。'] },
+      { version: '0.12.17', date: '2026-10-07', title: '文稿库与导出界面细节修复', items: ['文稿库中的音变名称改为紧跟文稿标题显示，不再占据标题行右侧。', '修复导出设置浮层在窄窗口中向外溢出、选项文字被裁切的问题。', '统一音变选项说明，简化韵尾修改表述。', '方案和文稿音变设置统一为名称、目标值与开关同一行显示；旧方案缺少关联信息时也能正确合并目标项。'] },
       { version: '0.12.16', date: '2026-09-20', title: 'Windows 窗口边框修复', items: ['移除 Windows 无边框窗口顶部异常出现的浅色边条，同时保留四边与四角拖动缩放。'] },
       { version: '0.12.15', date: '2026-09-09', title: '更新状态与提示修复', items: ['获取更新信息时不再用反复清空的进度条表示等待；开始下载后才显示安装包的实际百分比与文件大小。', '下载失败、安装授权和系统安装器启动结果会持续显示在更新区域，并提供重试、继续安装或重新打开操作；更新错误同步写入后台输出。', '右下角提示提升到窗口顶层，在关于、导出和方案编辑等模态窗口打开时不再被遮罩遮挡。'] },
       { version: '0.12.14', date: '2026-09-09', title: '音韵详情与文稿库交互', items: ['当前读音可展开音韵详情，拆分声母、开合、等、类别、韵和声调，并显示声首；说明补全发音部位与清浊、圆唇特征、介音与主元音、重纽、韵摄与韵尾、舒声与促声等知识，展开状态会保存，详情文字可以选择复制。', '文稿和文件夹支持双击重命名；单击仍分别用于打开文稿和展开或折叠文件夹，操作菜单和拖放区域不会误触重命名。', '修复 Windows 无边框窗口无法从边缘拖动缩放的问题，并恢复原生尺寸边框；重命名等对话框支持点击背景取消，慢启动详情出现时不再挤动加载布局。'] },
@@ -4440,8 +4528,36 @@
     const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.17', ui_preferences: clone(mockUiPreferences), changelog: previewChangelog });
     return new Proxy({
       initialize: async () => full(),
-      get_draft_dialect_options: async () => ({ options: Object.fromEntries(Object.entries(scheme.options).filter(([key]) => key.startsWith('dialect_'))), definitions: Object.fromEntries(Object.entries(scheme.option_definitions).filter(([key]) => key.startsWith('dialect_'))), override: false }),
-      set_draft_dialect_options: async (_filename, options) => { mock.dialect_options = options; mock.dialect_override = options !== null; mock.dialect_name = options ? (options.dialect_donghan_late_xitu ? '东汉晚期西土' : options.dialect_han_xitu ? '汉代西土' : options.dialect_han ? '汉代' : options.dialect_xitu ? '西土' : '') : ''; return full(); },
+      get_draft_dialect_options: async () => {
+        const schemeOptions = Object.fromEntries(Object.entries(scheme.options)
+          .filter(([key]) => key.startsWith('dialect_')));
+        const definitions = Object.fromEntries(Object.entries(scheme.option_definitions)
+          .filter(([key]) => key.startsWith('dialect_')));
+        const options = { ...schemeOptions };
+        if (mockDraftDialectMode === 'all') Object.assign(options, mockDraftDialectOptions || {});
+        if (mockDraftDialectMode === 'masters') {
+          for (const [master] of DRAFT_DIALECT_GROUPS) {
+            if (master in (mockDraftDialectOptions || {})) {
+              options[master] = mockDraftDialectOptions[master];
+            }
+          }
+        }
+        return {
+          options, definitions, override: mockDraftDialectMode !== 'scheme',
+          mode: mockDraftDialectMode,
+          master_options: Object.fromEntries(DRAFT_DIALECT_GROUPS
+            .filter(([master]) => master in options)
+            .map(([master]) => [master, Boolean(options[master])])),
+        };
+      },
+      set_draft_dialect_options: async (_filename, options, mode = 'scheme') => {
+        mockDraftDialectMode = mode;
+        mockDraftDialectOptions = mode === 'scheme' ? null : options;
+        mock.dialect_options = mockDraftDialectOptions;
+        mock.dialect_override = mode !== 'scheme';
+        mock.dialect_name = options ? (options.dialect_donghan_late_xitu ? '东汉晚期西土' : options.dialect_han_xitu ? '汉代西土' : options.dialect_han ? '汉代' : options.dialect_xitu ? '西土' : '') : '';
+        return full();
+      },
       start_initialize: async () => ({ phase: 'ready', message: '准备就绪', progress: 100, step: 6, step_count: 6, detail: '启动完成', indeterminate: false }),
       get_startup_status: async () => ({ phase: 'ready', message: '准备就绪', progress: 100, step: 6, step_count: 6, detail: '启动完成', indeterminate: false }),
       get_cell_details: async (li, ci) => {

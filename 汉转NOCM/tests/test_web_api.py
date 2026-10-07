@@ -36,6 +36,38 @@ class WebApiEditorTests(unittest.TestCase):
             'y': [{'phonetic': 'y1'}],
         })
 
+    def test_draft_dialect_masters_keep_scheme_detail_values(self):
+        scheme = {
+            'schema_version': 4,
+            'maps': {},
+            'options': {
+                'dialect_xitu': False,
+                'dialect_xitu_zhiyou_u': True,
+            },
+            'option_definitions': {
+                'dialect_xitu': {'type': 'boolean'},
+                'dialect_xitu_zhiyou_u': {
+                    'type': 'boolean', 'group': 'dialect',
+                },
+            },
+        }
+
+        self.api.dialect_options_mode = 'masters'
+        self.api.dialect_options = {'dialect_xitu': True}
+        effective = self.api._effective_dialect_scheme(scheme)
+
+        self.assertTrue(effective['options']['dialect_xitu'])
+        self.assertTrue(effective['options']['dialect_xitu_zhiyou_u'])
+
+        self.api.dialect_options_mode = 'all'
+        self.api.dialect_options = {
+            'dialect_xitu': True,
+            'dialect_xitu_zhiyou_u': False,
+        }
+        effective = self.api._effective_dialect_scheme(scheme)
+        self.assertTrue(effective['options']['dialect_xitu'])
+        self.assertFalse(effective['options']['dialect_xitu_zhiyou_u'])
+
     def test_update_download_runs_in_background_and_reports_progress(self):
         def fake_download(on_progress=None):
             on_progress({
@@ -940,6 +972,7 @@ class WebApiEditorTests(unittest.TestCase):
         self.assertEqual(output, 'ton')
 
     def test_debug_reverse_dong_qin_and_qin_zheng_rules_replace_ng_with_m(self):
+        self.api._debug_mode = True
         scheme = {
             'maps': {
                 'tone': {'k': 'k'}, 'coda': {'m': 'm', 'ŋ': 'ŋ'},
@@ -964,6 +997,28 @@ class WebApiEditorTests(unittest.TestCase):
             'x', 'təŋk', scheme)
         self.assertEqual(output, 'təmk')
         self.assertEqual(reasons, ['侵蒸合韵·蒸'])
+
+    def test_debug_only_dialect_rules_are_inert_when_debug_mode_is_off(self):
+        self.api._debug_mode = False
+        scheme = {
+            'maps': {
+                'tone': {'k': 'k'}, 'coda': {'m': 'm', 'ŋ': 'ŋ'},
+                'nucleus': {'u': 'u'},
+            },
+            'parse_order': {
+                'tone': ['k'], 'coda': ['m', 'ŋ'], 'nucleus': ['u'],
+            },
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_dongqin_dong': True,
+            },
+        }
+
+        output, reasons = self.api._apply_dialect_phonetic_details(
+            'x', 'tuŋk', scheme)
+
+        self.assertEqual(output, 'tuŋk')
+        self.assertEqual(reasons, [])
 
     def test_repeated_dialect_rules_have_independent_group_switches_and_targets(self):
         scheme = {
@@ -1495,16 +1550,30 @@ class WebApiEditorTests(unittest.TestCase):
             [
                 {
                     'char': 'x', 'phonetic': 'x1', 'is_poly': True,
+                    'dialect_changed': False,
                     'selected': 'global_recent', 'manual_hl': True,
                     'stale': False, 'missing_phonetic': False,
                 },
                 {
                     'char': 'y', 'phonetic': 'y1', 'is_poly': False,
+                    'dialect_changed': False,
                     'selected': 'none', 'manual_hl': False,
                     'stale': False, 'missing_phonetic': False,
                 },
             ])
         self.assertFalse(result['lines'][2]['blank'])
+
+    def test_image_export_uses_effective_dialect_reading(self):
+        self.api.insert_text('x')
+        with (patch('web_api.load_scheme', return_value={'maps': {}}),
+              patch.object(
+                  self.api, '_apply_dialect_phonetic_details',
+                  return_value=('x-dialect', ['音变测试']))):
+            result = self.api.get_image_export_data()
+
+        cell = result['lines'][0]['cells'][0]
+        self.assertEqual(cell['phonetic'], 'x-dialect')
+        self.assertTrue(cell['dialect_changed'])
 
     def test_export_image_writes_valid_png_bytes(self):
         png = b'\x89PNG\r\n\x1a\n' + b'test-payload'

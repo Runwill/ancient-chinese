@@ -802,6 +802,31 @@ class DraftMigrationTests(unittest.TestCase):
         self.assertEqual(draft_io.load_json(path)['schema_version'],
                          DRAFT_SCHEMA_VERSION)
 
+    def test_legacy_dialect_override_migrates_to_full_mode(self):
+        data, changed = draft_io.migrate_draft_data({
+            'schema_version': DRAFT_SCHEMA_VERSION - 1,
+            'dialect_options': {'dialect_xitu': True},
+        })
+
+        self.assertTrue(changed)
+        self.assertEqual(data['dialect_options_mode'], 'all')
+
+    def test_draft_dialect_mode_round_trips(self):
+        filename = draft_io.save_draft(
+            None, 'dialect', [['甲']], [[{'phonetic': 'ka'}]])
+        draft_io.set_draft_dialect_options(
+            filename, {'dialect_xitu': True}, 'masters')
+
+        options, mode = draft_io.get_draft_dialect_settings(filename)
+
+        self.assertEqual(mode, 'masters')
+        self.assertEqual(options, {'dialect_xitu': True})
+
+        draft_io.set_draft_dialect_options(filename, None, 'scheme')
+        options, mode = draft_io.get_draft_dialect_settings(filename)
+        self.assertEqual(mode, 'scheme')
+        self.assertIsNone(options)
+
     def test_draft_list_counts_only_unselected_polyphonic_cells(self):
         draft_io.save_draft(
             None, 'unfinished', [['甲', '乙', '丙']], [[
@@ -813,6 +838,31 @@ class DraftMigrationTests(unittest.TestCase):
         drafts = draft_io.list_drafts()
 
         self.assertEqual(drafts[0]['unselected_polyphonic'], 1)
+
+    def test_draft_search_matches_simplified_and_traditional_pinyin(self):
+        simplified = draft_io.save_draft(
+            None, '简体', [['诗经：鸱鸮']], [[
+                {'phonetic': char} for char in '诗经：鸱鸮'
+            ]])
+        traditional = draft_io.save_draft(
+            None, '繁體', [['詩經：鴟鴞']], [[
+                {'phonetic': char} for char in '詩經：鴟鴞'
+            ]])
+        long_text = '甲' * 40 + '鸱鸮'
+        full_text = draft_io.save_draft(
+            None, '全文', [list(long_text)], [[
+                {'phonetic': char} for char in long_text
+            ]])
+
+        matches = draft_io.search_drafts('chixiao')
+
+        self.assertEqual(set(matches), {simplified, traditional, full_text})
+
+    def test_draft_search_checks_alternate_polyphonic_readings(self):
+        filename = draft_io.save_draft(
+            None, '多音字', [['行']], [[{'phonetic': 'hang'}]])
+
+        self.assertIn(filename, draft_io.search_drafts('hang'))
 
     def test_manual_completion_marker_survives_later_saves(self):
         filename = draft_io.save_draft(

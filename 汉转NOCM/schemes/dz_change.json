@@ -10,9 +10,9 @@
     "dialect_xitu": true,
     "dialect_xitu_zhijue": true,
     "dialect_xitu_zhijue_target": "ɯ",
-    "dialect_xitu_you_xiao_first": true,
+    "dialect_xitu_you_xiao_first": false,
     "dialect_xitu_you_xiao_first_target": "ɯ",
-    "dialect_xitu_you_xiao_second": true,
+    "dialect_xitu_you_xiao_second": false,
     "dialect_xitu_you_xiao_second_target": "ɯ",
     "dialect_xitu_you_xiao_second_coda": "w",
     "dialect_xitu_xiaoyu_houyao": false,
@@ -458,7 +458,7 @@
   },
   "schema_version": 4,
   "migrated_by": "0.12.16",
-  "app_version": "0.12.16",
+  "app_version": "0.12.17",
   "created_at": "2026-08-04T12:52:59.843791+00:00",
   "option_definitions": {
     "voiced_stop_style": {

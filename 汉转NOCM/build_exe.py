@@ -40,6 +40,7 @@ def build():
         '--version-file', version_file,
         '--hidden-import', 'email.utils',
         '--collect-all', 'webview',
+        '--collect-all', 'pypinyin',
         '--hidden-import', 'clr_loader',
         '--add-data', 'web;web',
         '--add-data', 'assets/app-icon.ico;assets',

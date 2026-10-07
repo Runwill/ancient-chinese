@@ -9,7 +9,7 @@ import sys
 APP_NAME = '汉字转 PBOC 音标'
 __version__ = '0.12.17'
 
-DRAFT_SCHEMA_VERSION = 4
+DRAFT_SCHEMA_VERSION = 5
 SCHEME_SCHEMA_VERSION = 4
 BACKUP_SCHEMA_VERSION = 1
 
@@ -27,6 +27,7 @@ CHANGELOG = [
             '文稿库中的音变名称改为紧跟文稿标题显示，不再占据标题行右侧。',
             '修复导出设置浮层在窄窗口中向外溢出、选项文字被裁切的问题。',
             '统一音变选项说明，简化韵尾修改表述。',
+            '方案和文稿音变设置统一为名称、目标值与开关同一行显示；旧方案缺少关联信息时也能正确合并目标项。',
         ],
     },
     {

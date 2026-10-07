@@ -5,7 +5,11 @@ import os
 import sys
 import re
 import copy
+import threading
+import unicodedata
 from datetime import datetime
+
+from pypinyin import Style, pinyin
 
 from app_version import DRAFT_SCHEMA_VERSION, __version__, get_app_dir
 from atomic_io import save_json_atomic
@@ -19,6 +23,11 @@ _DRAFTS_RECENT_FILE = os.path.join(DRAFTS_DIR, '_recent.json')
 _DRAFT_HISTORY_DIR = os.path.join(DRAFTS_DIR, '_history')
 _HISTORY_LIMIT = 30
 _AUTO_HISTORY_INTERVAL_SECONDS = 300
+_DRAFT_SEARCH_LOCK = threading.RLock()
+_DRAFT_SEARCH_INDEX = {}
+_PINYIN_BY_CHAR = {}
+_HAN_RUN = re.compile(
+    r'[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\U00020000-\U0002FA1F]+')
 
 
 def ensure_drafts_dir():
@@ -60,6 +69,16 @@ def migrate_draft_data(data):
         'cursor': [0, 0], 'selection': None, 'scroll_top': 0})
     if 'dialect_options' not in data:
         data['dialect_options'] = None
+        changed = True
+    if 'dialect_options_mode' not in data:
+        data['dialect_options_mode'] = (
+            'all' if isinstance(data.get('dialect_options'), dict)
+            else 'scheme')
+        changed = True
+    if data.get('dialect_options_mode') not in ('scheme', 'masters', 'all'):
+        data['dialect_options_mode'] = (
+            'all' if isinstance(data.get('dialect_options'), dict)
+            else 'scheme')
         changed = True
     data['schema_version'] = DRAFT_SCHEMA_VERSION
     if changed:
@@ -117,6 +136,136 @@ def list_drafts():
     new_drafts.sort(key=lambda d: d['modified'], reverse=True)
     ordered_drafts.sort(key=lambda d: order.index(d['filename']))
     return new_drafts + ordered_drafts
+
+
+def _normalize_pinyin(value):
+    value = str(value or '').lower().replace('ü', 'v')
+    value = unicodedata.normalize('NFD', value)
+    value = ''.join(char for char in value
+                    if unicodedata.category(char) != 'Mn')
+    return re.sub(r'[^a-zv]', '', value)
+
+
+def _char_pinyin_readings(char):
+    with _DRAFT_SEARCH_LOCK:
+        cached = _PINYIN_BY_CHAR.get(char)
+        if cached is not None:
+            return cached
+    readings = pinyin(
+        char, style=Style.NORMAL, heteronym=True,
+        errors=lambda value: [value])
+    normalized = tuple(dict.fromkeys(
+        _normalize_pinyin(item)
+        for item in (readings[0] if readings else [])
+        if _normalize_pinyin(item)))
+    result = normalized or (char.lower(),)
+    with _DRAFT_SEARCH_LOCK:
+        _PINYIN_BY_CHAR[char] = result
+    return result
+
+
+def _text_pinyin_runs(text):
+    return [tuple(_char_pinyin_readings(char) for char in run)
+            for run in _HAN_RUN.findall(text)]
+
+
+def _pinyin_run_contains(readings, query):
+    if not readings:
+        return False
+
+    memo = {}
+
+    def matches(char_index, query_index):
+        if query_index >= len(query):
+            return True
+        key = char_index, query_index
+        if key in memo:
+            return memo[key]
+        if char_index >= len(readings):
+            memo[key] = False
+            return False
+        remaining = query[query_index:]
+        for syllable in readings[char_index]:
+            if syllable.startswith(remaining):
+                memo[key] = True
+                return True
+            if remaining.startswith(syllable) and matches(
+                    char_index + 1, query_index + len(syllable)):
+                memo[key] = True
+                return True
+        memo[key] = False
+        return False
+
+    return any(matches(start, 0) for start in range(len(readings)))
+
+
+def _draft_search_entry(filename):
+    path = os.path.join(DRAFTS_DIR, filename)
+    try:
+        stat = os.stat(path)
+    except OSError:
+        return None
+    signature = stat.st_mtime_ns, stat.st_size
+    with _DRAFT_SEARCH_LOCK:
+        cached = _DRAFT_SEARCH_INDEX.get(filename)
+        if cached and cached[0] == signature:
+            return cached[1]
+    data = load_json(path)
+    if not isinstance(data, dict):
+        return None
+    lines = []
+    for line in data.get('buffer') or []:
+        if isinstance(line, list):
+            lines.append(''.join(str(char) for char in line))
+        elif isinstance(line, str):
+            lines.append(line)
+    name = str(data.get('name') or filename[:-5])
+    content = '\n'.join([name, *lines])
+    entry = {
+        'text': content.lower(),
+        'source': content,
+        'runs': None,
+    }
+    with _DRAFT_SEARCH_LOCK:
+        _DRAFT_SEARCH_INDEX[filename] = signature, entry
+        for old_filename in tuple(_DRAFT_SEARCH_INDEX):
+            if old_filename != filename and not os.path.exists(
+                    os.path.join(DRAFTS_DIR, old_filename)):
+                _DRAFT_SEARCH_INDEX.pop(old_filename, None)
+    return entry
+
+
+def search_drafts(query):
+    """Search complete draft text, names and filenames, including pinyin."""
+    query = str(query or '').strip()
+    if not query:
+        return []
+    normalized = _normalize_pinyin(query)
+    results = []
+    ensure_drafts_dir()
+    for filename in os.listdir(DRAFTS_DIR):
+        if not filename.endswith('.json') or filename.startswith('_'):
+            continue
+        entry = _draft_search_entry(filename)
+        if entry is None:
+            continue
+        if (query.lower() in entry['text']
+                or query.lower() in filename.lower()):
+            results.append(filename)
+            continue
+        if normalized:
+            with _DRAFT_SEARCH_LOCK:
+                runs = entry['runs']
+            if runs is None:
+                runs = _text_pinyin_runs(entry['source'])
+                with _DRAFT_SEARCH_LOCK:
+                    if entry['runs'] is None:
+                        entry['runs'] = runs
+                    else:
+                        runs = entry['runs']
+            if any(_pinyin_run_contains(run, normalized) for run in runs):
+                results.append(filename)
+    return results
 
 
 def count_unselected_polyphonic(data):
@@ -194,6 +343,10 @@ def save_draft(filename, name, buffer, cell_info, editor_state=None,
             (existing or {}).get('dialect_options'))
         if isinstance((existing or {}).get('dialect_options'), dict)
         else None,
+        'dialect_options_mode': (existing or {}).get(
+            'dialect_options_mode',
+            'all' if isinstance((existing or {}).get('dialect_options'), dict)
+            else 'scheme'),
     }
     save_json(os.path.join(DRAFTS_DIR, filename), data)
     mark_draft_recent(filename)
@@ -240,12 +393,27 @@ def get_draft_dialect_options(filename):
     return copy.deepcopy(value) if isinstance(value, dict) else None
 
 
-def set_draft_dialect_options(filename, options):
+def get_draft_dialect_settings(filename):
+    data = load_draft_data(filename)
+    value = data.get('dialect_options')
+    mode = data.get('dialect_options_mode')
+    if mode not in ('scheme', 'masters', 'all'):
+        mode = 'all' if isinstance(value, dict) else 'scheme'
+    return (copy.deepcopy(value) if isinstance(value, dict) else None, mode)
+
+
+def set_draft_dialect_options(filename, options, mode=None):
     """Save or clear the per-draft dialect override without changing content."""
     filename = _safe_filename(filename)
     data = load_draft_data(filename)
+    if mode is None:
+        mode = 'all' if isinstance(options, dict) else 'scheme'
+    if mode not in ('scheme', 'masters', 'all'):
+        raise ValueError('文稿音变模式无效')
     data['dialect_options'] = (
-        copy.deepcopy(options) if isinstance(options, dict) else None)
+        copy.deepcopy(options)
+        if mode != 'scheme' and isinstance(options, dict) else None)
+    data['dialect_options_mode'] = mode
     save_json(os.path.join(DRAFTS_DIR, filename), data)
 
 

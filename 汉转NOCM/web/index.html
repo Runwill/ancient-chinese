@@ -296,7 +296,6 @@
         </section>
       </div>
       <footer>
-        <button type="button" id="cancel-image-export" class="button">关闭</button>
         <button type="button" id="copy-image-export" class="button">复制图片</button>
         <button type="button" id="save-image-export" class="button primary">保存 PNG</button>
       </footer>
@@ -350,8 +349,12 @@
   <dialog id="draft-dialect-dialog" class="dialog compact-dialog draft-dialect-dialog">
     <form method="dialog">
       <header><h2>文稿音变</h2></header>
-      <p class="muted draft-dialect-note">文稿设置会覆盖当前方案的音变设置。</p>
-      <label class="draft-dialect-follow"><input id="draft-dialect-follow" type="checkbox"> 跟随方案设置</label>
+      <p id="draft-dialect-note" class="muted draft-dialect-note"></p>
+      <div id="draft-dialect-modes" class="segmented draft-dialect-modes" role="group" aria-label="文稿音变设置方式">
+        <button type="button" data-draft-dialect-mode="scheme" aria-pressed="false">跟随方案默认</button>
+        <button type="button" data-draft-dialect-mode="masters" aria-pressed="false">仅设置总开关</button>
+        <button type="button" data-draft-dialect-mode="all" aria-pressed="false">设置全部选项</button>
+      </div>
       <div id="draft-dialect-content" class="draft-dialect-content"></div>
       <footer><button value="cancel" class="button">取消</button><button id="save-draft-dialect" type="button" class="button primary">保存</button></footer>
     </form>

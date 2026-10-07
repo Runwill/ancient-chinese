@@ -25,9 +25,10 @@ from data_loader import (download_and_update, get_current_data_revision,
                          parse_phonological_position)
 from draft_io import (delete_draft, draft_has_pending_updates,
                       get_draft_dialect_options as load_draft_dialect_options, get_draft_name,
+                      get_draft_dialect_settings,
                       list_draft_history, list_drafts, list_recent_drafts,
                       load_draft, rename_draft, restore_draft_history,
-                      save_draft, set_draft_completed,
+                      save_draft, search_drafts, set_draft_completed,
                       set_draft_dialect_options as save_draft_dialect_options,
                       update_draft_editor_state)
 from editor_buffer import EditorBuffer
@@ -68,12 +69,28 @@ _EXPORT_OPTION_KEYS = {
     'remove_pure_entry_before_glottal',
 }
 _EXPORT_CONTENT_KEYS = ('raw', 'phon', 'suno')
+_DRAFT_DIALECT_MASTER_KEYS = (
+    'dialect_xitu', 'dialect_han_xitu', 'dialect_han_dongtu',
+    'dialect_donghan_late_xitu')
 _DIALECT_MASTER_NAMES = (
     ('dialect_xitu', '西土'),
     ('dialect_han_xitu', '汉代西土'),
     ('dialect_han_dongtu', '汉代东土'),
     ('dialect_donghan_late_xitu', '东汉晚期西土'),
 )
+
+# These options remain stored in schemes while the global debug mode is off,
+# but must not affect transcription until debug mode is enabled again.
+_DEBUG_ONLY_DIALECT_OPTIONS = frozenset({
+    'dialect_xitu_zhiyou_u',
+    'dialect_xitu_zhijue_u',
+    'dialect_xitu_you_xiao_first',
+    'dialect_xitu_you_xiao_second',
+    'dialect_xitu_dongqin_dong',
+    'dialect_xitu_qinzheng_only_zheng',
+    'dialect_han_xitu_dongqin_dong',
+    'dialect_han_xitu_qinzheng_only_zheng',
+})
 
 
 def _calculate_window_resize_bounds(edge, rect, delta_x, delta_y,
@@ -166,6 +183,7 @@ class WebApi:
 
     def __init__(self, mapping=None):
         self.mapping = mapping
+        self._debug_mode = bool(_load_ui_preferences().get('debug_mode', False))
         self.data_revision = (
             get_current_data_revision() if mapping
             else '0000-00-00 00:00:00')
@@ -174,6 +192,7 @@ class WebApi:
             EditorBuffer(mapping, self.data_revision) if mapping else None)
         self.current_draft: Optional[str] = None
         self.dialect_options = None
+        self.dialect_options_mode = 'scheme'
         self.export_scheme_id = load_preferred_scheme_id()
         self.scroll_top = 0
         self._window_maximized = False
@@ -482,6 +501,13 @@ class WebApi:
         with self._lock:
             return self._editor_snapshot(self._require_buffer())
 
+    def search_drafts(self, query):
+        """Search saved draft text and return matching filenames."""
+        try:
+            return {'ok': True, 'filenames': search_drafts(query)}
+        except Exception as exc:
+            return {'ok': False, 'error': str(exc), 'filenames': []}
+
     def _editor_snapshot(self, buf):
         dialect_scheme = None
         if self.export_scheme_id:
@@ -537,7 +563,8 @@ class WebApi:
             'scroll_top': self.scroll_top,
             'dialect_options': dialect_settings['options'],
             'dialect_option_definitions': dialect_settings['definitions'],
-            'dialect_override': self.dialect_options is not None,
+            'dialect_override': self.dialect_options_mode != 'scheme',
+            'dialect_mode': self.dialect_options_mode,
         }
 
     def _dialect_settings_snapshot(self):
@@ -553,7 +580,7 @@ class WebApi:
             for key, value in scheme.get('option_definitions', {}).items()
             if key.startswith('dialect_')
         }
-        if self.dialect_options is None:
+        if self.dialect_options_mode == 'scheme':
             options = {
                 key: copy.deepcopy(value)
                 for key, value in scheme.get('options', {}).items()
@@ -562,10 +589,10 @@ class WebApi:
         else:
             options = {
                 key: copy.deepcopy(value)
-                for key, definition in definitions.items()
-                for value in [self.dialect_options.get(
-                    key, definition.get('default', False))]
+                for key, value in scheme.get('options', {}).items()
+                if key.startswith('dialect_')
             }
+            options.update(copy.deepcopy(self.dialect_options or {}))
         name = ''
         for key, label in _DIALECT_MASTER_NAMES:
             if options.get(key):
@@ -756,20 +783,19 @@ class WebApi:
             char, phonetic, self._effective_dialect_scheme(scheme))
 
     def _effective_dialect_scheme(self, scheme):
-        if self.dialect_options is None:
+        if self.dialect_options_mode == 'scheme':
             return scheme
         effective, _ = migrate_scheme_data(copy.deepcopy(scheme))
         options = effective.setdefault('options', {})
         definitions = effective.get('option_definitions', {})
-        for key in list(options):
-            if key.startswith('dialect_'):
-                options.pop(key)
         for key, definition in definitions.items():
             if key.startswith('dialect_'):
-                options[key] = copy.deepcopy(
-                    self.dialect_options.get(
-                        key, definition.get('default', False)))
-        for key, value in self.dialect_options.items():
+                if (self.dialect_options_mode == 'masters'
+                        and key not in _DRAFT_DIALECT_MASTER_KEYS):
+                    continue
+                options[key] = copy.deepcopy((self.dialect_options or {}).get(
+                    key, options.get(key, definition.get('default', False))))
+        for key, value in (self.dialect_options or {}).items():
             if key.startswith('dialect_') and key not in definitions:
                 options[key] = copy.deepcopy(value)
         return effective
@@ -784,16 +810,25 @@ class WebApi:
     def get_draft_dialect_options(self, filename):
         with self._lock:
             try:
-                override = load_draft_dialect_options(filename)
+                override, mode = get_draft_dialect_settings(filename)
             except (OSError, ValueError, TypeError):
                 override = None
+                mode = 'scheme'
             scheme = self._draft_dialect_template()
             definitions = {
                 key: copy.deepcopy(value)
                 for key, value in scheme.get('option_definitions', {}).items()
                 if key.startswith('dialect_')
             }
-            source = override if override is not None else scheme.get('options', {})
+            scheme_options = scheme.get('options', {})
+            source = dict(scheme_options)
+            if isinstance(override, dict):
+                if mode == 'masters':
+                    source.update({key: value for key, value in override.items()
+                    if key in _DRAFT_DIALECT_MASTER_KEYS
+                    and key in definitions})
+                elif mode == 'all':
+                    source.update(override)
             options = {
                 key: copy.deepcopy(source.get(
                     key, definition.get('default', False)))
@@ -802,12 +837,22 @@ class WebApi:
             return {
                 'options': options,
                 'definitions': definitions,
-                'override': override is not None,
+                'override': mode != 'scheme',
+                'mode': mode,
+                'master_options': {
+                    key: bool(source.get(key, definition.get('default', False)))
+                    for key, definition in definitions.items()
+                    if key in _DRAFT_DIALECT_MASTER_KEYS
+                },
             }
 
-    def set_draft_dialect_options(self, filename, options):
+    def set_draft_dialect_options(self, filename, options, mode=None):
         with self._lock:
-            if options is None:
+            if mode is None:
+                mode = 'all' if isinstance(options, dict) else 'scheme'
+            if mode not in ('scheme', 'masters', 'all'):
+                raise ValueError('文稿音变模式无效')
+            if mode == 'scheme':
                 normalized = None
             elif isinstance(options, dict):
                 filename = os.path.basename(str(filename or ''))
@@ -824,11 +869,14 @@ class WebApi:
                     if key.startswith('dialect_')
                 }
                 normalized = {}
-                keys = set(definitions) | set(saved_options or {})
+                keys = (set(definitions) | set(saved_options or {})
+                        if mode == 'all' else set(_DRAFT_DIALECT_MASTER_KEYS))
                 for key in keys:
                     if not key.startswith('dialect_'):
                         continue
                     definition = definitions.get(key, {})
+                    if mode == 'masters' and key not in definitions:
+                        continue
                     default = definition.get('default', False)
                     value = options.get(key, (saved_options or {}).get(key, default))
                     normalized[key] = (
@@ -838,9 +886,10 @@ class WebApi:
                         else bool(value))
             else:
                 raise ValueError('文稿音变设置无效')
-            save_draft_dialect_options(filename, normalized)
+            save_draft_dialect_options(filename, normalized, mode)
             if self.current_draft == filename:
                 self.dialect_options = normalized
+                self.dialect_options_mode = mode
             # 返回重新计算过的编辑器快照，使当前正文立即反映文稿级音变设置。
             return self.get_state()
     def reading_conflicts(self, line, column, phonetic):
@@ -1032,10 +1081,11 @@ class WebApi:
             self.buf = EditorBuffer(self.mapping)
             self.scroll_top = 0
             self.dialect_options = None
+            self.dialect_options_mode = 'scheme'
             self.current_draft = save_draft(
                 None, '未命名文稿', self.buf.buffer, self.buf.cell_info,
                 self._view_state())
-            save_draft_dialect_options(self.current_draft, None)
+            save_draft_dialect_options(self.current_draft, None, 'scheme')
             _set_ui_state_value('current_draft', self.current_draft)
             return self.get_state()
 
@@ -1047,7 +1097,9 @@ class WebApi:
             self.current_draft = save_draft(
                 self.current_draft, None, buf.buffer, buf.cell_info,
                 self._view_state(), create_history=True)
-            save_draft_dialect_options(self.current_draft, self.dialect_options)
+            save_draft_dialect_options(
+                self.current_draft, self.dialect_options,
+                self.dialect_options_mode)
             _set_ui_state_value('current_draft', self.current_draft)
             buf.dirty = False
             return {'ok': True, 'state': self.get_state()}
@@ -1075,9 +1127,11 @@ class WebApi:
         buf.dirty = False
         self.current_draft = filename
         try:
-            self.dialect_options = load_draft_dialect_options(filename)
+            (self.dialect_options,
+             self.dialect_options_mode) = get_draft_dialect_settings(filename)
         except (OSError, ValueError, TypeError):
             self.dialect_options = None
+            self.dialect_options_mode = 'scheme'
         if persist_current:
             _set_ui_state_value('current_draft', filename)
         self.reading_events = get_reading_change_events()
@@ -1122,6 +1176,7 @@ class WebApi:
                 self.buf = EditorBuffer(self.mapping)
                 self.current_draft = None
                 self.dialect_options = None
+                self.dialect_options_mode = 'scheme'
                 self.scroll_top = 0
                 _set_ui_state_value('current_draft', None)
             return self.get_state()
@@ -1514,6 +1569,7 @@ class WebApi:
         """Return bracket-free cells, preserving control lines as blanks."""
         with self._lock:
             buf = self._require_buffer()
+            editor_lines = self._editor_snapshot(buf)['lines']
             lines = []
             for line_index, (chars, infos) in enumerate(
                     zip(buf.buffer, buf.cell_info)):
@@ -1521,7 +1577,12 @@ class WebApi:
                 cells = [
                     {
                         'char': char,
-                        'phonetic': info.get('phonetic', char),
+                        'phonetic': editor_lines[line_index][column].get(
+                            'dialect_phonetic', info.get('phonetic', char)),
+                        'dialect_changed': (
+                            editor_lines[line_index][column].get(
+                                'dialect_phonetic', info.get('phonetic', char))
+                            != info.get('phonetic', char)),
                         'is_poly': bool(info.get('is_poly')),
                         'selected': info.get('selected', 'none'),
                         'manual_hl': bool(info.get('manual_hl')),
@@ -1654,6 +1715,8 @@ class WebApi:
             preferences = _load_ui_preferences()
             preferences[key] = normalized
             _save_ui_preferences(preferences)
+        if key == 'debug_mode':
+            self._debug_mode = normalized
         return {'ok': True, 'key': key, 'value': normalized}
 
     # Maintenance --------------------------------------------------------
@@ -1898,6 +1961,7 @@ class WebApi:
         self.buf = EditorBuffer(self.mapping)
         self.current_draft = None
         self.dialect_options = None
+        self.dialect_options_mode = 'scheme'
         self.scroll_top = 0
         _set_ui_state_value('current_draft', None)
         return {**result, 'state': self.get_state()}
@@ -2080,6 +2144,7 @@ class WebApi:
     def _apply_dialect_phonetic_details(self, char, phonetic, scheme):
         """Return the dialect reading and the rules that changed it."""
         options = scheme.get('options', {})
+        debug_mode = self._debug_mode
         xitu_enabled = bool(options.get('dialect_xitu'))
         han_xitu_enabled = bool(options.get('dialect_han_xitu', False))
         late_donghan_xitu_enabled = bool(
@@ -2093,34 +2158,42 @@ class WebApi:
                 return bool(options.get(key))
             return bool(options.get(legacy_key)) if legacy_key else False
 
+        def debug_option_enabled(key, legacy_key=None):
+            """Apply a debug-only switch only while debug mode is enabled."""
+            if key not in _DEBUG_ONLY_DIALECT_OPTIONS:
+                return False
+            return debug_mode and option_enabled(key, legacy_key)
+
         def option_text(key, default, legacy_key=None):
             if key in options:
                 return str(options.get(key) or default)
             return str(options.get(legacy_key) or default) if legacy_key else default
 
         west_dongqin = xitu_enabled and option_enabled('dialect_xitu_dongqin')
-        west_dongqin_dong = xitu_enabled and option_enabled('dialect_xitu_dongqin_dong')
+        west_dongqin_dong = xitu_enabled and debug_option_enabled('dialect_xitu_dongqin_dong')
         west_qinzheng_only = xitu_enabled and option_enabled('dialect_xitu_qinzheng_only')
-        west_qinzheng_only_zheng = xitu_enabled and option_enabled('dialect_xitu_qinzheng_only_zheng')
+        west_qinzheng_only_zheng = xitu_enabled and debug_option_enabled('dialect_xitu_qinzheng_only_zheng')
         han_dongqin = han_xitu_enabled and option_enabled('dialect_han_xitu_dongqin')
-        han_dongqin_dong = han_xitu_enabled and option_enabled('dialect_han_xitu_dongqin_dong')
+        han_dongqin_dong = han_xitu_enabled and debug_option_enabled('dialect_han_xitu_dongqin_dong')
         han_qinzheng_only = han_xitu_enabled and option_enabled('dialect_han_xitu_qinzheng_only')
-        han_qinzheng_only_zheng = han_xitu_enabled and option_enabled('dialect_han_xitu_qinzheng_only_zheng')
+        han_qinzheng_only_zheng = han_xitu_enabled and debug_option_enabled('dialect_han_xitu_qinzheng_only_zheng')
         west_zhiyou_e = xitu_enabled and option_enabled('dialect_xitu_zhiyou_e')
-        west_zhiyou_u = xitu_enabled and option_enabled('dialect_xitu_zhiyou_u')
+        west_zhiyou_u = xitu_enabled and debug_option_enabled('dialect_xitu_zhiyou_u')
         # Keep the legacy standalone 汉代 switch functional for old schemes;
         # current UI places this rule under 汉代西土.
         han_enabled = bool(options.get('dialect_han', False))
         han_zhiyou_e = han_xitu_enabled and option_enabled('dialect_han_zhiyou_e')
         han_zhiyou_u = han_xitu_enabled and option_enabled('dialect_han_zhiyou_u')
         west_zhijue_e = xitu_enabled and option_enabled('dialect_xitu_zhijue')
-        west_zhijue_u = xitu_enabled and option_enabled('dialect_xitu_zhijue_u')
+        west_zhijue_u = xitu_enabled and debug_option_enabled('dialect_xitu_zhijue_u')
         han_zhijue_e = han_xitu_enabled and option_enabled('dialect_han_xitu_zhijue')
-        han_zhijue_u = han_xitu_enabled and option_enabled('dialect_han_xitu_zhijue_u')
-        you_xiao_first_i = xitu_enabled and bool(options.get('dialect_xitu_you_xiao_first'))
-        you_xiao_first_e = xitu_enabled and bool(options.get('dialect_xitu_you_xiao_first_e'))
-        you_xiao_second_u = xitu_enabled and bool(options.get('dialect_xitu_you_xiao_second'))
-        you_xiao_second_a = xitu_enabled and bool(options.get('dialect_xitu_you_xiao_second_a'))
+        han_zhijue_u = han_xitu_enabled and debug_option_enabled('dialect_han_xitu_zhijue_u')
+        you_xiao_first_i = xitu_enabled and debug_option_enabled('dialect_xitu_you_xiao_first')
+        you_xiao_first_e = xitu_enabled and bool(
+            options.get('dialect_xitu_you_xiao_first_e'))
+        you_xiao_second_u = xitu_enabled and debug_option_enabled('dialect_xitu_you_xiao_second')
+        you_xiao_second_a = xitu_enabled and bool(
+            options.get('dialect_xitu_you_xiao_second_a'))
         xiaoyu_houyao = han_xitu_enabled and bool(options.get('dialect_xitu_xiaoyu_houyao'))
         donghan_zhibu = late_donghan_xitu_enabled and bool(options.get('dialect_xitu_donghan_zhibu_qianhua'))
         donghan_youyuhou = late_donghan_xitu_enabled and bool(options.get('dialect_xitu_donghan_youyuhou'))
