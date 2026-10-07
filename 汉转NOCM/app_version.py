@@ -7,7 +7,7 @@ import sys
 
 
 APP_NAME = '汉字转 PBOC 音标'
-__version__ = '0.12.17'
+__version__ = '0.12.18'
 
 DRAFT_SCHEMA_VERSION = 5
 SCHEME_SCHEMA_VERSION = 4
@@ -19,6 +19,14 @@ RELEASES_PAGE_URL = (
     'https://github.com/Runwill/ancient-chinese/releases')
 
 CHANGELOG = [
+    {
+        'version': '0.12.18',
+        'date': '2026-10-07',
+        'title': 'Windows 打包依赖修复',
+        'items': [
+            '修复 Windows 打包版本缺少 pypinyin、启动时提示 No module named pypinyin 的问题。',
+        ],
+    },
     {
         'version': '0.12.17',
         'date': '2026-10-07',

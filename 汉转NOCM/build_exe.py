@@ -41,6 +41,8 @@ def build():
         '--hidden-import', 'email.utils',
         '--collect-all', 'webview',
         '--collect-all', 'pypinyin',
+        '--hidden-import', 'pypinyin',
+        '--collect-submodules', 'pypinyin',
         '--hidden-import', 'clr_loader',
         '--add-data', 'web;web',
         '--add-data', 'assets/app-icon.ico;assets',
