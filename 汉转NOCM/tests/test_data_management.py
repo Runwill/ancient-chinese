@@ -81,6 +81,31 @@ class DataDownloadTests(unittest.TestCase):
         self.assertEqual(mapping['夫'][0]['position'], '幫三C虞平')
         self.assertEqual(mapping['夫'][0]['series_head'], '夫')
 
+    def test_reading_note_marks_only_structured_definition_numbers(self):
+        with (tempfile.TemporaryDirectory() as root,
+              patch.object(data_loader, 'get_data_dir', return_value=root)):
+            with gzip.open(os.path.join(root, 'base.json.gz'), 'wt',
+                           encoding='utf-8') as file:
+                json.dump([{'z': '字', 'y': 'tsɨ'}], file, ensure_ascii=False)
+            with gzip.open(os.path.join(root, 'extra.json.gz'), 'wt',
+                           encoding='utf-8') as file:
+                json.dump([{
+                    'd': ['400年生，11次见于文献', ['第一义', '第二义']],
+                    'n': '约公元 400 年，11 次用例',
+                }], file, ensure_ascii=False)
+
+            option = data_loader.load_map_from_json_gz()['字'][0]
+
+        self.assertEqual(
+            option['note'],
+            '400年生，11次见于文献\n1第一义\n2第二义\n约公元 400 年，11 次用例')
+        self.assertEqual(option['note_parts'], [
+            {'text': '400年生，11次见于文献'},
+            {'index': 1, 'text': '第一义'},
+            {'index': 2, 'text': '第二义'},
+            {'text': '约公元 400 年，11 次用例'},
+        ])
+
     def test_existing_local_data_is_used_when_remote_check_fails(self):
         with (tempfile.TemporaryDirectory() as root,
               patch.object(data_loader, '_get_remote_last_modified',
@@ -609,10 +634,13 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertNotIn('<span class="eyebrow">运行诊断</span>', markup)
         self.assertNotIn('class="export-experimental"', markup)
         self.assertNotIn('<summary>实验选项</summary>', markup)
-        self.assertIn(
-            'class="export-option-group" data-debug-only data-suno-only',
-            markup)
-        self.assertIn('<input id="remove-tones"', markup)
+        self.assertNotIn('data-debug-only', markup)
+        self.assertNotIn('id="remove-tones"', markup)
+        self.assertNotIn('id="entry-before-glottal"', markup)
+        self.assertNotIn('id="departing-before-glottal"', markup)
+        self.assertIn('class="export-settings-scope">仅影响本次导出，不会写入方案', markup)
+        self.assertIn('>方案选项</button>', markup)
+        self.assertIn('data-tab="phonology" role="tab" aria-selected="false">音变', markup)
         self.assertIn('.compact-dialog > form > header', styles)
         self.assertIn('.export-dialog > form > header', styles)
         self.assertIn('border-bottom: 0', styles)
@@ -637,13 +665,6 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertIn('id="export-settings-toggle"', markup)
         self.assertIn('id="export-settings-panel"', markup)
         self.assertIn("renderMode(modes.join('+'))", script)
-        self.assertIn(
-            'body.debug-mode .export-controls:not(.suno-mode) '
-            '.export-option-group[data-suno-only] { display: none; }',
-            Path('web/styles.css').read_text(encoding='utf-8'))
-        self.assertIn(
-            "$('#remove-tones').disabled = !includesSuno || !debugEnabled",
-            script)
 
     def test_selection_inspector_controls_use_complete_rows(self):
         styles = Path('web/styles.css').read_text(encoding='utf-8')
@@ -859,17 +880,184 @@ class SchemeToolTests(unittest.TestCase):
     def test_scheme_migration_and_validation(self):
         scheme, changed = migrate_scheme_data({
             'id': 'test', 'maps': {'onset': {'k': 'K'}},
+            'options': {'checked_before_glottal_onset': True},
+            'option_definitions': {
+                'checked_before_glottal_onset': {
+                    'type': 'boolean', 'label': '旧喉塞音规则'
+                }
+            },
             'rules': {'post_replace': []},
         })
 
         self.assertTrue(changed)
         self.assertEqual(scheme['schema_version'], SCHEME_SCHEMA_VERSION)
         self.assertIs(scheme['options']['extra_h_voiceless_sonorant'], False)
+        self.assertNotIn('remove_pure_entry_before_glottal', scheme['options'])
+        self.assertNotIn('checked_before_glottal_onset', scheme['options'])
+        self.assertNotIn(
+            'checked_before_glottal_onset', scheme['option_definitions'])
         self.assertEqual(
             scheme['option_definitions']['extra_h_voiceless_sonorant']['label'],
             '清响音前额外加 h')
+        self.assertNotIn(
+            'remove_pure_entry_before_glottal', scheme['option_definitions'])
+        self.assertFalse(scheme['options']['dialect_xitu'])
+        self.assertNotIn('dialect_xitu_qinzheng', scheme['options'])
+        self.assertNotIn('dialect_xitu_qinzheng_target', scheme['options'])
+        self.assertEqual(
+            scheme['options']['dialect_xitu_qinzheng_only_coda'], 'ŋ')
+        self.assertFalse(scheme['options']['dialect_xitu_dongqin_dong'])
+        self.assertEqual(
+            scheme['options']['dialect_xitu_dongqin_dong_coda'], 'm')
+        self.assertFalse(scheme['options']['dialect_xitu_qinzheng_only_zheng'])
+        self.assertEqual(
+            scheme['options']['dialect_xitu_qinzheng_only_zheng_coda'], 'm')
+        self.assertFalse(scheme['options']['dialect_han_xitu_dongqin_dong'])
+        self.assertEqual(
+            scheme['options']['dialect_han_xitu_dongqin_dong_coda'], 'm')
+        self.assertFalse(scheme['options']['dialect_han_xitu_qinzheng_only_zheng'])
+        self.assertEqual(
+            scheme['options']['dialect_han_xitu_qinzheng_only_zheng_coda'], 'm')
+        self.assertEqual(
+            scheme['option_definitions']['dialect_xitu_dongqin']['label'],
+            '冬侵合韵·侵')
+        self.assertEqual(
+            scheme['option_definitions']['dialect_xitu_qinzheng_only']['label'],
+            '侵蒸合韵·侵')
+        self.assertEqual(
+            scheme['option_definitions']['dialect_han_xitu_dongqin']['label'],
+            '冬侵合韵·侵')
+        self.assertEqual(
+            scheme['option_definitions']['dialect_han_xitu_qinzheng_only']['label'],
+            '侵蒸合韵·侵')
+        self.assertFalse(scheme['options']['dialect_xitu_zhijue'])
+        self.assertFalse(scheme['options']['dialect_xitu_jizhi'])
+        self.assertEqual(
+            scheme['options']['dialect_xitu_jizhi_target'], 'ɯ')
+        self.assertEqual(
+            scheme['options']['dialect_xitu_jizhi_tone'], 'k')
+        self.assertNotIn('dialect_dongtu', scheme['options'])
+        self.assertNotIn('dialect_dongtu_jizhi', scheme['options'])
+        self.assertFalse(scheme['options']['dialect_han'])
+        self.assertFalse(scheme['options']['dialect_han_xitu'])
+        self.assertFalse(scheme['options']['dialect_donghan_late_xitu'])
+        self.assertEqual(
+            scheme['options']['dialect_xitu_zhijue_target'], 'ɯ')
+        self.assertFalse(scheme['options']['dialect_xitu_zhiyou_e'])
+        self.assertEqual(
+            scheme['options']['dialect_xitu_zhiyou_e_target'], 'ɯ')
+        self.assertFalse(scheme['options']['dialect_han_zhiyou_e'])
+        self.assertEqual(
+            scheme['options']['dialect_han_zhiyou_e_target'], 'ɯ')
+        self.assertFalse(scheme['options']['dialect_han_xitu_qinzheng_only'])
+        self.assertEqual(
+            scheme['options']['dialect_han_xitu_qinzheng_only_coda'], 'ŋ')
+        self.assertFalse(scheme['options']['dialect_han_xitu_zhijue'])
+        self.assertEqual(
+            scheme['options']['dialect_han_xitu_zhijue_target'], 'ɯ')
+        self.assertFalse(scheme['options']['dialect_xitu_you_xiao_first'])
+        self.assertEqual(
+            scheme['options']['dialect_xitu_you_xiao_first_target'], 'ɯ')
+        self.assertFalse(scheme['options']['dialect_xitu_you_xiao_second'])
+        self.assertEqual(
+            scheme['options']['dialect_xitu_you_xiao_second_target'], 'ɯ')
+        self.assertEqual(
+            scheme['options']['dialect_xitu_you_xiao_second_coda'], 'w')
+        self.assertEqual(
+            scheme['option_definitions']['dialect_xitu_zhijue']['label'],
+            '職覺合韵·職')
+        self.assertEqual(
+            scheme['option_definitions']['dialect_xitu_jizhi']['group'],
+            'dialect')
+        self.assertNotIn('dialect_dongtu_jizhi', scheme['option_definitions'])
         self.assertFalse([i for i in validate_scheme(scheme)
                           if i['severity'] == 'error'])
+
+    def test_scheme_migration_renames_invasive_rime_labels(self):
+        scheme, changed = migrate_scheme_data({
+            'id': 'test', 'maps': {},
+            'options': {
+                'dialect_xitu_dongqin': False,
+                'dialect_xitu_qinzheng_only': False,
+                'dialect_han_xitu_dongqin': False,
+                'dialect_han_xitu_qinzheng_only': False,
+            },
+            'option_definitions': {
+                'dialect_xitu_dongqin': {'type': 'boolean', 'label': '冬侵合韵'},
+                'dialect_xitu_qinzheng_only': {'type': 'boolean', 'label': '侵蒸合韵'},
+                'dialect_han_xitu_dongqin': {'type': 'boolean', 'label': '冬侵合韵'},
+                'dialect_han_xitu_qinzheng_only': {'type': 'boolean', 'label': '侵蒸合韵'},
+            },
+        })
+
+        self.assertTrue(changed)
+        for key, label in (
+                ('dialect_xitu_dongqin', '冬侵合韵·侵'),
+                ('dialect_xitu_qinzheng_only', '侵蒸合韵·侵'),
+                ('dialect_han_xitu_dongqin', '冬侵合韵·侵'),
+                ('dialect_han_xitu_qinzheng_only', '侵蒸合韵·侵')):
+            self.assertEqual(scheme['option_definitions'][key]['label'], label)
+
+    def test_legacy_shared_dialect_options_seed_independent_groups(self):
+        scheme, changed = migrate_scheme_data({
+            'id': 'test', 'maps': {}, 'rules': {},
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_zhiyou': True,
+                'dialect_xitu_qinzheng': True,
+                'dialect_xitu_qinzheng_target': 'o',
+                'dialect_xitu_qinzheng_coda': 'n',
+                'dialect_xitu_zhijue': True,
+            },
+        })
+
+        self.assertTrue(changed)
+        self.assertTrue(scheme['options']['dialect_xitu_zhiyou'])
+        self.assertTrue(scheme['options']['dialect_han_zhiyou'])
+        self.assertTrue(scheme['options']['dialect_xitu_qinzheng'])
+        self.assertTrue(scheme['options']['dialect_han_xitu_qinzheng'])
+        self.assertEqual(
+            scheme['options']['dialect_han_xitu_qinzheng_target'], 'o')
+        self.assertEqual(
+            scheme['options']['dialect_han_xitu_qinzheng_coda'], 'n')
+        self.assertTrue(scheme['options']['dialect_xitu_zhijue'])
+        self.assertTrue(scheme['options']['dialect_han_xitu_zhijue'])
+        self.assertEqual(
+            scheme['option_definitions']['dialect_xitu_zhiyou']['group'],
+            'dialect')
+        self.assertEqual(
+            scheme['option_definitions']['dialect_han_zhiyou']['group'],
+            'dialect_han')
+
+    def test_zhibu_qianhua_moves_to_late_donghan_group(self):
+        key = 'dialect_xitu_donghan_zhibu_qianhua'
+        target_key = f'{key}_target'
+        scheme, changed = migrate_scheme_data({
+            'id': 'test', 'maps': {}, 'rules': {},
+            'options': {key: True, target_key: 'ɨ'},
+            'option_definitions': {
+                key: {
+                    'type': 'boolean', 'group': 'dialect_donghan_xitu',
+                    'exclusive_with': ['dialect_xitu_zhiyou'],
+                },
+                target_key: {'type': 'text', 'group': 'dialect_donghan_xitu'},
+            },
+        })
+
+        self.assertTrue(changed)
+        self.assertEqual(
+            scheme['option_definitions'][key]['group'],
+            'dialect_donghan_late_xitu')
+        self.assertEqual(
+            scheme['option_definitions'][target_key]['group'],
+            'dialect_donghan_late_xitu')
+        self.assertNotIn(
+            'exclusive_with', scheme['option_definitions'][key])
+        self.assertEqual(
+            scheme['option_definitions']['dialect_xitu_donghan_youyuhou']['group'],
+            'dialect_donghan_late_xitu')
+        self.assertTrue(scheme['options'][key])
+        self.assertEqual(scheme['options'][target_key], 'ɨ')
 
     def test_missing_concat_reference_is_reported(self):
         scheme = {
@@ -1038,6 +1226,20 @@ class SchemeToolTests(unittest.TestCase):
         scheme['parse_order']['onset'] = ['kh', 'k']
         self.assertEqual(NocmTranscriber(scheme).convert_text('kha'), 'Xa')
 
+    def test_mapping_table_order_keeps_multi_character_nucleus_together(self):
+        scheme = {
+            'maps': {
+                'onset': {'t': 't'}, 'glide': {'j': 'j'},
+                'nucleus': {'ia': 'A', 'a': 'a'},
+                'tone': {'k': 'k'},
+            },
+            'parse_order': {
+                'onset': ['t'], 'glide': ['j'],
+                'nucleus': ['ia', 'a'], 'tone': ['k'],
+            },
+        }
+        self.assertEqual(NocmTranscriber(scheme).convert_token('tjiak'), 'tjAk')
+
     def test_residual_mapping_uses_visible_table_order_without_auto_sort(self):
         scheme = {
             'maps': {
@@ -1073,10 +1275,19 @@ class SchemeToolTests(unittest.TestCase):
         self.assertIn("schemeDraft.options.voiced_stop_style = 'custom'", script)
         self.assertIn("rows.length ? `<div class=\"data-table\">", script)
         self.assertIn("rules.length ? `<div class=\"rule-list\">", script)
-        self.assertIn("['rules', '附加替换开关'", script)
+        self.assertIn("['rules', '转写优化'", script)
+        self.assertIn('以下设置随方案保存，使用该方案时自动生效', script)
+        self.assertIn('remove-pure-entry-before-glottal', markup)
+        self.assertIn('remove_pure_entry_before_glottal', script)
         self.assertIn("['output', '输出拼写'", script)
         self.assertIn('data-tab="maps" role="tab" aria-selected="false">基础映射', markup)
         self.assertIn('data-tab="rules" role="tab" aria-selected="false">附加替换', markup)
+        self.assertIn("['dialect_han', '汉代'", script)
+        self.assertIn("['dialect_han_xitu', '汉代西土'", script)
+        self.assertIn("['dialect_donghan_late_xitu', '东汉晚期西土'", script)
+        self.assertNotIn("['dialect_dongtu', '东土'", script)
+        self.assertNotIn('dialect_dongtu_jizhi', script)
+        self.assertIn("${inlineFields}${offLabel", script)
         self.assertIn('data-rule-field="description"', script)
         self.assertNotIn('id="extra-h-voiceless-sonorant"', markup)
         self.assertIn("if (key === 's')", script)
@@ -1214,6 +1425,71 @@ class SchemeToolTests(unittest.TestCase):
         self.assertEqual(
             transcriber.convert_text('lal [Verse clear male'),
             'XaX [Verse clear male')
+
+    def test_glottal_cross_change_removes_only_pure_entering_tones(self):
+        scheme = {
+            'options': {},
+            'maps': {
+                'onset': {'k': 'k', 'ʔ': 'ʔ'},
+                'nucleus': {'a': 'a'},
+                'tone': {tone: tone for tone in (
+                    'ps', 'ts', 'ks', 'ʔs', 'ʔ', 's', 'p', 't', 'k', 'h')},
+            },
+            'parse_order': {
+                'onset': ['ʔ', 'k'],
+                'nucleus': ['a'],
+                'tone': ['ps', 'ts', 'ks', 'ʔs', 'ʔ', 's', 'p', 't', 'k', 'h'],
+            },
+        }
+        transcriber = NocmTranscriber(scheme)
+
+        self.assertEqual(
+            transcriber.convert_text(
+                'kap ʔa kat ʔa kak ʔa kaps ʔa kats ʔa kaks ʔa '
+                'kaʔs ʔa kas ʔa',
+                remove_pure_entry_before_glottal=True),
+            'ka ʔa ka ʔa ka ʔa kaps ʔa kats ʔa kaks ʔa '
+            'kaʔs ʔa kas ʔa')
+
+    def test_glottal_cross_change_respects_syllable_and_text_boundaries(self):
+        scheme = {
+            'options': {},
+            'maps': {
+                'onset': {'k': 'k', 'ʔ': 'ʔ'},
+                'nucleus': {'a': 'a'},
+                'tone': {tone: tone for tone in (
+                    'ps', 'ts', 'ks', 'ʔs', 'ʔ', 's', 'p', 't', 'k', 'h')},
+            },
+            'parse_order': {
+                'onset': ['ʔ', 'k'],
+                'nucleus': ['a'],
+                'tone': ['ps', 'ts', 'ks', 'ʔs', 'ʔ', 's', 'p', 't', 'k', 'h'],
+            },
+        }
+        transcriber = NocmTranscriber(scheme)
+
+        self.assertEqual(
+            transcriber.convert_text(
+                'kap, ʔa\nkap [tag] ʔa',
+                remove_pure_entry_before_glottal=True),
+            'kap, ʔa\nkap [tag] ʔa')
+        self.assertEqual(transcriber.convert_text(
+            'kap\nʔa', remove_pure_entry_before_glottal=True), 'kap\nʔa')
+
+    def test_glottal_cross_change_is_disabled_by_default(self):
+        scheme = {
+            'maps': {
+                'onset': {'k': 'k', 'ʔ': 'ʔ'},
+                'nucleus': {'a': 'a'},
+                'tone': {tone: tone for tone in ('p', 't', 'k')},
+            },
+            'parse_order': {
+                'onset': ['ʔ', 'k'], 'nucleus': ['a'],
+                'tone': ['p', 't', 'k'],
+            },
+        }
+        self.assertEqual(NocmTranscriber(scheme).convert_text('kap ʔa'),
+                         'kap ʔa')
 
     def test_extra_h_uses_source_voiceless_sonorant_after_mapping(self):
         transcriber = NocmTranscriber({

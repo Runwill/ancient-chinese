@@ -58,6 +58,9 @@ def migrate_draft_data(data):
     data.setdefault('cell_info', [[] for _ in data['buffer']])
     data.setdefault('editor_state', {
         'cursor': [0, 0], 'selection': None, 'scroll_top': 0})
+    if 'dialect_options' not in data:
+        data['dialect_options'] = None
+        changed = True
     data['schema_version'] = DRAFT_SCHEMA_VERSION
     if changed:
         data['migrated_by'] = __version__
@@ -187,6 +190,10 @@ def save_draft(filename, name, buffer, cell_info, editor_state=None,
         'cell_info': serialized_info,
         'editor_state': _normalize_editor_state(
             editor_state or (existing or {}).get('editor_state')),
+        'dialect_options': copy.deepcopy(
+            (existing or {}).get('dialect_options'))
+        if isinstance((existing or {}).get('dialect_options'), dict)
+        else None,
     }
     save_json(os.path.join(DRAFTS_DIR, filename), data)
     mark_draft_recent(filename)
@@ -224,6 +231,22 @@ def load_draft(filename, mapping, include_state=False):
     if include_state:
         return buffer, cell_info, _normalize_editor_state(data.get('editor_state'))
     return buffer, cell_info
+
+
+def get_draft_dialect_options(filename):
+    """Return the optional per-draft dialect override."""
+    data = load_draft_data(filename)
+    value = data.get('dialect_options')
+    return copy.deepcopy(value) if isinstance(value, dict) else None
+
+
+def set_draft_dialect_options(filename, options):
+    """Save or clear the per-draft dialect override without changing content."""
+    filename = _safe_filename(filename)
+    data = load_draft_data(filename)
+    data['dialect_options'] = (
+        copy.deepcopy(options) if isinstance(options, dict) else None)
+    save_json(os.path.join(DRAFTS_DIR, filename), data)
 
 
 def _normalize_editor_state(state):

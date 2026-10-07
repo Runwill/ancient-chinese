@@ -553,16 +553,6 @@ class WebApiEditorTests(unittest.TestCase):
         self.assertEqual(result['value'], 2.0)
         self.assertEqual(preferences['editor_zoom'], 2.0)
 
-    def test_debug_mode_preference_is_persisted(self):
-        with tempfile.TemporaryDirectory() as root:
-            path = os.path.join(root, '.ui_state.json')
-            with patch.object(web_api, '_UI_STATE_PATH', path):
-                result = self.api.set_ui_preference('debug_mode', True)
-                preferences = web_api._load_ui_preferences()
-
-        self.assertIs(result['value'], True)
-        self.assertIs(preferences['debug_mode'], True)
-
     def test_export_options_are_normalized_and_persisted(self):
         with tempfile.TemporaryDirectory() as root:
             path = os.path.join(root, '.ui_state.json')
@@ -581,6 +571,28 @@ class WebApiEditorTests(unittest.TestCase):
         self.assertIs(options['ignore_bracket_control_lines'], False)
         self.assertNotIn('unknown_option', options)
         self.assertEqual(preferences['export_options'], options)
+
+    def test_removed_export_options_are_filtered_when_preferences_load(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = os.path.join(root, '.ui_state.json')
+            with open(path, 'w', encoding='utf-8') as file:
+                json.dump({'export_options': {
+                    'remove_tones': True,
+                    'entry_before_glottal': True,
+                    'departing_before_glottal': True,
+                    'punct_split': True,
+                }}, file)
+            with patch.object(web_api, '_UI_STATE_PATH', path):
+                preferences = web_api._load_ui_preferences()
+
+        self.assertEqual(preferences['export_options'], {
+            'punct_split': True,
+            'clean_line_breaks': False,
+            'ignore_bracket_control_lines': False,
+            'remove_pharyngeal': False,
+            'remove_glottal_tone': False,
+            'remove_pure_entry_before_glottal': False,
+        })
 
     def test_export_contents_and_copy_mode_are_normalized_and_persisted(self):
         with tempfile.TemporaryDirectory() as root:
@@ -604,6 +616,35 @@ class WebApiEditorTests(unittest.TestCase):
         self.assertEqual(preferences['selection_copy_mode'], 'phon')
         self.assertIs(preferences['auto_check_updates'], False)
         self.assertIs(preferences['phonology_details_open'], True)
+
+    def test_scheme_editor_views_are_normalized_and_persisted(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = os.path.join(root, '.ui_state.json')
+            with patch.object(web_api, '_UI_STATE_PATH', path):
+                result = self.api.set_ui_preference('scheme_editor_views', {
+                    'dz_change': {
+                        'tab': 'rules',
+                        'scroll': {
+                            'options': 120,
+                            'rules': 840,
+                            'unknown': 999,
+                        },
+                    },
+                    'invalid': {'tab': 'bad', 'scroll': {'maps': -4}},
+                    'bad': 'not an object',
+                })
+                preferences = web_api._load_ui_preferences()
+
+        self.assertEqual(result['value']['dz_change'], {
+            'tab': 'rules',
+            'scroll': {'options': 120, 'rules': 840},
+        })
+        self.assertEqual(result['value']['invalid'], {
+            'tab': 'options',
+            'scroll': {'maps': 0},
+        })
+        self.assertNotIn('bad', result['value'])
+        self.assertEqual(preferences['scheme_editor_views'], result['value'])
 
     def test_empty_export_contents_falls_back_to_pboc(self):
         with tempfile.TemporaryDirectory() as root:
@@ -747,112 +788,21 @@ class WebApiEditorTests(unittest.TestCase):
             web_api.sys.executable,
             [web_api.sys.executable, 'main.py', '--debug-webview'])
 
-    def test_glottal_tone_options_only_change_suno_export(self):
-        source = [
-            'kap', 'ʔa', 'kat', 'ʔa', 'kak', 'ʔa',
-            'kas', 'ʔa', 'kaps', 'ʔa', 'kats', 'ʔa',
-            'kaks', 'ʔa', 'kaʔs', 'ʔa',
-        ]
-        self.api.insert_text('x' * len(source))
-        for info, phonetic in zip(self.api.buf.cell_info[0], source):
-            info['phonetic'] = phonetic
-        original = ' '.join(source)
-        transformed = ' '.join(['kaʔ', 'ʔa'] * 8)
-
-        nocm = self.api.export_text(
-            'phon', None, False, True, True)
-        with (patch('web_api.load_scheme', return_value={}),
-              patch('web_api.NocmTranscriber') as transcriber_cls):
-            transcriber_cls.return_value.convert_text.side_effect = (
-                lambda value: value)
-            suno = self.api.export_text(
-                'suno', None, False, True, True)
-
-        self.assertEqual(nocm, original)
-        self.assertEqual(suno, transformed)
-
-    def test_glottal_tone_options_do_not_cross_punctuation_or_lines(self):
-        self.api.insert_text('x，x\nxx')
-        values = [['kap', '，', 'ʔa'], ['kat', 'ʔi']]
-        for row, phonetics in zip(self.api.buf.cell_info, values):
-            for info, phonetic in zip(row, phonetics):
-                info['phonetic'] = phonetic
-
-        with (patch('web_api.load_scheme', return_value={}),
-              patch('web_api.NocmTranscriber') as transcriber_cls):
-            transcriber_cls.return_value.convert_text.side_effect = (
-                lambda value: value)
-            result = self.api.export_text(
-                'suno', None, False, True, False)
-
-        self.assertEqual(result, 'kap ， ʔa\nkaʔ ʔi')
-
-    def test_glottal_tone_options_work_independently(self):
-        self.api.insert_text('xxxx')
-        source = ['kap', 'ʔa', 'kas', 'ʔi']
-        for info, phonetic in zip(self.api.buf.cell_info[0], source):
-            info['phonetic'] = phonetic
-
-        with (patch('web_api.load_scheme', return_value={}),
-              patch('web_api.NocmTranscriber') as transcriber_cls):
-            transcriber_cls.return_value.convert_text.side_effect = (
-                lambda value: value)
-            entry_only = self.api.export_text(
-                'suno', None, False, True, False)
-            departing_only = self.api.export_text(
-                'suno', None, False, False, True)
-
-        self.assertEqual(entry_only, 'kaʔ ʔa kas ʔi')
-        self.assertEqual(departing_only, 'kap ʔa kaʔ ʔi')
-
     def test_remove_pharyngeal_only_changes_suno_export(self):
         self.api.insert_text('xx[x]')
         values = ['kˤan', 'lˤa', '[', 'ˤ', ']']
         for info, phonetic in zip(self.api.buf.cell_info[0], values):
             info['phonetic'] = phonetic
 
-        nocm = self.api.export_text(
-            'phon', None, False, False, False, True)
+        nocm = self.api.export_text('phon', remove_pharyngeal=True)
         with (patch('web_api.load_scheme', return_value={}),
               patch('web_api.NocmTranscriber') as transcriber_cls):
             transcriber_cls.return_value.convert_text.side_effect = (
-                lambda value: value)
-            suno = self.api.export_text(
-                'suno', None, False, False, False, True)
+                lambda value, *args: value)
+            suno = self.api.export_text('suno', remove_pharyngeal=True)
 
         self.assertEqual(nocm, 'kˤan lˤa [x]')
         self.assertEqual(suno, 'kan la [x]')
-
-    def test_remove_tones_only_changes_suno_export(self):
-        source = [
-            'kap', 'kat', 'kak', 'kaʔ', 'kas', 'kah',
-            'kaps', 'kats', 'kaks', 'kaʔs', 'kan',
-        ]
-        self.api.insert_text('x' * len(source))
-        for info, phonetic in zip(self.api.buf.cell_info[0], source):
-            info['phonetic'] = phonetic
-        scheme = {
-            'maps': {'tone': {
-                key: key for key in
-                ('ps', 'ts', 'ks', 'ʔs', 'ʔ', 's', 'p', 't', 'k', 'h')
-            }},
-            'parse_order': {'tone': [
-                'ps', 'ts', 'ks', 'ʔs', 'ʔ', 's', 'p', 't', 'k', 'h'
-            ]},
-        }
-
-        nocm = self.api.export_text(
-            'phon', None, False, False, False, False, True)
-        with (patch('web_api.load_scheme', return_value=scheme),
-              patch('web_api.NocmTranscriber') as transcriber_cls):
-            transcriber_cls.return_value.convert_text.side_effect = (
-                lambda value: value)
-            suno = self.api.export_text(
-                'suno', None, False, False, False, False, True)
-
-        self.assertEqual(nocm, ' '.join(source))
-        self.assertEqual(
-            suno, 'ka ka ka ka ka ka ka ka ka ka kan')
 
     def test_remove_glottal_tone_keeps_onsets_and_other_tones(self):
         source = ['ʔaʔ', 'kaʔs', 'kap', 'kas', 'ʔa', 'kaʔ']
@@ -866,16 +816,12 @@ class WebApiEditorTests(unittest.TestCase):
             'parse_order': {'tone': ['ʔs', 'ʔ', 's', 'p']},
         }
 
-        nocm = self.api.export_text(
-            'phon', None, False, False, False, False, False, False,
-            True)
+        nocm = self.api.export_text('phon')
         with (patch('web_api.load_scheme', return_value=scheme),
               patch('web_api.NocmTranscriber') as transcriber_cls):
             transcriber_cls.return_value.convert_text.side_effect = (
-                lambda value: value)
-            suno = self.api.export_text(
-                'suno', None, False, False, False, False, False,
-                False, True)
+                lambda value, *args: value)
+            suno = self.api.export_text('suno', remove_glottal_tone=True)
 
         self.assertEqual(nocm, ' '.join(source))
         self.assertEqual(suno, 'ʔa kas kap kas ʔa ka')
@@ -900,6 +846,515 @@ class WebApiEditorTests(unittest.TestCase):
 
         self.assertEqual(nocm, 'm̥a')
         self.assertEqual(suno, 'hhma')
+
+    def test_dialect_options_change_matching_rimes_and_skip_brackets(self):
+        self.api.insert_text('[tag]\nx\ny\nz')
+        for info, phonetic in zip(self.api.buf.cell_info[0], ['ignored']):
+            info['phonetic'] = phonetic
+        for info, phonetic in zip(self.api.buf.cell_info[1], ['təmp']):
+            info['phonetic'] = phonetic
+        for info, phonetic in zip(self.api.buf.cell_info[2], ['təm']):
+            info['phonetic'] = phonetic
+        for info, phonetic in zip(self.api.buf.cell_info[3], ['tuk']):
+            info['phonetic'] = phonetic
+        scheme = {
+            'maps': {'onset': {'t': 't'}, 'nucleus': {'a': 'a'},
+                     'coda': {'m': 'm', 'n': 'n'}},
+            'parse_order': {'onset': ['t'], 'nucleus': ['a'],
+                            'coda': ['m', 'n']},
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_zhiyou': True,
+                'dialect_xitu_zhiyou_target': 'ɯ',
+                'dialect_xitu_qinzheng': True,
+                'dialect_xitu_zhijue': True,
+                'dialect_xitu_zhijue_target': 'ɯ',
+            },
+        }
+        mapping = {
+            'x': [{'phonetic': 'təmp', 'position': '端三之平'}],
+            'y': [{'phonetic': 'təm', 'position': '端三侵平'}],
+            'z': [{'phonetic': 'tuk', 'position': '端三職入'}],
+        }
+        with patch('web_api.load_scheme', return_value=scheme), \
+                patch.object(self.api, 'mapping', mapping):
+            result = self.api.export_text('suno', scheme_id='test')
+            details = self.api.get_cell_details(3, 0)
+        self.assertEqual(result, '[tag]\ntɯŋp\ntɯŋ\ntɯk')
+        self.assertEqual(details['dialect_phonetic'], 'tɯk')
+        self.assertEqual(details['dialect_reason'], ['之幽合韵', '職覺合韵'])
+
+        tone_scheme = {
+            'maps': {
+                'tone': {'k': 'k'}, 'coda': {'m': 'm'},
+                'nucleus': {'ə': 'ə'},
+            },
+            'parse_order': {
+                'tone': ['k'], 'coda': ['m'], 'nucleus': ['ə'],
+            },
+            'options': {'dialect_xitu': True, 'dialect_xitu_qinzheng': True},
+        }
+        changed, reason = self.api._apply_dialect_phonetic_details(
+            'x', 'təmk', tone_scheme)
+        self.assertEqual(changed, 'tɯŋk')
+        self.assertEqual(reason, ['冬侵蒸合韵'])
+
+    def test_dong_qin_zheng_matches_e_or_u_with_m_or_ng_coda(self):
+        scheme = {
+            'maps': {
+                'tone': {'k': 'k', 'p': 'p'},
+                'coda': {'m': 'm', 'ŋ': 'ŋ'},
+                'nucleus': {'ə': 'ə', 'u': 'u'},
+            },
+            'parse_order': {
+                'tone': ['k', 'p'], 'coda': ['m', 'ŋ'],
+                'nucleus': ['ə', 'u'],
+            },
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_qinzheng': True,
+            },
+        }
+        for source, expected in (
+                ('təmp', 'tɯŋp'), ('təŋk', 'tɯŋk'),
+                ('tump', 'tɯŋp'), ('tuŋ', 'tɯŋ')):
+            output, reasons = self.api._apply_dialect_phonetic_details(
+                'x', source, scheme)
+            self.assertEqual(output, expected)
+            self.assertEqual(reasons, ['冬侵蒸合韵'])
+
+        for source in ('tamp', 'təp', 'təmw'):
+            output, reasons = self.api._apply_dialect_phonetic_details(
+                'x', source, scheme)
+            self.assertEqual(output, source)
+            self.assertEqual(reasons, [])
+
+        custom = dict(scheme)
+        custom['options'] = {
+            **scheme['options'],
+            'dialect_xitu_qinzheng_target': 'o',
+            'dialect_xitu_qinzheng_coda': 'n',
+        }
+        output, _ = self.api._apply_dialect_phonetic_details(
+            'x', 'təm', custom)
+        self.assertEqual(output, 'ton')
+
+    def test_debug_reverse_dong_qin_and_qin_zheng_rules_replace_ng_with_m(self):
+        scheme = {
+            'maps': {
+                'tone': {'k': 'k'}, 'coda': {'m': 'm', 'ŋ': 'ŋ'},
+                'nucleus': {'ə': 'ə', 'u': 'u'},
+            },
+            'parse_order': {
+                'tone': ['k'], 'coda': ['m', 'ŋ'],
+                'nucleus': ['ə', 'u'],
+            },
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_dongqin_dong': True,
+                'dialect_xitu_qinzheng_only_zheng': True,
+            },
+        }
+
+        output, reasons = self.api._apply_dialect_phonetic_details(
+            'x', 'tuŋk', scheme)
+        self.assertEqual(output, 'tumk')
+        self.assertEqual(reasons, ['冬侵合韵·冬'])
+        output, reasons = self.api._apply_dialect_phonetic_details(
+            'x', 'təŋk', scheme)
+        self.assertEqual(output, 'təmk')
+        self.assertEqual(reasons, ['侵蒸合韵·蒸'])
+
+    def test_repeated_dialect_rules_have_independent_group_switches_and_targets(self):
+        scheme = {
+            'maps': {
+                'tone': {'p': 'p'}, 'coda': {'m': 'm'},
+                'nucleus': {'ə': 'ə', 'u': 'u'},
+            },
+            'parse_order': {
+                'tone': ['p'], 'coda': ['m'],
+                'nucleus': ['ə', 'u'],
+            },
+        }
+
+        def apply(source, **options):
+            return self.api._apply_dialect_phonetic_details(
+                'x', source, {**scheme, 'options': options})[0]
+
+        self.assertEqual(apply(
+            'tu', dialect_xitu=True, dialect_xitu_zhiyou=True,
+            dialect_xitu_zhiyou_target='a', dialect_han=False,
+            dialect_han_zhiyou=True, dialect_han_zhiyou_target='o'), 'ta')
+        self.assertEqual(apply(
+            'tu', dialect_xitu=False, dialect_xitu_zhiyou=True,
+            dialect_xitu_zhiyou_target='a', dialect_han=True,
+            dialect_han_zhiyou=True, dialect_han_zhiyou_target='o'), 'to')
+        self.assertEqual(apply(
+            'tu', dialect_xitu=True, dialect_xitu_zhiyou=False,
+            dialect_han=True, dialect_han_zhiyou=True,
+            dialect_han_zhiyou_target='o'), 'to')
+
+        self.assertEqual(apply(
+            'təm', dialect_xitu=True, dialect_xitu_qinzheng=True,
+            dialect_xitu_qinzheng_target='a',
+            dialect_xitu_qinzheng_coda='n',
+            dialect_han_xitu=False, dialect_han_xitu_qinzheng=True), 'tan')
+        self.assertEqual(apply(
+            'təm', dialect_xitu=False, dialect_xitu_qinzheng=True,
+            dialect_han_xitu=True, dialect_han_xitu_qinzheng=True,
+            dialect_han_xitu_qinzheng_target='o',
+            dialect_han_xitu_qinzheng_coda='ŋ'), 'toŋ')
+        self.assertEqual(apply(
+            'təm', dialect_xitu=True, dialect_xitu_qinzheng=True,
+            dialect_xitu_qinzheng_target='a',
+            dialect_xitu_qinzheng_coda='n',
+            dialect_han_xitu=True, dialect_han_xitu_qinzheng=True,
+            dialect_han_xitu_qinzheng_target='o',
+            dialect_han_xitu_qinzheng_coda='ŋ'), 'toŋ')
+
+        self.assertEqual(apply(
+            'tək', dialect_xitu=True, dialect_xitu_zhijue=True,
+            dialect_xitu_zhijue_target='a', dialect_han_xitu=False,
+            dialect_han_xitu_zhijue=True), 'tak')
+        self.assertEqual(apply(
+            'tək', dialect_xitu=False, dialect_xitu_zhijue=True,
+            dialect_han_xitu=True, dialect_han_xitu_zhijue=True,
+            dialect_han_xitu_zhijue_target='o'), 'tok')
+
+    def test_zhijue_and_jizhi_use_original_syllable_in_sequence(self):
+        scheme = {
+            'maps': {
+                'tone': {'p': 'p', 'k': 'k', 't': 't'},
+                'nucleus': {'ə': 'ə', 'u': 'u'},
+            },
+            'parse_order': {
+                'tone': ['p', 'k', 't'],
+                'nucleus': ['ə', 'u'],
+            },
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_zhijue': True,
+                'dialect_xitu_jizhi': True,
+                'dialect_xitu_zhijue_target': 'ɯ',
+                'dialect_xitu_jizhi_target': 'ɯ',
+            },
+        }
+
+        output, reasons = self.api._apply_dialect_phonetic_details(
+            'x', 'təp', scheme)
+
+        self.assertEqual(output, 'tɯk')
+        self.assertEqual(reasons, ['緝職合韵·緝'])
+
+        glottal, glottal_reasons = self.api._apply_dialect_phonetic_details(
+            'x', 'tuʔ', scheme)
+        self.assertEqual(glottal, 'tuʔ')
+        self.assertEqual(glottal_reasons, [])
+
+    def test_jizhi_replaces_vowel_and_tone(self):
+        scheme = {
+            'maps': {
+                'tone': {'p': 'p'},
+                'nucleus': {'ə': 'ə'},
+            },
+            'parse_order': {'tone': ['p'], 'nucleus': ['ə']},
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_jizhi': True,
+                'dialect_xitu_jizhi_target': 'o',
+            },
+        }
+
+        output, reasons = self.api._apply_dialect_phonetic_details(
+            'x', 'təp', scheme)
+
+        self.assertEqual(output, 'tok')
+        self.assertEqual(reasons, ['緝職合韵·緝'])
+
+        custom_tone_scheme = {
+            **scheme,
+            'options': {
+                **scheme['options'],
+                'dialect_xitu_jizhi_tone': 't',
+            },
+        }
+        output, reasons = self.api._apply_dialect_phonetic_details(
+            'x', 'təp', custom_tone_scheme)
+        self.assertEqual(output, 'tot')
+        self.assertEqual(reasons, ['緝職合韵·緝'])
+
+    def test_zhiyou_matches_only_unvoiced_or_glottal_tone(self):
+        """之幽合韵 must not consume ordinary tone endings."""
+        scheme = {
+            'maps': {
+                'tone': {'ʔ': 'ʔ', 'k': 'k'},
+                'nucleus': {'ə': 'ə', 'u': 'u'},
+            },
+            'parse_order': {
+                'tone': ['ʔ', 'k'], 'nucleus': ['ə', 'u'],
+            },
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_zhiyou_e': True,
+                'dialect_xitu_zhiyou_u': True,
+                'dialect_xitu_zhiyou_e_target': 'ɯ',
+                'dialect_xitu_zhiyou_u_target': 'ɯ',
+            },
+        }
+
+        for source, expected in (
+                ('tə', 'tɯ'), ('təʔ', 'tɯʔ'),
+                ('tu', 'tɯ'), ('tuʔ', 'tɯʔ')):
+            output, reasons = self.api._apply_dialect_phonetic_details(
+                'x', source, scheme)
+            self.assertEqual(output, expected)
+            self.assertEqual(reasons, ['之幽合韵·之']
+                             if source.startswith('tə')
+                             else ['之幽合韵·幽'])
+
+        for source in ('tək', 'tuk'):
+            output, reasons = self.api._apply_dialect_phonetic_details(
+                'x', source, scheme)
+            self.assertEqual(output, source)
+            self.assertEqual(reasons, [])
+
+        # The same restriction must hold for legacy schemes whose tone map
+        # does not list these suffixes explicitly.
+        legacy_scheme = {
+            'maps': {'nucleus': {'ə': 'ə', 'u': 'u'}},
+            'parse_order': {'nucleus': ['ə', 'u']},
+            'options': scheme['options'],
+        }
+        self.assertEqual(
+            self.api._apply_dialect_phonetic_details(
+                'x', 'təʔ', legacy_scheme)[0], 'tɯʔ')
+        self.assertEqual(
+            self.api._apply_dialect_phonetic_details(
+                'x', 'tək', legacy_scheme)[0], 'tək')
+
+        han_scheme = {
+            **scheme,
+            'options': {
+                **scheme['options'],
+                'dialect_xitu': False,
+                'dialect_han_xitu': True,
+                'dialect_han_zhiyou_e': True,
+                'dialect_han_zhiyou_u': True,
+            },
+        }
+        self.assertEqual(
+            self.api._apply_dialect_phonetic_details(
+                'x', 'təʔ', han_scheme)[0], 'tɯʔ')
+        self.assertEqual(
+            self.api._apply_dialect_phonetic_details(
+                'x', 'tuk', han_scheme)[0], 'tuk')
+
+    def test_zhijue_and_jizhi_use_central_vowel_and_distinct_tones(self):
+        scheme = {
+            'maps': {
+                'tone': {'k': 'k', 'p': 'p', 't': 't'},
+                'nucleus': {'ə': 'ə', 'u': 'u'},
+            },
+            'parse_order': {
+                'tone': ['k', 'p', 't'], 'nucleus': ['ə', 'u'],
+            },
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_zhijue': True,
+                'dialect_xitu_zhijue_u': True,
+                'dialect_xitu_jizhi': True,
+                'dialect_xitu_zhijue_target': 'ɯ',
+                'dialect_xitu_zhijue_u_target': 'ɯ',
+                'dialect_xitu_jizhi_target': 'ɯ',
+            },
+        }
+        cases = (
+            ('tək', 'tɯk', ['職覺合韵·職']),
+            ('tuk', 'tɯk', ['職覺合韵·覺']),
+            ('təp', 'tɯk', ['緝職合韵·緝']),
+            ('tət', 'tət', []),
+            ('tut', 'tut', []),
+            ('tup', 'tup', []),
+        )
+        for source, expected, expected_reasons in cases:
+            output, reasons = self.api._apply_dialect_phonetic_details(
+                'x', source, scheme)
+            self.assertEqual(output, expected)
+            self.assertEqual(reasons, expected_reasons)
+
+        han_scheme = {
+            **scheme,
+            'options': {
+                'dialect_xitu': False,
+                'dialect_han_xitu': True,
+                'dialect_han_xitu_zhijue': True,
+                'dialect_han_xitu_zhijue_u': True,
+                'dialect_han_xitu_zhijue_target': 'ɯ',
+                'dialect_han_xitu_zhijue_u_target': 'ɯ',
+            },
+        }
+        output, reasons = self.api._apply_dialect_phonetic_details(
+            'x', 'tək', han_scheme)
+        self.assertEqual(output, 'tɯk')
+        self.assertEqual(reasons, ['職覺合韵·職'])
+        output, reasons = self.api._apply_dialect_phonetic_details(
+            'x', 'tuk', han_scheme)
+        self.assertEqual(output, 'tɯk')
+        self.assertEqual(reasons, ['職覺合韵·覺'])
+        output, reasons = self.api._apply_dialect_phonetic_details(
+            'x', 'tut', han_scheme)
+        self.assertEqual(output, 'tut')
+        self.assertEqual(reasons, [])
+
+    def test_xitu_jizhi_requires_xitu_master_switch(self):
+        base = {
+            'maps': {'tone': {'p': 'p'}, 'nucleus': {'ə': 'ə'}},
+            'parse_order': {'tone': ['p'], 'nucleus': ['ə']},
+        }
+        xitu_only = {
+            **base,
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_jizhi': True,
+            },
+        }
+        disabled = {
+            **base,
+            'options': {
+                'dialect_xitu': False,
+                'dialect_xitu_jizhi': False,
+            },
+        }
+        xitu_output, xitu_reason = self.api._apply_dialect_phonetic_details(
+            'x', 'təp', xitu_only)
+        self.assertEqual(xitu_output, 'tɯk')
+        self.assertEqual(xitu_reason, ['緝職合韵·緝'])
+        disabled_output, disabled_reason = self.api._apply_dialect_phonetic_details(
+            'x', 'təp', disabled)
+        self.assertEqual(disabled_output, 'təp')
+        self.assertEqual(disabled_reason, [])
+
+    def test_you_xiao_dialect_classes_preserve_or_replace_coda(self):
+        scheme = {
+            'maps': {
+                'tone': {'ʔ': 'ʔ'},
+                'coda': {'w': 'w'},
+                'nucleus': {'a': 'a', 'e': 'e', 'i': 'i', 'u': 'u'},
+            },
+            'parse_order': {
+                'tone': ['ʔ'], 'coda': ['w'],
+                'nucleus': ['a', 'e', 'i', 'u'],
+            },
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_you_xiao_first': True,
+                'dialect_xitu_you_xiao_first_target': 'ɯ',
+                'dialect_xitu_you_xiao_second': True,
+                'dialect_xitu_you_xiao_second_target': 'ɯ',
+                'dialect_xitu_you_xiao_second_coda': 'w',
+            },
+        }
+        first_i, reasons_i = self.api._apply_dialect_phonetic_details(
+            'x', 'tiw', scheme)
+        first_e, reasons_e = self.api._apply_dialect_phonetic_details(
+            'x', 'tew', scheme)
+        second_u, reasons_u = self.api._apply_dialect_phonetic_details(
+            'x', 'tuʔ', scheme)
+        second_a, reasons_a = self.api._apply_dialect_phonetic_details(
+            'x', 'taw', scheme)
+
+        self.assertEqual(first_i, 'tɯw')
+        self.assertEqual(first_e, 'tɯw')
+        self.assertEqual(second_u, 'tɯwʔ')
+        self.assertEqual(second_a, 'tɯw')
+        self.assertEqual(reasons_i, ['第一类幽宵合韵'])
+        self.assertEqual(reasons_e, ['第一类幽宵合韵'])
+        self.assertEqual(reasons_u, ['第二类幽宵合韵'])
+        self.assertEqual(reasons_a, ['第二类幽宵合韵'])
+
+    def test_xiaoyu_houyao_dialect_class_replaces_vowel_and_coda(self):
+        scheme = {
+            'maps': {
+                'tone': {'ʔ': 'ʔ'},
+                'coda': {'w': 'w'},
+                'nucleus': {'a': 'a', 'o': 'o'},
+            },
+            'parse_order': {
+                'tone': ['ʔ'], 'coda': ['w'], 'nucleus': ['a', 'o'],
+            },
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_xiaoyu_houyao': True,
+                'dialect_xitu_xiaoyu_houyao_target': 'o',
+                'dialect_xitu_xiaoyu_houyao_coda': 'w',
+            },
+        }
+        a_open, reason_open = self.api._apply_dialect_phonetic_details(
+            'x', 'ta', scheme)
+        a_w, reason_w = self.api._apply_dialect_phonetic_details(
+            'x', 'taw', scheme)
+        o_open, reason_o = self.api._apply_dialect_phonetic_details(
+            'x', 'toʔ', scheme)
+        self.assertEqual(a_open, 'tow')
+        self.assertEqual(a_w, 'tow')
+        self.assertEqual(o_open, 'towʔ')
+        self.assertEqual(reason_open, ['宵魚侯/藥屋合韵'])
+        self.assertEqual(reason_w, ['宵魚侯/藥屋合韵'])
+        self.assertEqual(reason_o, ['宵魚侯/藥屋合韵'])
+
+    def test_donghan_xitu_dialect_classes(self):
+        scheme = {
+            'maps': {
+                'coda': {'w': 'w'},
+                'nucleus': {'a': 'a', 'e': 'e', 'o': 'o', 'u': 'u', 'ə': 'ə'},
+            },
+            'parse_order': {'coda': ['w'], 'nucleus': ['a', 'e', 'o', 'u', 'ə']},
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_donghan_zhibu_qianhua': True,
+                'dialect_xitu_donghan_zhibu_qianhua_target': 'ɨ',
+                'dialect_xitu_donghan_youyuhou': True,
+                'dialect_xitu_donghan_youyuhou_target': 'o',
+                'dialect_xitu_donghan_youyuhou_coda': 'w',
+            },
+        }
+        zhibu, zhibu_reason = self.api._apply_dialect_phonetic_details(
+            'x', 'tə', scheme)
+        you, you_reason = self.api._apply_dialect_phonetic_details(
+            'x', 'tu', scheme)
+        yao, yao_reason = self.api._apply_dialect_phonetic_details(
+            'x', 'ta', scheme)
+        hou, hou_reason = self.api._apply_dialect_phonetic_details(
+            'x', 'to', scheme)
+        self.assertEqual(zhibu, 'tɨ')
+        self.assertEqual(you, 'tow')
+        self.assertEqual(yao, 'tow')
+        self.assertEqual(hou, 'tow')
+        self.assertEqual(zhibu_reason, ['之部前化'])
+        self.assertEqual(you_reason, ['幽魚侯合韵'])
+        self.assertEqual(yao_reason, ['幽魚侯合韵'])
+        self.assertEqual(hou_reason, ['幽魚侯合韵'])
+
+    def test_later_donghan_rule_replaces_earlier_zhiyou_output(self):
+        scheme = {
+            'maps': {
+                'nucleus': {'ə': 'ə'},
+            },
+            'parse_order': {'nucleus': ['ə']},
+            'options': {
+                'dialect_xitu': True,
+                'dialect_xitu_zhiyou': True,
+                'dialect_xitu_zhiyou_target': 'ɯ',
+                'dialect_xitu_donghan_zhibu_qianhua': True,
+                'dialect_xitu_donghan_zhibu_qianhua_target': 'ɨ',
+            },
+        }
+
+        output, reasons = self.api._apply_dialect_phonetic_details(
+            'x', 'tə', scheme)
+
+        self.assertEqual(output, 'tɨ')
+        self.assertEqual(reasons, ['之幽合韵', '之部前化'])
 
     def test_clean_line_breaks_keeps_only_one_blank_line(self):
         source = '\r\n  text  \n \n\n phon \n\n'
@@ -940,8 +1395,7 @@ class WebApiEditorTests(unittest.TestCase):
         self.api.insert_text('x\n\n\nx')
 
         untouched = self.api.export_text('phon')
-        cleaned = self.api.export_text(
-            'phon', None, False, False, False, False, False, True)
+        cleaned = self.api.export_text('phon', clean_line_breaks=True)
 
         self.assertEqual(untouched, 'x1\n\n\nx1')
         self.assertEqual(cleaned, 'x1\n\nx1')

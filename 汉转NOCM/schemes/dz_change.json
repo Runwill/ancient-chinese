@@ -4,9 +4,68 @@
   "description": "260812",
   "options": {
     "improve_pharyngeal": false,
-    "improve_syllable": false,
+    "improve_syllable": true,
     "voiced_stop_style": "custom",
-    "extra_h_voiceless_sonorant": false
+    "extra_h_voiceless_sonorant": false,
+    "dialect_xitu": true,
+    "dialect_xitu_zhijue": true,
+    "dialect_xitu_zhijue_target": "ɯ",
+    "dialect_xitu_you_xiao_first": true,
+    "dialect_xitu_you_xiao_first_target": "ɯ",
+    "dialect_xitu_you_xiao_second": true,
+    "dialect_xitu_you_xiao_second_target": "ɯ",
+    "dialect_xitu_you_xiao_second_coda": "w",
+    "dialect_xitu_xiaoyu_houyao": false,
+    "dialect_xitu_xiaoyu_houyao_target": "o",
+    "dialect_xitu_xiaoyu_houyao_coda": "w",
+    "dialect_xitu_donghan_zhibu_qianhua": false,
+    "dialect_xitu_donghan_zhibu_qianhua_target": "ɨ",
+    "dialect_xitu_donghan_youyuhou": false,
+    "dialect_xitu_donghan_youyuhou_target": "o",
+    "dialect_xitu_donghan_youyuhou_coda": "w",
+    "dialect_xitu_jizhi": true,
+    "dialect_han": false,
+    "dialect_han_xitu": false,
+    "dialect_donghan_late_xitu": false,
+    "dialect_han_xitu_zhijue": true,
+    "dialect_han_xitu_zhijue_target": "ɯ",
+    "dialect_han_dongtu": false,
+    "dialect_han_dongtu_zhiyou": false,
+    "dialect_han_dongtu_zhiyou_target": "ɯ",
+    "dialect_xitu_dongqin": true,
+    "dialect_xitu_dongqin_coda": "ŋ",
+    "dialect_xitu_qinzheng_only": true,
+    "dialect_xitu_qinzheng_only_coda": "ŋ",
+    "dialect_han_xitu_dongqin": false,
+    "dialect_han_xitu_dongqin_coda": "ŋ",
+    "dialect_han_xitu_qinzheng_only": false,
+    "dialect_han_xitu_qinzheng_only_coda": "ŋ",
+    "dialect_xitu_zhiyou_e": true,
+    "dialect_xitu_zhiyou_e_target": "ɯ",
+    "dialect_xitu_zhiyou_u": false,
+    "dialect_xitu_zhiyou_u_target": "ɯ",
+    "dialect_han_zhiyou_u": true,
+    "dialect_han_zhiyou_u_target": "ɯ",
+    "dialect_han_zhiyou_e": true,
+    "dialect_han_zhiyou_e_target": "ɯ",
+    "dialect_xitu_zhijue_u": false,
+    "dialect_xitu_zhijue_u_target": "ɯ",
+    "dialect_han_xitu_zhijue_u": false,
+    "dialect_han_xitu_zhijue_u_target": "ɯ",
+    "dialect_xitu_you_xiao_first_e": true,
+    "dialect_xitu_you_xiao_first_e_target": "ɯ",
+    "dialect_xitu_you_xiao_second_a": true,
+    "dialect_xitu_you_xiao_second_a_target": "ɯ",
+    "dialect_xitu_jizhi_target": "ɯ",
+    "dialect_xitu_jizhi_tone": "k",
+    "dialect_xitu_dongqin_dong": false,
+    "dialect_xitu_dongqin_dong_coda": "m",
+    "dialect_xitu_qinzheng_only_zheng": false,
+    "dialect_xitu_qinzheng_only_zheng_coda": "m",
+    "dialect_han_xitu_dongqin_dong": false,
+    "dialect_han_xitu_dongqin_dong_coda": "m",
+    "dialect_han_xitu_qinzheng_only_zheng": false,
+    "dialect_han_xitu_qinzheng_only_zheng_coda": "m"
   },
   "parse_order": {
     "tone": [
@@ -30,13 +89,15 @@
       "ŋ"
     ],
     "nucleus": [
+      "ia",
       "a",
       "A",
       "e",
       "o",
       "ə",
       "i",
-      "u"
+      "u",
+      "ɯ"
     ],
     "onset": [
       "tsh",
@@ -127,8 +188,9 @@
       "e": "半闭前",
       "o": "半闭后",
       "ə": "中央",
+      "u": "闭后圆唇",
       "i": "闭前",
-      "u": "闭后圆唇"
+      "ia": "三麻"
     },
     "onset": {
       "tsh": "清送气龈有咝塞擦",
@@ -195,13 +257,15 @@
       "ŋ": "ง"
     },
     "nucleus": {
+      "ia": "α",
       "a": "α",
       "A": "a",
       "e": "ए",
       "o": "o",
       "ə": "으",
+      "u": "უ",
       "i": "ი",
-      "u": "უ"
+      "ɯ": "으"
     },
     "onset": {
       "tsh": "цһ",
@@ -217,7 +281,7 @@
       "b": "mб",
       "kh": "кһ",
       "k": "г",
-      "g": "ŋг",
+      "g": "nг",
       "m̥": "hhm",
       "m": "m",
       "n̥": "hhn",
@@ -227,7 +291,7 @@
       "C.r": "ร",
       "l̥": "hhl",
       "l": "л",
-      "ŋ̊": "hhง",
+      "ŋ̊": "งฮ",
       "ŋ": "ง",
       "ʔ": "ء",
       "h": "ㅎ",
@@ -236,12 +300,12 @@
     },
     "glide": {
       "r": "ร",
-      "ˤr": "ـغـร",
-      "lˤ": "lγ",
+      "ˤr": "รـغـ",
+      "lˤ": "lـغـ",
       "l": "л",
-      "wˤ": "ـوـغـ",
+      "wˤ": "wـغـ",
       "w": "w",
-      "j̊": "hhj",
+      "j̊": "hhй",
       "j": "й",
       "ˤ": "ـغـ"
     },
@@ -276,7 +340,40 @@
     "residual_preprocess": [],
     "residual_replace": [],
     "pharyngeal_relax": [],
-    "syllable_relax": [],
+    "syllable_relax": [
+      [
+        {
+          "type": "map_concat",
+          "field": "target",
+          "parts": [
+            [
+              "onset",
+              "w"
+            ],
+            [
+              "glide",
+              "ˤr"
+            ]
+          ]
+        },
+        "wร",
+        ""
+      ],
+      [
+        {
+          "type": "map_concat",
+          "field": "target",
+          "parts": [
+            [
+              "glide",
+              "wˤ"
+            ]
+          ]
+        },
+        "w",
+        ""
+      ]
+    ],
     "post_replace": [
       [
         "кw",
@@ -320,12 +417,48 @@
         },
         "əй",
         ""
+      ],
+      [
+        {
+          "type": "map_concat",
+          "field": "target",
+          "parts": [
+            [
+              "onset",
+              "w"
+            ],
+            [
+              "glide",
+              "r"
+            ]
+          ]
+        },
+        "wร",
+        ""
+      ],
+      [
+        {
+          "type": "map_concat",
+          "field": "target",
+          "parts": [
+            [
+              "onset",
+              "w"
+            ],
+            [
+              "glide",
+              "ˤr"
+            ]
+          ]
+        },
+        "wรـغـ",
+        ""
       ]
     ]
   },
-  "schema_version": 3,
-  "migrated_by": "0.12.11",
-  "app_version": "0.12.11",
+  "schema_version": 4,
+  "migrated_by": "0.12.16",
+  "app_version": "0.12.16",
   "created_at": "2026-08-04T12:52:59.843791+00:00",
   "option_definitions": {
     "voiced_stop_style": {
@@ -364,6 +497,406 @@
       "label": "清响音前额外加 h",
       "description": "转写清响音声母时，在方案输出前再添加一个 h。",
       "group": "transcription"
+    },
+    "dialect_xitu": {
+      "type": "boolean",
+      "label": "西土方言",
+      "description": "启用西土方言的合韵修改。",
+      "group": "dialect"
+    },
+    "dialect_xitu_zhijue_target": {
+      "type": "text",
+      "label": "職覺合韵·職目标元音",
+      "description": "西土方言職覺合韵使用的目标元音。",
+      "default": "ɯ",
+      "group": "dialect",
+      "parent": "dialect_xitu_zhijue"
+    },
+    "dialect_xitu_zhijue": {
+      "type": "boolean",
+      "label": "職覺合韵·職",
+      "description": "ə 元音、无韵尾、k 声调。修改元音。",
+      "group": "dialect"
+    },
+    "dialect_xitu_you_xiao_first": {
+      "type": "boolean",
+      "label": "第一类幽宵合韵·幽",
+      "description": "i 元音、w 韵尾。修改元音。",
+      "group": "dialect"
+    },
+    "dialect_xitu_you_xiao_first_target": {
+      "type": "text",
+      "label": "第一类幽宵合韵·幽目标元音",
+      "description": "第一类幽宵合韵使用的目标元音。",
+      "default": "ɯ",
+      "group": "dialect",
+      "parent": "dialect_xitu_you_xiao_first"
+    },
+    "dialect_xitu_you_xiao_second": {
+      "type": "boolean",
+      "label": "第二类幽宵合韵·幽",
+      "description": "u 元音、无韵尾、无声调或 ʔ 声调。修改元音和韵尾。",
+      "group": "dialect"
+    },
+    "dialect_xitu_you_xiao_second_target": {
+      "type": "text",
+      "label": "第二类幽宵合韵·幽目标元音",
+      "description": "u 元音的目标元音。",
+      "default": "ɯ",
+      "group": "dialect",
+      "parent": "dialect_xitu_you_xiao_second"
+    },
+    "dialect_xitu_you_xiao_second_coda": {
+      "type": "text",
+      "label": "第二类幽宵合韵·幽目标韵尾",
+      "description": "第二类幽宵合韵使用的目标韵尾。",
+      "default": "w",
+      "group": "dialect",
+      "parent": "dialect_xitu_you_xiao_second"
+    },
+    "dialect_xitu_xiaoyu_houyao": {
+      "type": "boolean",
+      "label": "宵魚侯/藥屋合韵",
+      "description": "a 元音、无韵尾或 w 韵尾；o 元音、无韵尾。修改元音和韵尾。",
+      "group": "dialect_han_xitu"
+    },
+    "dialect_xitu_xiaoyu_houyao_target": {
+      "type": "text",
+      "label": "宵魚侯/藥屋合韵目标元音",
+      "description": "宵魚侯/藥屋合韵使用的目标元音。",
+      "default": "o",
+      "group": "dialect_han_xitu",
+      "parent": "dialect_xitu_xiaoyu_houyao"
+    },
+    "dialect_xitu_xiaoyu_houyao_coda": {
+      "type": "text",
+      "label": "宵魚侯/藥屋合韵目标韵尾",
+      "description": "宵魚侯/藥屋合韵使用的目标韵尾。",
+      "default": "w",
+      "group": "dialect_han_xitu",
+      "parent": "dialect_xitu_xiaoyu_houyao"
+    },
+    "dialect_xitu_donghan_zhibu_qianhua": {
+      "type": "boolean",
+      "label": "之部前化",
+      "description": "ə 元音、无韵尾。修改元音。",
+      "group": "dialect_donghan_late_xitu"
+    },
+    "dialect_xitu_donghan_zhibu_qianhua_target": {
+      "type": "text",
+      "label": "之部前化目标元音",
+      "description": "之部前化使用的目标元音。",
+      "default": "ɨ",
+      "group": "dialect_donghan_late_xitu",
+      "parent": "dialect_xitu_donghan_zhibu_qianhua"
+    },
+    "dialect_xitu_donghan_youyuhou": {
+      "type": "boolean",
+      "label": "幽魚侯合韵",
+      "description": "u、a、o 元音、无韵尾。修改元音和韵尾。",
+      "group": "dialect_donghan_late_xitu"
+    },
+    "dialect_xitu_donghan_youyuhou_target": {
+      "type": "text",
+      "label": "幽魚侯合韵目标元音",
+      "description": "幽魚侯合韵使用的目标元音。",
+      "default": "o",
+      "group": "dialect_donghan_late_xitu",
+      "parent": "dialect_xitu_donghan_youyuhou"
+    },
+    "dialect_xitu_donghan_youyuhou_coda": {
+      "type": "text",
+      "label": "幽魚侯合韵目标韵尾",
+      "description": "幽魚侯合韵使用的目标韵尾。",
+      "default": "w",
+      "group": "dialect_donghan_late_xitu",
+      "parent": "dialect_xitu_donghan_youyuhou"
+    },
+    "dialect_xitu_jizhi": {
+      "type": "boolean",
+      "label": "緝職合韵·緝",
+      "description": "ə 元音、无韵尾、p 声调。修改元音和声调。",
+      "group": "dialect"
+    },
+    "dialect_han": {
+      "type": "boolean",
+      "label": "汉代",
+      "description": "启用汉代音变。",
+      "group": "dialect_group"
+    },
+    "dialect_han_xitu": {
+      "type": "boolean",
+      "label": "汉代西土",
+      "description": "启用汉代西土音变。",
+      "group": "dialect_group"
+    },
+    "dialect_donghan_late_xitu": {
+      "type": "boolean",
+      "label": "东汉晚期西土",
+      "description": "启用东汉晚期西土音变。",
+      "group": "dialect_group"
+    },
+    "dialect_han_xitu_zhijue": {
+      "type": "boolean",
+      "label": "職覺合韵·職",
+      "description": "ə 元音、无韵尾、k 声调。修改元音。",
+      "group": "dialect_han_xitu"
+    },
+    "dialect_han_xitu_zhijue_target": {
+      "type": "text",
+      "label": "職覺合韵·職目标元音",
+      "description": "汉代西土職覺合韵使用的目标元音。",
+      "default": "ɯ",
+      "group": "dialect_han_xitu",
+      "parent": "dialect_han_xitu_zhijue"
+    },
+    "dialect_han_dongtu": {
+      "type": "boolean",
+      "label": "汉代东土",
+      "description": "启用汉代东土音变。",
+      "group": "dialect_group"
+    },
+    "dialect_han_dongtu_zhiyou": {
+      "type": "boolean",
+      "label": "之部合口字之幽合韵",
+      "description": "u 元音、无韵尾；w 介音 + ə 元音、无韵尾。修改为无介音、ɯ 元音。",
+      "group": "dialect_han_dongtu"
+    },
+    "dialect_han_dongtu_zhiyou_target": {
+      "type": "text",
+      "label": "之部合口字之幽合韵目标元音",
+      "description": "之部合口字之幽合韵使用的目标元音。",
+      "default": "ɯ",
+      "group": "dialect_han_dongtu",
+      "parent": "dialect_han_dongtu_zhiyou"
+    },
+    "dialect_xitu_dongqin": {
+      "type": "boolean",
+      "label": "冬侵合韵·侵",
+      "description": "u 元音、m 韵尾。修改韵尾为指定值。",
+      "group": "dialect"
+    },
+    "dialect_xitu_dongqin_coda": {
+      "type": "text",
+      "label": "冬侵合韵·侵目标韵尾",
+      "default": "ŋ",
+      "group": "dialect",
+      "parent": "dialect_xitu_dongqin"
+    },
+    "dialect_xitu_qinzheng_only": {
+      "type": "boolean",
+      "label": "侵蒸合韵·侵",
+      "description": "ə 元音、m 韵尾。修改韵尾为指定值。",
+      "group": "dialect"
+    },
+    "dialect_xitu_qinzheng_only_coda": {
+      "type": "text",
+      "label": "侵蒸合韵·侵目标韵尾",
+      "default": "ŋ",
+      "group": "dialect",
+      "parent": "dialect_xitu_qinzheng_only"
+    },
+    "dialect_han_xitu_dongqin": {
+      "type": "boolean",
+      "label": "冬侵合韵·侵",
+      "description": "u 元音、m 韵尾。修改韵尾为指定值。",
+      "group": "dialect_han_xitu"
+    },
+    "dialect_han_xitu_dongqin_coda": {
+      "type": "text",
+      "label": "冬侵合韵·侵目标韵尾",
+      "default": "ŋ",
+      "group": "dialect_han_xitu",
+      "parent": "dialect_han_xitu_dongqin"
+    },
+    "dialect_han_xitu_qinzheng_only": {
+      "type": "boolean",
+      "label": "侵蒸合韵·侵",
+      "description": "ə 元音、m 韵尾。修改韵尾为指定值。",
+      "group": "dialect_han_xitu"
+    },
+    "dialect_han_xitu_qinzheng_only_coda": {
+      "type": "text",
+      "label": "侵蒸合韵·侵目标韵尾",
+      "default": "ŋ",
+      "group": "dialect_han_xitu",
+      "parent": "dialect_han_xitu_qinzheng_only"
+    },
+    "dialect_xitu_zhiyou_e": {
+      "type": "boolean",
+      "label": "之幽合韵·之",
+      "description": "ə 元音、无韵尾、无声调或 ʔ 声调。修改元音。",
+      "group": "dialect"
+    },
+    "dialect_xitu_zhiyou_e_target": {
+      "type": "text",
+      "label": "之幽合韵·之目标元音",
+      "description": "之幽合韵使用的目标元音。",
+      "default": "ɯ",
+      "group": "dialect",
+      "parent": "dialect_xitu_zhiyou_e"
+    },
+    "dialect_xitu_zhiyou_u": {
+      "type": "boolean",
+      "label": "之幽合韵·幽",
+      "description": "u 元音、无韵尾、无声调或 ʔ 声调。修改元音。",
+      "group": "dialect"
+    },
+    "dialect_xitu_zhiyou_u_target": {
+      "type": "text",
+      "label": "之幽合韵·幽目标元音",
+      "description": "u 元音的目标元音。",
+      "default": "ɯ",
+      "group": "dialect",
+      "parent": "dialect_xitu_zhiyou_u"
+    },
+    "dialect_han_zhiyou_e": {
+      "type": "boolean",
+      "label": "之幽合韵·之",
+      "description": "ə 元音、无韵尾、无声调或 ʔ 声调。修改元音。",
+      "group": "dialect_han_xitu"
+    },
+    "dialect_han_zhiyou_e_target": {
+      "type": "text",
+      "label": "之幽合韵·之目标元音",
+      "description": "汉代之幽合韵使用的目标元音。",
+      "default": "ɯ",
+      "group": "dialect_han_xitu",
+      "parent": "dialect_han_zhiyou_e"
+    },
+    "dialect_han_zhiyou_u": {
+      "type": "boolean",
+      "label": "之幽合韵·幽",
+      "description": "u 元音、无韵尾、无声调或 ʔ 声调。修改元音。",
+      "group": "dialect_han_xitu"
+    },
+    "dialect_han_zhiyou_u_target": {
+      "type": "text",
+      "label": "之幽合韵·幽目标元音",
+      "description": "u 元音的目标元音。",
+      "default": "ɯ",
+      "group": "dialect_han_xitu",
+      "parent": "dialect_han_zhiyou_u"
+    },
+    "dialect_xitu_zhijue_u": {
+      "type": "boolean",
+      "label": "職覺合韵·覺",
+      "description": "u 元音、无韵尾、k 声调。修改元音。",
+      "group": "dialect"
+    },
+    "dialect_xitu_zhijue_u_target": {
+      "type": "text",
+      "label": "職覺合韵·覺目标元音",
+      "default": "ɯ",
+      "group": "dialect",
+      "parent": "dialect_xitu_zhijue_u"
+    },
+    "dialect_han_xitu_zhijue_u": {
+      "type": "boolean",
+      "label": "職覺合韵·覺",
+      "description": "u 元音、无韵尾、k 声调。修改元音。",
+      "group": "dialect_han_xitu"
+    },
+    "dialect_han_xitu_zhijue_u_target": {
+      "type": "text",
+      "label": "職覺合韵·覺目标元音",
+      "default": "ɯ",
+      "group": "dialect_han_xitu",
+      "parent": "dialect_han_xitu_zhijue_u"
+    },
+    "dialect_xitu_you_xiao_first_e": {
+      "type": "boolean",
+      "label": "第一类幽宵合韵·宵",
+      "description": "e 元音、w 韵尾。修改元音。",
+      "group": "dialect"
+    },
+    "dialect_xitu_you_xiao_first_e_target": {
+      "type": "text",
+      "label": "第一类幽宵合韵·宵目标元音",
+      "default": "ɯ",
+      "group": "dialect",
+      "parent": "dialect_xitu_you_xiao_first_e"
+    },
+    "dialect_xitu_you_xiao_second_a": {
+      "type": "boolean",
+      "label": "第二类幽宵合韵·宵",
+      "description": "a 元音、w 韵尾。修改元音。",
+      "group": "dialect"
+    },
+    "dialect_xitu_you_xiao_second_a_target": {
+      "type": "text",
+      "label": "第二类幽宵合韵·宵目标元音",
+      "default": "ɯ",
+      "group": "dialect",
+      "parent": "dialect_xitu_you_xiao_second_a"
+    },
+    "dialect_xitu_jizhi_target": {
+      "type": "text",
+      "label": "緝職合韵·緝目标元音",
+      "description": "緝職合韵·緝使用的目标元音。",
+      "default": "ɯ",
+      "group": "dialect",
+      "parent": "dialect_xitu_jizhi"
+    },
+    "dialect_xitu_jizhi_tone": {
+      "type": "text",
+      "label": "緝職合韵·緝目标声调",
+      "description": "緝職合韵·緝使用的目标声调。",
+      "default": "k",
+      "group": "dialect",
+      "parent": "dialect_xitu_jizhi"
+    },
+    "dialect_xitu_dongqin_dong": {
+      "type": "boolean",
+      "label": "冬侵合韵·冬",
+      "description": "u 元音、ŋ 韵尾。修改韵尾为指定值。",
+      "group": "dialect"
+    },
+    "dialect_xitu_dongqin_dong_coda": {
+      "type": "text",
+      "label": "冬侵合韵·冬目标韵尾",
+      "default": "m",
+      "group": "dialect",
+      "parent": "dialect_xitu_dongqin_dong"
+    },
+    "dialect_xitu_qinzheng_only_zheng": {
+      "type": "boolean",
+      "label": "侵蒸合韵·蒸",
+      "description": "ə 元音、ŋ 韵尾。修改韵尾为指定值。",
+      "group": "dialect"
+    },
+    "dialect_xitu_qinzheng_only_zheng_coda": {
+      "type": "text",
+      "label": "侵蒸合韵·蒸目标韵尾",
+      "default": "m",
+      "group": "dialect",
+      "parent": "dialect_xitu_qinzheng_only_zheng"
+    },
+    "dialect_han_xitu_dongqin_dong": {
+      "type": "boolean",
+      "label": "冬侵合韵·冬",
+      "description": "u 元音、ŋ 韵尾。修改韵尾为指定值。",
+      "group": "dialect_han_xitu"
+    },
+    "dialect_han_xitu_dongqin_dong_coda": {
+      "type": "text",
+      "label": "冬侵合韵·冬目标韵尾",
+      "default": "m",
+      "group": "dialect_han_xitu",
+      "parent": "dialect_han_xitu_dongqin_dong"
+    },
+    "dialect_han_xitu_qinzheng_only_zheng": {
+      "type": "boolean",
+      "label": "侵蒸合韵·蒸",
+      "description": "ə 元音、ŋ 韵尾。修改韵尾为指定值。",
+      "group": "dialect_han_xitu"
+    },
+    "dialect_han_xitu_qinzheng_only_zheng_coda": {
+      "type": "text",
+      "label": "侵蒸合韵·蒸目标韵尾",
+      "default": "m",
+      "group": "dialect_han_xitu",
+      "parent": "dialect_han_xitu_qinzheng_only_zheng"
     }
   }
 }

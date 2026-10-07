@@ -811,8 +811,9 @@ def load_map_from_json_gz(on_status=None, on_progress=None) -> Optional[Dict[str
             continue
 
         note = None
+        note_parts = []
         position = None
-        headword = None
+        series_head = None
         if extra_data and i < len(extra_data):
             ext = extra_data[i]
             position_val = ext.get('c')
@@ -825,21 +826,30 @@ def load_map_from_json_gz(on_status=None, on_progress=None) -> Optional[Dict[str
             d = ext.get('d')
             if d and isinstance(d, list):
                 if len(d) > 0 and isinstance(d[0], str) and d[0].strip():
-                    parts.append(d[0].strip())
+                    text = d[0].strip()
+                    parts.append(text)
+                    note_parts.append({'text': text})
                 if len(d) > 1 and isinstance(d[1], list):
                     for j, defn in enumerate(d[1], 1):
                         if defn and isinstance(defn, str):
                             parts.append(f'{j}{defn}')
+                            note_parts.append({'index': j, 'text': defn})
             e_val = ext.get('e')
             if e_val and isinstance(e_val, str) and e_val.strip():
-                parts.append(e_val.strip())
+                text = e_val.strip()
+                parts.append(text)
+                note_parts.append({'text': text})
             n_val = ext.get('n')
             if n_val and isinstance(n_val, str) and n_val.strip():
-                parts.append(n_val.strip())
+                text = n_val.strip()
+                parts.append(text)
+                note_parts.append({'text': text})
             if parts:
                 note = '\n'.join(parts)
 
         option = {'phonetic': phonetic, 'note': note}
+        if note_parts:
+            option['note_parts'] = note_parts
         if position:
             option['position'] = position
         if series_head:

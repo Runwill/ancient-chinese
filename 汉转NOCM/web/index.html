@@ -13,8 +13,8 @@
         || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     })();
   </script>
-  <link rel="icon" type="image/png" href="app-icon.png?v=0.12.16">
-  <link rel="stylesheet" href="styles.css?v=0.12.16">
+  <link rel="icon" type="image/png" href="app-icon.png?v=0.12.17">
+  <link rel="stylesheet" href="styles.css?v=0.12.17">
 </head>
 <body>
   <div id="startup" class="startup pywebview-drag-region">
@@ -41,8 +41,8 @@
   <main id="app" class="app hidden">
     <header id="app-titlebar" class="topbar pywebview-drag-region">
       <div class="brand pywebview-drag-region">
-        <img class="titlebar-icon titlebar-icon-light" src="app-icon.png?v=0.12.16" alt="">
-        <img class="titlebar-icon titlebar-icon-dark" src="app-icon-dark.png?v=0.12.16" alt="">
+        <img class="titlebar-icon titlebar-icon-light" src="app-icon.png?v=0.12.17" alt="">
+        <img class="titlebar-icon titlebar-icon-dark" src="app-icon-dark.png?v=0.12.17" alt="">
         <strong>汉字转 PBOC 音标</strong>
         <span id="document-title">未命名文稿</span>
         <span id="save-state" class="save-state">已自动保存</span>
@@ -191,11 +191,11 @@
 
   <dialog id="export-dialog" class="dialog export-dialog">
     <form method="dialog">
-      <header>
-        <h2>导出文本</h2>
-        <button value="cancel" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
-      </header>
       <div class="export-controls">
+        <header class="export-heading">
+          <h2>导出文本</h2>
+          <button value="cancel" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button>
+        </header>
         <div class="segmented" id="export-mode">
           <button type="button" data-value="raw" aria-pressed="false">原文</button>
           <button type="button" data-value="phon" class="active" aria-pressed="true">PBOC</button>
@@ -206,6 +206,7 @@
             <span>导出设置</span><span id="export-settings-count" class="export-settings-count">未启用</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 8 4 4 4-4"></path></svg>
           </button>
           <div id="export-settings-panel" class="export-settings-panel" hidden>
+            <p class="export-settings-scope">仅影响本次导出，不会写入方案</p>
             <section class="export-option-group" aria-labelledby="export-text-options-title">
               <h3 id="export-text-options-title">文本整理</h3>
               <div class="export-checks">
@@ -215,18 +216,11 @@
               </div>
             </section>
             <section class="export-option-group" data-suno-only aria-labelledby="export-suno-options-title">
-              <h3 id="export-suno-options-title">Suno 发音</h3>
+              <h3 id="export-suno-options-title">Suno 输出清理</h3>
               <div class="export-checks">
-                <label class="check-control"><input id="remove-pharyngeal" type="checkbox"><span>删除所有咽化</span></label>
+                <label class="check-control"><input id="remove-pharyngeal" type="checkbox"><span>去除咽化符号</span></label>
                 <label class="check-control"><input id="remove-glottal-tone" type="checkbox"><span>删除喉塞音声调</span></label>
-              </div>
-            </section>
-            <section class="export-option-group" data-debug-only data-suno-only aria-labelledby="export-advanced-options-title">
-              <h3 id="export-advanced-options-title">实验性</h3>
-              <div class="export-checks">
-                <label class="check-control"><input id="remove-tones" type="checkbox"><span>删除所有声调</span></label>
-                <label class="check-control"><input id="entry-before-glottal" type="checkbox"><span>喉塞音前的 p/t/k 入声改为上声</span></label>
-                <label class="check-control"><input id="departing-before-glottal" type="checkbox"><span>喉塞音前的去声改为上声</span></label>
+                <label class="check-control"><input id="remove-pure-entry-before-glottal" type="checkbox"><span>喉塞音前省略纯入声</span></label>
               </div>
             </section>
           </div>
@@ -330,7 +324,8 @@
         <label class="wide">备注<input id="scheme-description" class="text-input"></label>
       </section>
       <nav id="scheme-tabs" class="tabs" role="tablist" aria-label="方案编辑页面">
-        <button data-tab="options" class="active" role="tab" aria-selected="true">选项</button>
+        <button data-tab="options" class="active" role="tab" aria-selected="true">方案选项</button>
+        <button data-tab="phonology" role="tab" aria-selected="false">音变</button>
         <button data-tab="maps" role="tab" aria-selected="false">基础映射</button>
         <button data-tab="rules" role="tab" aria-selected="false">附加替换</button>
         <button data-tab="tools" role="tab" aria-selected="false">方案比较</button>
@@ -352,6 +347,15 @@
     </form>
   </dialog>
 
+  <dialog id="draft-dialect-dialog" class="dialog compact-dialog draft-dialect-dialog">
+    <form method="dialog">
+      <header><h2>文稿音变</h2></header>
+      <p class="muted draft-dialect-note">文稿设置会覆盖当前方案的音变设置。</p>
+      <label class="draft-dialect-follow"><input id="draft-dialect-follow" type="checkbox"> 跟随方案设置</label>
+      <div id="draft-dialect-content" class="draft-dialect-content"></div>
+      <footer><button value="cancel" class="button">取消</button><button id="save-draft-dialect" type="button" class="button primary">保存</button></footer>
+    </form>
+  </dialog>
   <dialog id="history-dialog" class="dialog history-dialog">
     <div class="dialog-layout">
       <header><h2>历史版本</h2><button id="close-history" class="icon-button" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6 6 18"></path></svg></button></header>
@@ -393,6 +397,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.12.16"></script>
+  <script src="app.js?v=0.12.17"></script>
 </body>
 </html>

@@ -18,15 +18,143 @@
     ['syllable_relax', '音节改善'], ['post_replace', '最终替换']
   ];
   const SCHEME_OPTION_GROUPS = [
-    ['rules', '附加替换开关', ['improve_pharyngeal', 'improve_syllable']],
+    ['rules', '转写优化', ['improve_pharyngeal', 'improve_syllable']],
     ['output', '输出拼写', ['voiced_stop_style', 'extra_h_voiceless_sonorant']],
+    ['dialect', '西土', [
+      'dialect_xitu_zhiyou_e', 'dialect_xitu_zhiyou_e_target',
+      'dialect_xitu_zhiyou_u', 'dialect_xitu_zhiyou_u_target',
+      'dialect_xitu_dongqin', 'dialect_xitu_dongqin_coda',
+      'dialect_xitu_dongqin_dong', 'dialect_xitu_dongqin_dong_coda',
+      'dialect_xitu_qinzheng_only', 'dialect_xitu_qinzheng_only_coda',
+      'dialect_xitu_qinzheng_only_zheng', 'dialect_xitu_qinzheng_only_zheng_coda',
+      'dialect_xitu_you_xiao_first', 'dialect_xitu_you_xiao_first_target',
+      'dialect_xitu_you_xiao_first_e', 'dialect_xitu_you_xiao_first_e_target',
+      'dialect_xitu_you_xiao_second', 'dialect_xitu_you_xiao_second_target',
+      'dialect_xitu_you_xiao_second_coda', 'dialect_xitu_you_xiao_second_a',
+      'dialect_xitu_you_xiao_second_a_target',
+      'dialect_xitu_zhijue', 'dialect_xitu_zhijue_target',
+      'dialect_xitu_zhijue_u', 'dialect_xitu_zhijue_u_target',
+      'dialect_xitu_jizhi', 'dialect_xitu_jizhi_target',
+      'dialect_xitu_jizhi_tone'
+    ], 'dialect_xitu'],
+    ['dialect_han', '汉代', [], 'dialect_han'],
+    ['dialect_han_xitu', '汉代西土', [
+      'dialect_han_zhiyou_e', 'dialect_han_zhiyou_e_target',
+      'dialect_han_zhiyou_u', 'dialect_han_zhiyou_u_target',
+      'dialect_han_xitu_dongqin', 'dialect_han_xitu_dongqin_coda',
+      'dialect_han_xitu_dongqin_dong', 'dialect_han_xitu_dongqin_dong_coda',
+      'dialect_han_xitu_qinzheng_only', 'dialect_han_xitu_qinzheng_only_coda',
+      'dialect_han_xitu_qinzheng_only_zheng', 'dialect_han_xitu_qinzheng_only_zheng_coda',
+      'dialect_han_xitu_zhijue', 'dialect_han_xitu_zhijue_target',
+      'dialect_han_xitu_zhijue_u', 'dialect_han_xitu_zhijue_u_target',
+      'dialect_xitu_xiaoyu_houyao', 'dialect_xitu_xiaoyu_houyao_target',
+      'dialect_xitu_xiaoyu_houyao_coda'
+    ], 'dialect_han_xitu'],
+    ['dialect_han_dongtu', '汉代东土', [
+      'dialect_han_dongtu_zhiyou', 'dialect_han_dongtu_zhiyou_target'
+    ], 'dialect_han_dongtu'],
+    ['dialect_donghan_late_xitu', '东汉晚期西土', [
+      'dialect_xitu_donghan_zhibu_qianhua',
+      'dialect_xitu_donghan_zhibu_qianhua_target',
+      'dialect_xitu_donghan_youyuhou',
+      'dialect_xitu_donghan_youyuhou_target',
+      'dialect_xitu_donghan_youyuhou_coda'
+    ], 'dialect_donghan_late_xitu'],
   ];
+  const SCHEME_OPTION_ORDER = new Map(SCHEME_OPTION_GROUPS.flatMap(([, , keys, master]) => [
+    ...(master ? [master] : []), ...keys,
+  ]).map((key, index) => [key, index]));
+  // These classes remain supported by saved schemes and the backend, but are
+  // intentionally not exposed in the scheme editor for now.
+  const HIDDEN_SCHEME_OPTION_GROUPS = new Set([
+    'dialect_han_xitu', 'dialect_han_dongtu',
+    'dialect_donghan_late_xitu',
+  ]);
   const SCHEME_OPTION_LABELS = {
     improve_pharyngeal: '改善咽化组合',
     improve_syllable: '改善特殊音节',
     voiced_stop_style: '浊塞音拼写',
     extra_h_voiceless_sonorant: '清响音前额外加 h',
+    dialect_xitu: '西土方言',
+    dialect_xitu_zhiyou_e: '之幽合韵·之',
+    dialect_xitu_zhiyou_e_target: '之幽合韵·之目标元音',
+    dialect_xitu_zhiyou_u: '之幽合韵·幽',
+    dialect_xitu_zhiyou_u_target: '之幽合韵·幽目标元音',
+    dialect_xitu_dongqin: '冬侵合韵·侵',
+    dialect_xitu_dongqin_coda: '冬侵合韵·侵目标韵尾',
+    dialect_xitu_dongqin_dong: '冬侵合韵·冬',
+    dialect_xitu_dongqin_dong_coda: '冬侵合韵·冬目标韵尾',
+    dialect_xitu_qinzheng_only: '侵蒸合韵·侵',
+    dialect_xitu_qinzheng_only_coda: '侵蒸合韵·侵目标韵尾',
+    dialect_xitu_qinzheng_only_zheng: '侵蒸合韵·蒸',
+    dialect_xitu_qinzheng_only_zheng_coda: '侵蒸合韵·蒸目标韵尾',
+    dialect_xitu_zhijue: '職覺合韵·職',
+    dialect_xitu_zhijue_target: '職覺合韵·職目标元音',
+    dialect_xitu_zhijue_u: '職覺合韵·覺',
+    dialect_xitu_zhijue_u_target: '職覺合韵·覺目标元音',
+    dialect_han_zhiyou_e: '之幽合韵·之',
+    dialect_han_zhiyou_e_target: '之幽合韵·之目标元音',
+    dialect_han_zhiyou_u: '之幽合韵·幽',
+    dialect_han_zhiyou_u_target: '之幽合韵·幽目标元音',
+    dialect_han_xitu_dongqin: '冬侵合韵·侵',
+    dialect_han_xitu_dongqin_coda: '冬侵合韵·侵目标韵尾',
+    dialect_han_xitu_dongqin_dong: '冬侵合韵·冬',
+    dialect_han_xitu_dongqin_dong_coda: '冬侵合韵·冬目标韵尾',
+    dialect_han_xitu_qinzheng_only: '侵蒸合韵·侵',
+    dialect_han_xitu_qinzheng_only_coda: '侵蒸合韵·侵目标韵尾',
+    dialect_han_xitu_qinzheng_only_zheng: '侵蒸合韵·蒸',
+    dialect_han_xitu_qinzheng_only_zheng_coda: '侵蒸合韵·蒸目标韵尾',
+    dialect_han_xitu_zhijue: '職覺合韵·職',
+    dialect_han_xitu_zhijue_target: '職覺合韵·職目标元音',
+    dialect_han_xitu_zhijue_u: '職覺合韵·覺',
+    dialect_han_xitu_zhijue_u_target: '職覺合韵·覺目标元音',
+    dialect_han_dongtu: '汉代东土',
+    dialect_han_dongtu_zhiyou: '之部合口字之幽合韵',
+    dialect_han_dongtu_zhiyou_target: '之部合口字之幽合韵目标元音',
+    dialect_xitu_jizhi: '緝職合韵·緝',
+    dialect_xitu_jizhi_target: '緝職合韵·緝目标元音',
+    dialect_xitu_jizhi_tone: '緝職合韵·緝目标声调',
+    dialect_xitu_you_xiao_first: '第一类幽宵合韵·幽',
+    dialect_xitu_you_xiao_first_target: '第一类幽宵合韵·幽目标元音',
+    dialect_xitu_you_xiao_first_e: '第一类幽宵合韵·宵',
+    dialect_xitu_you_xiao_first_e_target: '第一类幽宵合韵·宵目标元音',
+    dialect_xitu_you_xiao_second: '第二类幽宵合韵·幽',
+    dialect_xitu_you_xiao_second_target: '第二类幽宵合韵·幽目标元音',
+    dialect_xitu_you_xiao_second_coda: '第二类幽宵合韵·幽目标韵尾',
+    dialect_xitu_you_xiao_second_a: '第二类幽宵合韵·宵',
+    dialect_xitu_you_xiao_second_a_target: '第二类幽宵合韵·宵目标元音',
+    dialect_xitu_xiaoyu_houyao: '宵魚侯/藥屋合韵',
+    dialect_xitu_xiaoyu_houyao_target: '宵魚侯/藥屋合韵目标元音',
+    dialect_xitu_xiaoyu_houyao_coda: '宵魚侯/藥屋合韵目标韵尾',
+    dialect_xitu_donghan_zhibu_qianhua: '之部前化',
+    dialect_xitu_donghan_zhibu_qianhua_target: '之部前化目标元音',
+    dialect_xitu_donghan_youyuhou: '幽魚侯合韵',
+    dialect_xitu_donghan_youyuhou_target: '幽魚侯合韵目标元音',
+    dialect_xitu_donghan_youyuhou_coda: '幽魚侯合韵目标韵尾',
   };
+  // Keep these branches in saved schemes, but expose them only in debug mode.
+  const DEBUG_ONLY_OPTION_ROOTS = new Set([
+    'dialect_xitu_zhiyou_u',
+    'dialect_xitu_zhijue_u',
+    'dialect_xitu_you_xiao_first',
+    'dialect_xitu_you_xiao_second',
+    'dialect_xitu_dongqin_dong',
+    'dialect_xitu_qinzheng_only_zheng',
+    'dialect_han_xitu_dongqin_dong',
+    'dialect_han_xitu_qinzheng_only_zheng',
+  ]);
+
+  function isDebugOnlyOption(key, definitions = {}) {
+    if (document.body.classList.contains('debug-mode')) return false;
+    let current = key;
+    const seen = new Set();
+    while (current && !seen.has(current)) {
+      if (DEBUG_ONLY_OPTION_ROOTS.has(current)) return true;
+      seen.add(current);
+      current = definitions[current]?.parent;
+    }
+    return false;
+  }
   const SECTION_NAMES = Object.fromEntries(MAP_SECTIONS);
 
   let api = null;
@@ -40,6 +168,8 @@
   let highlightMode = false;
   let search = { visible: false, query: '', scope: 'all', matches: [], index: 0 };
   let draftLibraryQuery = '';
+  let draftDialectDraft = null;
+  let draftDialectFilename = null;
   const EXPORT_CONTENT_KEYS = ['raw', 'phon', 'suno'];
   const exportContents = new Set(['phon']);
   let exportOptionsInitialized = false;
@@ -48,6 +178,10 @@
   let schemePickerId = null;
   let schemePickerFilter = 'active';
   let schemeTab = 'options';
+  const SCHEME_EDITOR_TABS = ['options', 'phonology', 'maps', 'rules', 'tools'];
+  let schemeEditorViews = {};
+  let schemeEditorViewKey = null;
+  let schemeEditorScrollTimer = null;
   let schemeUndo = [];
   let schemeRedo = [];
   let pendingSchemeInput = null;
@@ -55,6 +189,10 @@
   let mouseSelecting = false;
   let mouseMoved = false;
   let mouseDown = null;
+  let selectionRequest = null;
+  let selectionFrame = 0;
+  let dragSelection = null;
+  let selectionRevision = 0;
   let composing = false;
   let dragPayload = null;
   let treeClickTimer = null;
@@ -456,8 +594,8 @@
       state = result;
       editor = result.editor;
       applyInspectorWidth(result.ui_preferences?.inspector_width);
-      applyEditorZoom(result.ui_preferences?.editor_zoom);
       applyDebugMode(result.ui_preferences?.debug_mode);
+      applyEditorZoom(result.ui_preferences?.editor_zoom);
       renderAll();
       if (previousDraft !== editor.current_draft || editor.scroll_top) {
         requestAnimationFrame(() => {
@@ -494,6 +632,22 @@
     const maxWidth = Math.max(230, Math.min(520, window.innerWidth - 560));
     const width = Math.max(230, Math.min(maxWidth, Number(value) || 286));
     $('.workspace')?.style.setProperty('--inspector-width', `${width}px`);
+  }
+
+  function applyDebugMode(enabled) {
+    const active = Boolean(enabled);
+    document.body.classList.toggle('debug-mode', active);
+    if (state) {
+      state.ui_preferences ||= {};
+      state.ui_preferences.debug_mode = active;
+    }
+    if (schemeDraft && $('#scheme-dialog')?.open
+        && (schemeTab === 'options' || schemeTab === 'phonology')) {
+      renderSchemeOptions();
+    }
+    if (draftDialectDraft && $('#draft-dialect-dialog')?.open) {
+      renderDraftDialectOptions();
+    }
   }
 
   function applyEditorZoom(value) {
@@ -534,29 +688,16 @@
     }, 220);
   }
 
-  function applyDebugMode(enabled) {
-    document.body.classList.toggle('debug-mode', Boolean(enabled));
-    if (state) {
-      state.ui_preferences ||= {};
-      state.ui_preferences.debug_mode = Boolean(enabled);
-    }
-  }
-
   const EXPORT_OPTION_INPUTS = {
     punct_split: '#punct-split',
     clean_line_breaks: '#clean-line-breaks',
     ignore_bracket_control_lines: '#ignore-bracket-control-lines',
     remove_pharyngeal: '#remove-pharyngeal',
-    remove_tones: '#remove-tones',
     remove_glottal_tone: '#remove-glottal-tone',
-    entry_before_glottal: '#entry-before-glottal',
-    departing_before_glottal: '#departing-before-glottal',
+    remove_pure_entry_before_glottal: '#remove-pure-entry-before-glottal',
   };
   const EXPORT_TEXT_OPTION_KEYS = new Set([
     'punct_split', 'clean_line_breaks', 'ignore_bracket_control_lines'
-  ]);
-  const EXPORT_DEBUG_OPTION_KEYS = new Set([
-    'remove_tones', 'entry_before_glottal', 'departing_before_glottal'
   ]);
 
   function readExportOptions() {
@@ -591,6 +732,8 @@
     selectionCopyMode = ['raw', 'phon'].includes(preferences?.selection_copy_mode)
       ? preferences.selection_copy_mode : 'raw';
     phonologyDetailsOpen = Boolean(preferences?.phonology_details_open);
+    schemeEditorViews = preferences?.scheme_editor_views && typeof preferences.scheme_editor_views === 'object'
+      && !Array.isArray(preferences.scheme_editor_views) ? clone(preferences.scheme_editor_views) : {};
     applyExportOptionPreferences(preferences?.export_options);
   }
 
@@ -603,12 +746,11 @@
   }
 
   function updateExportSettingsSummary(includesSuno) {
-    const debugEnabled = document.body.classList.contains('debug-mode');
     const count = Object.entries(EXPORT_OPTION_INPUTS).filter(([key, selector]) => {
       if (!$(selector)?.checked) return false;
       if (EXPORT_TEXT_OPTION_KEYS.has(key)) return true;
       if (!includesSuno) return false;
-      return !EXPORT_DEBUG_OPTION_KEYS.has(key) || debugEnabled;
+      return true;
     }).length;
     $('#export-settings-count').textContent = count ? `已启用 ${count} 项` : '未启用';
     $('#export-settings-toggle').classList.toggle('has-active-options', Boolean(count));
@@ -662,7 +804,8 @@
     stage.textContent = [
       step, status.detail, `已用时 ${elapsed} 秒`,
     ].filter(Boolean).join(' · ');
-    const showStage = elapsed >= 8 || status.phase === 'error';
+    // 错误页只显示错误信息；启动阶段和计时只在慢启动时出现。
+    const showStage = elapsed >= 8 && status.phase !== 'error';
     $('#startup').classList.toggle('startup-stage-visible', showStage);
     stage.setAttribute('aria-hidden', String(!showStage));
     const progress = Math.max(0, Math.min(100, Number(status.progress) || 0));
@@ -731,8 +874,8 @@
     if (!result?.ok) {
       const message = result?.startup?.error || '启动失败';
       $('#startup-message').textContent = message;
-      $('#startup').classList.add('startup-stage-visible');
-      $('#startup-stage').setAttribute('aria-hidden', 'false');
+      $('#startup').classList.remove('startup-stage-visible');
+      $('#startup-stage').setAttribute('aria-hidden', 'true');
       startupErrorReport = result?.startup?.details || '';
       if (startupErrorReport) {
         $('#startup-details').textContent = startupErrorReport;
@@ -745,8 +888,8 @@
     state = result;
     editor = result.editor;
     applyInspectorWidth(result.ui_preferences?.inspector_width);
-    applyEditorZoom(result.ui_preferences?.editor_zoom);
     applyDebugMode(result.ui_preferences?.debug_mode);
+    applyEditorZoom(result.ui_preferences?.editor_zoom);
     applyPersistentUiPreferences(result.ui_preferences);
     $('#startup-version').textContent = `v${result.version || ''}`;
     setTheme(result.theme || 'light');
@@ -773,6 +916,8 @@
   function updateToolbar() {
     if (!editor) return;
     $('#document-title').textContent = editor.current_name || '未命名文稿';
+    const dialectLabel = document.querySelector('#document-dialect');
+    if (dialectLabel) dialectLabel.classList.add('hidden');
     $('#undo-button').disabled = !editor.can_undo;
     $('#redo-button').disabled = !editor.can_redo;
     const highlightButton = $('#highlight-button');
@@ -874,7 +1019,13 @@
         ].filter(Boolean).join(' ');
         node.dataset.line = li;
         node.dataset.column = ci;
-        node.innerHTML = `<span class="cell-char">${esc(cell.char)}</span><span class="cell-phon" title="${esc(cell.phonetic)}">${esc(cell.phonetic)}</span>`;
+        const dialectChanged = cell.dialect_phonetic && cell.dialect_phonetic !== cell.phonetic;
+        const dialectReason = Array.isArray(cell.dialect_reason)
+          ? cell.dialect_reason.join('、') : String(cell.dialect_reason || '');
+        const phoneticHtml = dialectChanged
+          ? `<span class="cell-phon dialect-phon" title="${esc(cell.phonetic)} → ${esc(cell.dialect_phonetic)}${dialectReason ? ` · ${esc(dialectReason)}` : ''}"><b>${esc(cell.dialect_phonetic)}</b></span>`
+          : `<span class="cell-phon" title="${esc(cell.phonetic)}">${esc(cell.phonetic)}</span>`;
+        node.innerHTML = `<span class="cell-char">${esc(cell.char)}</span>${phoneticHtml}`;
         lineNode.append(node);
       });
       if (editor.cursor[0] === li && editor.cursor[1] === line.length) lineNode.append(makeCaret());
@@ -912,6 +1063,47 @@
     if (!preserveVisualX) visualNavX = null;
     const result = await invoke('set_caret', line, column, extend);
     applyResult(result);
+  }
+
+  function scheduleDragSelection(line, column) {
+    const revision = ++selectionRevision;
+    selectionRequest = { line, column };
+    if (selectionFrame) return;
+    selectionFrame = requestAnimationFrame(async () => {
+      selectionFrame = 0;
+      const request = selectionRequest;
+      selectionRequest = null;
+      if (!request || !mouseDown) return;
+      if (revision !== selectionRevision) return;
+      if (!dragSelection) return;
+      const [[anchorLine, anchorColumn]] = dragSelection;
+      editor.selection = [[anchorLine, anchorColumn], [request.line, request.column]];
+      editor.cursor = [request.line, request.column];
+      renderSelectionOnly();
+      updateSelectionInspector();
+    });
+  }
+
+  function renderSelectionOnly() {
+    if (!editor) return;
+    $$('.cell.in-selection', $('#editor')).forEach(node => {
+      const li = Number(node.dataset.line);
+      const ci = Number(node.dataset.column);
+      if (!isInSelection(li, ci)) node.classList.remove('in-selection');
+    });
+    if (!editor.selection) return;
+    const [[sl, sc], [el, ec]] = editor.selection;
+    const start = sl < el || (sl === el && sc <= ec)
+      ? [sl, sc] : [el, ec];
+    const end = start[0] === sl && start[1] === sc ? [el, ec] : [sl, sc];
+    for (let li = start[0]; li <= end[0]; li++) {
+      const from = li === start[0] ? start[1] : 0;
+      const to = li === end[0] ? end[1] : (editor.lines[li]?.length || 0);
+      for (let ci = from; ci < to; ci++) {
+        $(`.cell[data-line="${li}"][data-column="${ci}"]`, $('#editor'))
+          ?.classList.add('in-selection');
+      }
+    }
   }
 
   function renderInspector() {
@@ -952,10 +1144,18 @@
         const updatePanel = readingUpdateHtml(details);
         const currentOption = options.find(option => optionPhonetic(option) === details.phonetic);
         const positionPanel = phonologyDetailHtml(currentOption, phonologyDetailsOpen);
-        const readingStatus = `${esc(details.phonetic)}${details.stale ? '<span> · 文稿原读音</span>' : ''}`;
+        const dialectChanged = details.dialect_phonetic && details.dialect_phonetic !== details.phonetic;
+        const dialectReason = Array.isArray(details.dialect_reason)
+          ? details.dialect_reason.join('、') : String(details.dialect_reason || '');
+        const dialectReasonHtml = dialectChanged && dialectReason
+          ? `<span class="dialect-reason">${esc(dialectReason)}</span>` : '';
+        const readingStatus = dialectChanged
+          ? `<s>${esc(details.phonetic)}</s> <b class="dialect-reading">${esc(details.dialect_phonetic)}</b>${dialectReasonHtml}`
+          : `${esc(details.phonetic)}`;
+        const readingStatusWithState = `${readingStatus}${details.stale ? '<span> · 文稿原读音</span>' : ''}`;
         const readingControl = currentOption?.position_details
-          ? `<button class="inspector-reading-trigger ${details.stale ? 'reading-stale' : ''}" id="phonology-detail-trigger" type="button" aria-expanded="${phonologyDetailsOpen}" aria-controls="phonology-detail" title="查看音韵地位详情">${readingStatus}<svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4.5 3 3 3-3"></path></svg></button>`
-          : `<p class="${details.stale ? 'reading-stale' : ''}">${unrecorded ? '未收录' : readingStatus}</p>`;
+          ? `<button class="inspector-reading-trigger ${details.stale ? 'reading-stale' : ''}" id="phonology-detail-trigger" type="button" aria-expanded="${phonologyDetailsOpen}" aria-controls="phonology-detail" title="查看音韵地位详情">${readingStatusWithState}<svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4.5 3 3 3-3"></path></svg></button>`
+          : `<p class="${details.stale ? 'reading-stale' : ''}">${unrecorded ? '未收录' : readingStatusWithState}</p>`;
         root.innerHTML = `
           <div class="inspector-title">
             <div><h2>${details.stale ? '读音更新待确认' : details.is_poly ? '选择读音' : '字词信息'}</h2>${readingControl}</div>
@@ -997,11 +1197,18 @@
     root.innerHTML = '<div class="inspector-placeholder"><strong>读音与字词信息</strong><span>点击正文中的字查看</span></div>';
   }
 
+  function updateSelectionInspector() {
+    if (!editor?.selection) return;
+    const count = selectionCount(editor.selection);
+    const node = $('.selection-count', $('#inspector'));
+    if (node) node.textContent = `${count} 个字`;
+  }
+
   function readingUpdateHtml(details) {
     const pending = details.pending_updates || [];
     const confirmed = details.confirmed_updates || [];
     const pendingHtml = pending.map(event => `<section class="reading-update-card pending">
-      <div class="reading-update-heading"><strong>${esc(event.timestamp)} 的词库更新</strong><span>待确认</span></div>
+      <div class="reading-update-heading"><span class="reading-update-title">${esc(event.timestamp)} 的词库更新</span><span class="reading-update-status">待确认</span></div>
       <p>${esc(event.summary || '当前文稿读音已不在新词库中。')}</p>
       <div class="reading-update-actions"><button class="button" data-update-keep="${esc(event.id)}">保留当前读音</button><button class="button subtle" data-update-view="${esc(event.id)}">查看完整更新</button></div>
     </section>`).join('');
@@ -1012,7 +1219,7 @@
         const decision = review.status === 'accepted_new'
           ? `${esc(review.before)} → ${esc(review.after)}` : `保留 ${esc(review.after)}`;
         return `<section class="reading-update-card confirmed">
-          <div class="reading-update-heading"><strong>${esc(event.timestamp || '历史更新')}</strong><span>已确认</span></div>
+          <div class="reading-update-heading"><span class="reading-update-title">${esc(event.timestamp || '历史更新')}</span><span class="reading-update-status">已确认</span></div>
           <p>${decision}</p>
           <div class="reading-update-actions"><button class="button subtle" data-update-view="${esc(event.id)}">查看更新</button><button class="button subtle" data-update-reopen="${esc(event.id)}">重新审阅</button>${review.status === 'accepted_new' ? `<button class="button subtle" data-update-restore="${esc(event.id)}">恢复原读音</button>` : ''}</div>
         </section>`;
@@ -1056,31 +1263,37 @@
       : details.is_poly ? `data-reading-local data-phonetic="${esc(phonetic)}"` : '';
     const globalButton = details.is_poly && details.same_char_count > 1
       ? `<button class="reading-global" data-reading-global data-phonetic="${esc(phonetic)}">全局</button>` : '';
+    const noteHtml = note ? formatReadingNote(note, option.note_parts) : '';
     return `<div class="reading-option ${current ? 'active' : ''}">
       <div class="reading-head"><${localTag} class="reading-local" ${localAttr}><span class="reading-phon">${esc(phonetic)}</span>${current ? '<span class="reading-current">已选</span>' : ''}</${localTag}>${globalButton}</div>
-      ${note ? `<button class="reading-note" ${localAttr}>${formatReadingNote(note)}</button>` : ''}
+      ${note ? `<button class="reading-note" ${localAttr}>${noteHtml}</button>` : ''}
     </div>`;
   }
 
-  function formatReadingNote(value) {
-    const text = String(value || '').trim().replace(
-      /([^\n\d])(\d+)(?=[\u3400-\u9fff])/g, '$1\n$2');
-    const pattern = /《[^》]*》|(?:^|\n)\d+(?=[\u3400-\u9fff])/g;
+  function formatNoteText(value) {
+    const text = String(value || '');
+    const pattern = /《[^》]*》/g;
     let output = '';
     let cursor = 0;
     for (const match of text.matchAll(pattern)) {
       output += esc(text.slice(cursor, match.index));
       const token = match[0];
-      if (token.startsWith('《')) {
-        output += `<span class="note-book">${esc(token)}</span>`;
-      } else {
-        const newline = token.startsWith('\n') ? '\n' : '';
-        const number = token.slice(newline.length);
-        output += `${newline}<span class="note-index">${esc(number)}</span> `;
-      }
+      output += `<span class="note-book">${esc(token)}</span>`;
       cursor = match.index + token.length;
     }
     return output + esc(text.slice(cursor));
+  }
+
+  function formatReadingNote(value, noteParts) {
+    if (!Array.isArray(noteParts) || !noteParts.length) {
+      return formatNoteText(String(value || '').trim());
+    }
+    return noteParts.map(part => {
+      const index = Number(part?.index);
+      const prefix = Number.isInteger(index) && index > 0
+        ? `<span class="note-index">${index}</span> ` : '';
+      return `${prefix}${formatNoteText(part?.text)}`;
+    }).join('\n');
   }
 
   async function applyReading(phonetic, globalApply) {
@@ -1224,8 +1437,10 @@
     const statusClass = completed ? 'completed' : pendingCount ? 'incomplete' : '';
     const stale = draft.stale
       ? '<span class="draft-stale" role="img" aria-label="包含词库读音已更新的字" title="包含词库读音已更新的字"></span>' : '';
+    const dialect = draft.dialect_name
+      ? `<span class="draft-dialect" title="文稿音变">${esc(draft.dialect_name)}</span>` : '';
     return `<div class="draft-row ${active} ${statusClass} ${recent ? 'recent-row' : ''}" draggable="${recent || searchResult ? 'false' : 'true'}" data-kind="draft" data-id="${esc(draft.filename)}" data-group-id="${esc(groupId)}">
-      <div class="draft-main"><div class="draft-name-row"><div class="draft-name">${esc(draft.name)}</div>${stale}</div><div class="draft-preview">${esc(draft.preview || '空文稿')}</div></div>
+      <div class="draft-main"><div class="draft-name-row"><div class="draft-name">${esc(draft.name)}</div>${dialect}${stale}</div><div class="draft-preview">${esc(draft.preview || '空文稿')}</div></div>
       <button class="tree-menu" data-menu="draft" title="文稿操作" aria-label="文稿操作">•••</button>
     </div>`;
   }
@@ -1320,6 +1535,72 @@
     }
   }
 
+  const DRAFT_DIALECT_GROUPS = [
+    ['dialect_xitu', '西土'],
+    ['dialect_han_xitu', '汉代西土'],
+    ['dialect_han_dongtu', '汉代东土'],
+    ['dialect_donghan_late_xitu', '东汉晚期西土'],
+  ];
+
+  function draftDialectRoot(key, definitions) {
+    let current = key;
+    const seen = new Set();
+    while (definitions[current]?.parent && !seen.has(current)) {
+      seen.add(current);
+      current = definitions[current].parent;
+    }
+    return current;
+  }
+
+  function renderDraftDialectOptions() {
+    const root = $('#draft-dialect-content');
+    if (!root || !draftDialectDraft) return;
+    const options = draftDialectDraft.options || {};
+    const definitions = draftDialectDraft.definitions || {};
+    const follow = $('#draft-dialect-follow')?.checked;
+    const html = DRAFT_DIALECT_GROUPS.filter(
+      ([master]) => !HIDDEN_SCHEME_OPTION_GROUPS.has(master)
+    ).map(([master, title]) => {
+      const definition = definitions[master];
+      if (!definition) return '';
+      const children = Object.entries(definitions).filter(([key, item]) => {
+        if (key === master) return false;
+        if (isDebugOnlyOption(key, definitions)) return false;
+        const rootKey = draftDialectRoot(key, definitions);
+        const rootDefinition = definitions[rootKey] || {};
+        return rootKey === master || rootDefinition.group === master
+          || (master === 'dialect_xitu' && rootDefinition.group === 'dialect');
+      }).sort(([a], [b]) => (
+        (SCHEME_OPTION_ORDER.get(a) ?? Number.MAX_SAFE_INTEGER)
+        - (SCHEME_OPTION_ORDER.get(b) ?? Number.MAX_SAFE_INTEGER)
+      ));
+      const enabled = Boolean(options[master]);
+      const childHtml = children.map(([key, item]) => {
+        const value = options[key] ?? item.default ?? '';
+        if (item.type === 'text') return `<label class="draft-dialect-child ${!enabled || follow ? 'is-disabled' : ''}"><span>${esc(item.label || key)}</span><input class="text-input" type="text" data-draft-dialect-text="${esc(key)}" value="${esc(value)}" ${!enabled || follow ? 'disabled' : ''}></label>`;
+        return `<label class="draft-dialect-child ${!enabled || follow ? 'is-disabled' : ''}"><span>${esc(item.label || key)}</span><input type="checkbox" data-draft-dialect-option="${esc(key)}" ${options[key] ? 'checked' : ''} ${!enabled || follow ? 'disabled' : ''}></label>`;
+      }).join('');
+      return `<section class="draft-dialect-group"><div class="draft-dialect-heading"><div><strong>${esc(title)}</strong><div class="muted">${esc(definition.description || '')}</div></div><label class="switch"><input type="checkbox" data-draft-dialect-option="${esc(master)}" ${enabled ? 'checked' : ''} ${follow ? 'disabled' : ''} aria-label="启用${esc(title)}"><span></span></label></div>${childHtml ? `<div class="draft-dialect-children">${childHtml}</div>` : ''}</section>`;
+    }).filter(Boolean).join('');
+    root.innerHTML = html || '<p class="muted">当前方案没有可用的音变选项。</p>';
+    $$('[data-draft-dialect-option]', root).forEach(input => input.onchange = () => {
+      draftDialectDraft.options[input.dataset.draftDialectOption] = input.checked;
+      renderDraftDialectOptions();
+    });
+    $$('[data-draft-dialect-text]', root).forEach(input => input.onchange = () => {
+      draftDialectDraft.options[input.dataset.draftDialectText] = input.value.trim();
+    });
+  }
+
+  async function openDraftDialect(filename) {
+    if (!filename) return;
+    const result = await invoke('get_draft_dialect_options', filename);
+    draftDialectFilename = filename;
+    draftDialectDraft = clone(result || { options: {}, definitions: {}, override: false });
+    $('#draft-dialect-follow').checked = !draftDialectDraft.override;
+    renderDraftDialectOptions();
+    $('#draft-dialect-dialog').showModal();
+  }
   function showTreeMenu(button) {
     $('.floating-menu')?.remove();
     const row = button.closest('.draft-row, .folder-row');
@@ -1330,13 +1611,14 @@
       ? state.drafts.find(item => item.filename === row.dataset.id) : null;
     const completionAction = draft
       ? `<button class="button" data-action="completion" style="border:0;text-align:left">${draft.manually_completed ? '取消完成标记' : '标记为已完成'}</button>` : '';
-    menu.innerHTML = `${completionAction}${draft ? '<button class="button" data-action="history" style="border:0;text-align:left">历史版本</button>' : ''}<button class="button" data-action="rename" style="border:0;text-align:left">重命名</button><button class="button" data-action="delete" style="border:0;text-align:left;color:var(--danger)">删除</button>`;
+    menu.innerHTML = `${completionAction}${draft ? '<button class="button" data-action="dialect" style="border:0;text-align:left">音变</button><button class="button" data-action="history" style="border:0;text-align:left">历史版本</button>' : ''}<button class="button" data-action="rename" style="border:0;text-align:left">重命名</button><button class="button" data-action="delete" style="border:0;text-align:left;color:var(--danger)">删除</button>`;
     menu.onclick = async event => {
       const action = event.target.dataset.action;
       menu.remove();
       if (action === 'rename') renameTreeItem(row.dataset.kind, row.dataset.id);
       if (action === 'delete') deleteTreeItem(row.dataset.kind, row.dataset.id);
       if (action === 'history') openDraftHistory(row.dataset.id);
+      if (action === 'dialect' && draft) openDraftDialect(row.dataset.id);
       if (action === 'completion' && draft) queue(async () => applyResult(
         await invoke('set_draft_completed', row.dataset.id, !draft.manually_completed)));
     };
@@ -1480,6 +1762,7 @@
     schemePickerId = null;
     fillSchemes();
     renderSchemePicker();
+    await refreshEditorDialect();
     await refreshExport();
     toast(`方案已${archived ? '归档' : '恢复'}`);
   }
@@ -1489,6 +1772,7 @@
     await invoke('select_scheme', schemePickerId);
     state.selected_scheme = schemePickerId;
     fillSchemes();
+    await refreshEditorDialect();
     await refreshExport();
     $('#scheme-picker-dialog').close();
     toast('已切换方案');
@@ -1503,6 +1787,7 @@
     schemePickerId = result.selected_scheme;
     fillSchemes();
     renderSchemePicker();
+    await refreshEditorDialect();
     await refreshExport();
     toast(`已导入方案 ${result.selected_scheme}`);
   }
@@ -1537,22 +1822,16 @@
     if (!hasSchemes) exportContents.delete('suno');
     if (!exportContents.size) exportContents.add('phon');
     const includesSuno = exportContents.has('suno') && hasSchemes;
-    const debugEnabled = document.body.classList.contains('debug-mode');
     $('.export-controls').classList.toggle('suno-mode', includesSuno);
     $('#remove-pharyngeal').disabled = !includesSuno;
-    $('#remove-tones').disabled = !includesSuno || !debugEnabled;
-    $('#remove-glottal-tone').disabled = !includesSuno
-      || (debugEnabled && $('#remove-tones').checked);
-    $('#entry-before-glottal').disabled = !includesSuno || !debugEnabled;
-    $('#departing-before-glottal').disabled = !includesSuno || !debugEnabled;
+    $('#remove-glottal-tone').disabled = !includesSuno;
+    $('#remove-pure-entry-before-glottal').disabled = !includesSuno;
     const renderMode = mode => invoke(
       'export_text', mode, $('#export-scheme').value,
-      $('#punct-split').checked, debugEnabled && $('#entry-before-glottal').checked,
-      debugEnabled && $('#departing-before-glottal').checked,
-      $('#remove-pharyngeal').checked, debugEnabled && $('#remove-tones').checked,
+      $('#punct-split').checked, $('#remove-pharyngeal').checked,
       $('#clean-line-breaks').checked, $('#remove-glottal-tone').checked,
-      false,
-      $('#ignore-bracket-control-lines').checked);
+      false, $('#ignore-bracket-control-lines').checked,
+      $('#remove-pure-entry-before-glottal').checked);
     const modes = ['raw', 'phon', 'suno'].filter(mode =>
       exportContents.has(mode) && (mode !== 'suno' || includesSuno));
     if (modes.length === 1) {
@@ -1568,6 +1847,11 @@
       button.classList.toggle('active', active);
       button.setAttribute('aria-pressed', String(active));
     });
+  }
+
+  async function refreshEditorDialect() {
+    // The selected scheme changes the preview shown beside each character.
+    applyResult(await invoke('get_editor'));
   }
 
   const imageLineText = line => line.cells.map(cell => cell.char).join('');
@@ -1889,12 +2173,59 @@
       return;
     }
     schemeDraft = clone(await invoke('get_scheme', schemeId || state.selected_scheme || $('#export-scheme').value));
+    schemeEditorViewKey = schemeDraft.id || schemeId || state.selected_scheme || '';
+    const savedView = getSchemeEditorView(schemeEditorViewKey);
     schemeUndo = [];
     schemeRedo = [];
-    schemeTab = 'options';
+    schemeTab = savedView.tab;
     renderSchemeEditor();
     setSchemeSaveStatus('');
     $('#scheme-dialog').showModal();
+  }
+
+  function getSchemeEditorView(schemeId = schemeEditorViewKey) {
+    const saved = schemeEditorViews?.[schemeId];
+    const scroll = saved?.scroll && typeof saved.scroll === 'object'
+      ? saved.scroll : {};
+    return {
+      tab: SCHEME_EDITOR_TABS.includes(saved?.tab) ? saved.tab : 'options',
+      scroll: Object.fromEntries(SCHEME_EDITOR_TABS.map(tab => [
+        tab, Number.isFinite(Number(scroll[tab]))
+          ? Math.max(0, Math.round(Number(scroll[tab]))) : 0,
+      ])),
+    };
+  }
+
+  function scheduleSchemeEditorViewSave() {
+    clearTimeout(schemeEditorScrollTimer);
+    schemeEditorScrollTimer = setTimeout(() => {
+      schemeEditorScrollTimer = null;
+      persistUiPreference('scheme_editor_views', schemeEditorViews).catch(() => {});
+    }, 350);
+  }
+
+  function captureSchemeEditorView() {
+    const content = $('#scheme-content');
+    if (!schemeEditorViewKey || !content
+        || content.dataset.schemeId !== schemeEditorViewKey
+        || content.dataset.schemeTab !== schemeTab) return;
+    const view = getSchemeEditorView(schemeEditorViewKey);
+    view.tab = schemeTab;
+    view.scroll[schemeTab] = Math.max(0, Math.round(content.scrollTop));
+    schemeEditorViews[schemeEditorViewKey] = view;
+    scheduleSchemeEditorViewSave();
+  }
+
+  function restoreSchemeEditorView() {
+    const content = $('#scheme-content');
+    if (!content) return;
+    content.dataset.schemeId = schemeEditorViewKey || '';
+    content.dataset.schemeTab = schemeTab;
+    const top = getSchemeEditorView(schemeEditorViewKey).scroll[schemeTab] || 0;
+    content.scrollTop = top;
+    requestAnimationFrame(() => {
+      if (content.dataset.schemeTab === schemeTab) content.scrollTop = top;
+    });
   }
 
   function setSchemeSaveStatus(message, kind = '') {
@@ -1975,7 +2306,7 @@
     });
     $('#scheme-content').setAttribute('aria-label',
       $(`#scheme-tabs [data-tab="${schemeTab}"]`)?.textContent || '方案内容');
-    if (schemeTab === 'options') renderSchemeOptions();
+    if (schemeTab === 'options' || schemeTab === 'phonology') renderSchemeOptions();
     if (schemeTab === 'maps') renderSchemeMaps();
     if (schemeTab === 'rules') renderSchemeRules();
     if (schemeTab === 'tools') renderSchemeTools();
@@ -1983,10 +2314,12 @@
   }
 
   function renderSchemeOptions() {
+    captureSchemeEditorView();
     const labels = SCHEME_OPTION_LABELS;
     const options = schemeDraft.options ||= {};
     const definitions = schemeDraft.option_definitions || {};
-    const keys = [...new Set([...Object.keys(labels), ...Object.keys(options), ...Object.keys(definitions)])];
+    const keys = [...new Set([...Object.keys(labels), ...Object.keys(options), ...Object.keys(definitions)])]
+      .filter(key => !isDebugOnlyOption(key, definitions));
     const optionRow = key => {
       const definition = definitions[key] || {};
       if (definition.type === 'choice') {
@@ -1995,26 +2328,86 @@
         return `<div class="option-row"><div class="option-copy"><strong>${esc(definition.label || labels[key] || key)}</strong>${definition.description ? `<div class="muted">${esc(definition.description)}</div>` : ''}</div>
           <div class="option-control segmented compact">${choices.map(choice => `<button type="button" data-option-choice="${esc(key)}" data-value="${esc(choice.value)}" class="${value === String(choice.value) ? 'active' : ''}">${esc(choice.label || choice.value)}</button>`).join('')}</div></div>`;
       }
+      if (definition.type === 'text') {
+        const value = String(options[key] ?? definition.default ?? '');
+        const parent = definition.parent;
+      const groupMaster = {
+        dialect_han_xitu: 'dialect_han_xitu',
+        dialect_han_dongtu: 'dialect_han_dongtu',
+        dialect_donghan_late_xitu: 'dialect_donghan_late_xitu',
+      }[definition.group];
+      const masterKey = groupMaster;
+      const disabled = (masterKey && !options[masterKey])
+          || (parent ? !options[parent] : false);
+        const resettable = [
+          'dialect_xitu_dongqin_coda', 'dialect_xitu_qinzheng_only_coda',
+          'dialect_xitu_dongqin_dong_coda', 'dialect_xitu_qinzheng_only_zheng_coda',
+          'dialect_han_xitu_dongqin_coda', 'dialect_han_xitu_qinzheng_only_coda',
+          'dialect_han_xitu_dongqin_dong_coda', 'dialect_han_xitu_qinzheng_only_zheng_coda',
+          'dialect_xitu_zhijue_target', 'dialect_xitu_zhiyou_e_target',
+          'dialect_xitu_zhijue_u_target',
+          'dialect_xitu_zhiyou_u_target',
+          'dialect_xitu_jizhi_target', 'dialect_xitu_jizhi_tone',
+          'dialect_xitu_you_xiao_first_target', 'dialect_xitu_you_xiao_first_e_target',
+          'dialect_xitu_you_xiao_second_target', 'dialect_xitu_you_xiao_second_coda',
+          'dialect_xitu_you_xiao_second_a_target',
+          'dialect_xitu_xiaoyu_houyao_target', 'dialect_xitu_xiaoyu_houyao_coda',
+          'dialect_han_zhiyou_e_target', 'dialect_han_zhiyou_u_target',
+          'dialect_han_xitu_zhijue_target', 'dialect_han_xitu_zhijue_u_target',
+          'dialect_han_dongtu_zhiyou_target'
+        ].includes(key);
+        const reset = resettable
+          ? `<button type="button" class="button subtle option-reset" data-option-reset="${esc(key)}" ${disabled || value === String(definition.default ?? 'ɯ') ? 'disabled' : ''}>重置</button>` : '';
+        return `<div class="option-row ${disabled ? 'is-disabled' : ''}"><div class="option-copy"><strong>${esc(definition.label || labels[key] || key)}</strong>${definition.description ? `<div class="muted">${esc(definition.description)}</div>` : ''}</div><div class="option-control option-text-control">${reset}<input class="text-input option-text-input" type="text" data-option-text="${esc(key)}" value="${esc(value)}" aria-label="${esc(definition.label || labels[key] || key)}" ${disabled ? 'disabled' : ''}></div></div>`;
+      }
       const enabled = Boolean(options[key]);
       const offLabel = definition.off_label;
       const onLabel = definition.on_label;
-      return `<div class="option-row"><div class="option-copy"><strong>${esc(definition.label || labels[key] || key)}</strong>${definition.description ? `<div class="muted">${esc(definition.description)}</div>` : ''}</div>
-        <div class="option-control">${offLabel ? `<span class="option-state ${enabled ? '' : 'active'}">${esc(offLabel)}</span>` : ''}<label class="switch"><input type="checkbox" data-option="${esc(key)}" ${enabled ? 'checked' : ''} aria-label="${esc(definition.label || labels[key] || key)}"><span></span></label>${onLabel ? `<span class="option-state ${enabled ? 'active' : ''}">${esc(onLabel)}</span>` : ''}</div></div>`;
+      const groupMaster = {
+        dialect_han_xitu: 'dialect_han_xitu',
+        dialect_han_dongtu: 'dialect_han_dongtu',
+        dialect_donghan_late_xitu: 'dialect_donghan_late_xitu',
+      }[definition.group];
+      const masterKey = groupMaster;
+      const disabled = Boolean(masterKey && !options[masterKey]);
+      const childFields = Object.entries(definitions)
+        .filter(([childKey, childDefinition]) => (
+          childDefinition.parent === key && keys.includes(childKey)));
+      const inlineFields = childFields.map(([childKey, childDefinition]) => {
+        const value = String(options[childKey] ?? childDefinition.default ?? '');
+        const fieldDisabled = disabled || !enabled;
+        const resettable = childDefinition.type === 'text';
+        const reset = resettable
+          ? `<button type="button" class="button subtle option-reset" data-option-reset="${esc(childKey)}" ${fieldDisabled || value === String(childDefinition.default ?? '') ? 'disabled' : ''}>重置</button>` : '';
+        return `<span class="option-inline-field" title="${esc(childDefinition.label || labels[childKey] || childKey)}">${reset}<input class="text-input option-inline-input" type="text" data-option-text="${esc(childKey)}" value="${esc(value)}" aria-label="${esc(childDefinition.label || labels[childKey] || childKey)}" ${fieldDisabled ? 'disabled' : ''}></span>`;
+      }).join('');
+      return `<div class="option-row ${disabled ? 'is-disabled' : ''}"><div class="option-copy"><strong>${esc(definition.label || labels[key] || key)}</strong>${definition.description ? `<div class="muted">${esc(definition.description)}</div>` : ''}</div>
+        <div class="option-inline-controls">${inlineFields}${offLabel ? `<span class="option-state ${enabled ? '' : 'active'}">${esc(offLabel)}</span>` : ''}<label class="switch"><input type="checkbox" data-option="${esc(key)}" ${enabled ? 'checked' : ''} ${disabled ? 'disabled' : ''} aria-label="${esc(definition.label || labels[key] || key)}"><span></span></label>${onLabel ? `<span class="option-state ${enabled ? 'active' : ''}">${esc(onLabel)}</span>` : ''}</div></div>`;
     };
-    const grouped = new Set(SCHEME_OPTION_GROUPS.flatMap(([, , groupKeys]) => groupKeys));
-    const groups = SCHEME_OPTION_GROUPS.map(([id, title, groupKeys]) => ({
-      id, title, keys: groupKeys.filter(key => keys.includes(key))
-    }));
-    const otherKeys = keys.filter(key => !grouped.has(key));
+    const phonologyTab = schemeTab === 'phonology';
+    const visibleOptionGroups = SCHEME_OPTION_GROUPS.filter(
+      ([id]) => !HIDDEN_SCHEME_OPTION_GROUPS.has(id));
+    const allGrouped = new Set(SCHEME_OPTION_GROUPS.flatMap(([, , groupKeys, master]) => [
+      ...groupKeys, ...(master ? [master] : [])
+    ]));
+    const groups = visibleOptionGroups
+      .filter(([id]) => id.startsWith('dialect') === phonologyTab)
+      .map(([id, title, groupKeys, master]) => ({
+      id, title, master, keys: groupKeys.filter(key => (
+        keys.includes(key) && !definitions[key]?.parent))
+      }));
+    const otherKeys = keys.filter(key => !allGrouped.has(key)
+      && key.startsWith('dialect') === phonologyTab);
     if (otherKeys.length) groups.push({ id: 'other', title: '其他选项', keys: otherKeys });
-    $('#scheme-content').innerHTML = `<div class="option-groups">${groups.filter(group => group.keys.length).map(group => `
+    $('#scheme-content').innerHTML = `<div class="scheme-options-intro">以下设置随方案保存，使用该方案时自动生效。</div><div class="option-groups">${groups.filter(group => group.keys.length).map(group => `
       <section class="option-group" data-option-group="${esc(group.id)}">
-        <h3>${esc(group.title)}</h3>
+        <div class="option-group-heading"><h3>${esc(group.title)}</h3>${group.master ? `<label class="switch option-group-switch" title="启用${esc(group.title)}修改"><input type="checkbox" data-option="${esc(group.master)}" ${options[group.master] ? 'checked' : ''} aria-label="启用${esc(group.title)}修改"><span></span></label>` : ''}</div>
         <div class="option-list">${group.keys.map(optionRow).join('')}</div>
       </section>`).join('')}</div>`;
     $$('[data-option]', $('#scheme-content')).forEach(input => input.onchange = () => {
       commitSchemeHistory();
-      schemeDraft.options[input.dataset.option] = input.checked;
+      const key = input.dataset.option;
+      schemeDraft.options[key] = input.checked;
       renderSchemeOptions();
       markSchemeDirty();
     });
@@ -2033,6 +2426,26 @@
       renderSchemeOptions();
       markSchemeDirty();
     });
+    $$('[data-option-text]', $('#scheme-content')).forEach(input => input.onchange = () => {
+      const key = input.dataset.optionText;
+      const value = input.value.trim();
+      if (schemeDraft.options[key] === value) return;
+      commitSchemeHistory();
+      schemeDraft.options[key] = value;
+      renderSchemeOptions();
+      markSchemeDirty();
+    });
+    $$('[data-option-reset]', $('#scheme-content')).forEach(button => button.onclick = () => {
+      const key = button.dataset.optionReset;
+      const definition = schemeDraft.option_definitions?.[key] || {};
+      const value = String(definition.default ?? 'ɯ');
+      if (schemeDraft.options[key] === value) return;
+      commitSchemeHistory();
+      schemeDraft.options[key] = value;
+      renderSchemeOptions();
+      markSchemeDirty();
+    });
+    restoreSchemeEditorView();
   }
 
   function markVoicedStopsCustom(section, ...sources) {
@@ -2055,6 +2468,7 @@
   }
 
   function renderSchemeMaps() {
+    captureSchemeEditorView();
     schemeDraft.maps ||= {};
     schemeDraft.labels ||= {};
     schemeDraft.parse_order ||= {};
@@ -2066,6 +2480,7 @@
         ${rows.map((source, index) => mapRowHtml(section, title, source, index)).join('')}</div>` : ''}</section>`;
     }).join('');
     bindSchemeMapEvents();
+    restoreSchemeEditorView();
   }
 
   function mapRowHtml(section, title, source, index) {
@@ -2265,6 +2680,7 @@
   }
 
   function renderSchemeRules() {
+    captureSchemeEditorView();
     schemeDraft.rules ||= {};
     $('#scheme-content').innerHTML = `<div class="scheme-rule-sections">${RULE_SECTIONS.map(([section, title]) => {
       const rules = schemeDraft.rules[section] ||= [];
@@ -2345,9 +2761,11 @@
       lookupTarget = { section: row.dataset.section, index: Number(row.dataset.index) };
       openLookupEditor();
     });
+    restoreSchemeEditorView();
   }
 
   function renderSchemeTools() {
+    captureSchemeEditorView();
     const comparison = (state.schemes || []).find(item => item.id !== schemeDraft.id)
       || state.schemes?.[0];
     const schemeOptions = (state.schemes || []).map(item => `<button type="button" role="option" aria-selected="${item.id === comparison?.id}" class="diff-scheme-option ${item.id === comparison?.id ? 'active' : ''}" data-diff-scheme="${esc(item.id)}">${esc(item.name)}</button>`).join('');
@@ -2400,6 +2818,7 @@
       trigger.focus();
     };
     if (comparison) runSchemeDiff();
+    restoreSchemeEditorView();
   }
 
   async function runSchemeDiff() {
@@ -2617,26 +3036,26 @@
       root.innerHTML = `<div class="about-hero"><div class="about-mark">漢</div><div><h3>汉字转 PBOC 音标</h3><p>版本 ${esc(state.version || '')}</p></div><div class="about-version-actions"><button id="open-release-page" class="button about-release-link">版本发布</button><button id="check-update" class="button">检查更新</button></div></div>
         <div id="update-result"></div>
         <section class="maintenance-section compact-section"><label class="check-control"><input id="auto-check-updates" type="checkbox" ${state.ui_preferences?.auto_check_updates !== false ? 'checked' : ''}><span>启动后自动检查更新</span></label></section>
+        <section class="maintenance-section compact-section"><h3>实验性选项</h3><label class="check-control"><input id="debug-mode-toggle" type="checkbox" ${state.ui_preferences?.debug_mode ? 'checked' : ''}><span>显示实验性选项</span></label><p class="muted">开启后显示部分实验性选项及其可调参数。</p></section>
         <section class="maintenance-section"><h3>制作信息</h3><dl class="about-credits">
           <dt>作者</dt><dd><a href="https://space.bilibili.com/129368153" data-external-url>Bilibili-@-凛武-</a></dd>
           <dt>拟音</dt><dd>知乎-@Nulll</dd>
           <dt>源数据</dt><dd><a href="https://zhuanlan.zhihu.com/p/12987993957" data-external-url>知乎专栏</a> · <a href="https://github.com/qwert-ly/xtext" data-external-url>qwert-ly/xtext</a></dd>
           <dt>测试</dt><dd><a href="https://space.bilibili.com/87432837" data-external-url>Bilibili-@Freegrep</a></dd>
         </dl></section>
-        <section class="maintenance-section"><h3>调试</h3><label class="check-control"><input id="debug-mode-toggle" type="checkbox" ${state.ui_preferences?.debug_mode ? 'checked' : ''}><span>显示实验性导出选项</span></label><p class="muted">开启后显示“删除所有声调”以及喉塞音前声调调整选项。</p></section>
         <section class="maintenance-section"><h3>版本说明</h3>${(state.changelog || []).map(entry => `<div class="changelog-entry"><h4>v${esc(entry.version)} · ${esc(entry.title)}</h4><div class="muted">${esc(entry.date)}</div><ul>${entry.items.map(item => `<li>${esc(item)}</li>`).join('')}</ul></div>`).join('')}</section>`;
       $('#check-update').onclick = () => checkUpdates(false);
       $('#open-release-page').onclick = () => invoke('open_releases_page');
       $('#auto-check-updates').onchange = async event => {
         await persistUiPreference('auto_check_updates', event.target.checked);
       };
-      if (availableUpdate) renderUpdateResult(availableUpdate);
       $('#debug-mode-toggle').onchange = async event => {
         const enabled = event.target.checked;
         applyDebugMode(enabled);
         await persistUiPreference('debug_mode', enabled);
-        toast(`调试模式已${enabled ? '开启' : '关闭'}`);
+        toast(`实验性选项已${enabled ? '显示' : '隐藏'}`);
       };
+      if (availableUpdate) renderUpdateResult(availableUpdate);
       $$('[data-external-url]', root).forEach(link => link.onclick = event => {
         event.preventDefault();
         invoke('open_source_url', link.href);
@@ -2649,7 +3068,7 @@
           <li>点击正文中的字，在右侧查看读音和释义；多音字可选择当前读音。</li>
           <li>同一个字出现多次时，可在读音右侧点击“全局”，逐处处理已有的手动选择。</li>
           <li>拖动、Shift+点击或 Shift+方向键可以选择文本；选区可复制原文或音标。</li>
-          <li>导出支持 PBOC、Suno、原文及组合内容，也可转换标点、清除无效换行或删除咽化；清响音加 h 等输出拼写设置随方案保存。实验性声调选项可在“关于”的调试模式中开启。</li>
+          <li>导出支持 PBOC、Suno、原文及组合内容。方案选项会随方案保存；导出设置只影响本次导出，可转换标点、清除无效换行或清理 Suno 输出。</li>
           <li>方括号 [] 内的内容保持原样，不参与转写。</li>
         </ol></section>
         <section class="maintenance-section"><h3>正文状态</h3><div class="state-legend">
@@ -3260,6 +3679,17 @@
     $('#help-button').onclick = () => openMaintenance();
     $('#close-maintenance').onclick = () => $('#maintenance-dialog').close();
     $('#close-history').onclick = () => $('#history-dialog').close();
+    $('#draft-dialect-follow').onchange = () => renderDraftDialectOptions();
+    $('#save-draft-dialect').onclick = async () => {
+      if (!draftDialectFilename || !draftDialectDraft) return;
+      const options = $('#draft-dialect-follow').checked ? null : draftDialectDraft.options;
+      const result = await invoke('set_draft_dialect_options', draftDialectFilename, options);
+      draftDialectDraft = null;
+      draftDialectFilename = null;
+      $('#draft-dialect-dialog').close();
+      applyResult(result);
+      toast(options ? '文稿音变已保存' : '已恢复跟随方案音变');
+    };
     $('#close-batch').onclick = () => $('#batch-dialog').close();
     $('#maintenance-tabs').onclick = event => {
       const button = event.target.closest('button');
@@ -3461,6 +3891,7 @@
         state.selected_scheme = result.selected_scheme;
         fillSchemes();
         renderSchemeEditor();
+        await refreshEditorDialect();
         await refreshExport();
         if (editedWhileSaving) {
           setSchemeSaveStatus('已保存 · 有新修改', 'dirty');
@@ -3482,8 +3913,15 @@
     $('#scheme-tabs').onclick = event => {
       const button = event.target.closest('button');
       if (!button) return;
+      captureSchemeEditorView();
       commitSchemeMeta();
       schemeTab = button.dataset.tab;
+      if (schemeEditorViewKey) {
+        const view = getSchemeEditorView(schemeEditorViewKey);
+        view.tab = schemeTab;
+        schemeEditorViews[schemeEditorViewKey] = view;
+        scheduleSchemeEditorViewSave();
+      }
       renderSchemeEditor();
     };
     ['scheme-id', 'scheme-name', 'scheme-description'].forEach(id => {
@@ -3497,6 +3935,12 @@
         flushPendingSchemeInput();
       }
     }, true);
+    $('#scheme-dialog').addEventListener('close', () => {
+      captureSchemeEditorView();
+    });
+    $('#scheme-content').addEventListener('scroll', () => {
+      captureSchemeEditorView();
+    }, { passive: true });
     $('#add-lookup-part').onclick = () => addLookupPart();
     $('#lookup-field').onchange = refreshLookupPreview;
     $('#lookup-dialog').addEventListener('close', () => {
@@ -3513,9 +3957,21 @@
 
   function commitSchemeMeta() {
     if (!schemeDraft) return;
+    const previousId = schemeDraft.id || schemeEditorViewKey;
     schemeDraft.id = $('#scheme-id').value.trim();
     schemeDraft.name = $('#scheme-name').value.trim() || schemeDraft.id;
     schemeDraft.description = $('#scheme-description').value.trim();
+    if (schemeDraft.id && schemeDraft.id !== schemeEditorViewKey) {
+      if (previousId && schemeEditorViews[previousId]
+          && !schemeEditorViews[schemeDraft.id]) {
+        schemeEditorViews[schemeDraft.id] = schemeEditorViews[previousId];
+      }
+      if (previousId && previousId !== schemeDraft.id) {
+        delete schemeEditorViews[previousId];
+      }
+      schemeEditorViewKey = schemeDraft.id;
+      scheduleSchemeEditorViewSave();
+    }
   }
 
   function bindSearchEvents() {
@@ -3652,6 +4108,8 @@
         caretColumn,
         shiftKey: event.shiftKey
       };
+      selectionRevision++;
+      dragSelection = null;
       queue(async () => setCaret(line, caretColumn, event.shiftKey));
     });
     window.addEventListener('mousemove', event => {
@@ -3666,19 +4124,27 @@
       const lineNode = target?.closest?.('.editor-line');
       if (!lineNode) return;
       const line = Number(lineNode.dataset.line);
+      if (!dragSelection) {
+        dragSelection = [[mouseDown.line, mouseDown.caretColumn], [line, 0]];
+      }
       let column = editor.lines[line].length;
       if (cell) {
         const rect = cell.getBoundingClientRect();
         column = Number(cell.dataset.column)
           + (event.clientX > rect.left + rect.width / 2 ? 1 : 0);
       }
-      queue(async () => setCaret(line, column, true));
+      scheduleDragSelection(line, column);
     });
     window.addEventListener('mouseup', async event => {
       if (!mouseDown) return;
       const clickInfo = mouseDown;
       mouseDown = null;
       mouseSelecting = false;
+      selectionRequest = null;
+      if (selectionFrame) {
+        cancelAnimationFrame(selectionFrame);
+        selectionFrame = 0;
+      }
       const cell = event.target.closest?.('.cell');
       if (cell && clickInfo.column !== null && !mouseMoved && !clickInfo.shiftKey) {
         const line = clickInfo.line;
@@ -3696,6 +4162,20 @@
         }
       }
       focusEditor();
+      if (mouseMoved && clickInfo) {
+        const revision = ++selectionRevision;
+        const final = dragSelection?.[1] || [clickInfo.line, clickInfo.caretColumn];
+        const finalLine = final[0];
+        const finalColumn = final[1];
+        queue(async () => {
+          const anchor = dragSelection?.[0] || [clickInfo.line, clickInfo.caretColumn];
+          const result = await invoke(
+            'set_selection', anchor[0], anchor[1], finalLine, finalColumn, true);
+          if (revision !== selectionRevision) return;
+          applyResult(result);
+        });
+      }
+      dragSelection = null;
     });
     capture.addEventListener('compositionstart', () => { composing = true; });
     capture.addEventListener('compositionend', event => {
@@ -3785,7 +4265,7 @@
       manual_hl: false, stale: false, in_bracket: true,
     }));
     let mockGroupExpanded = true;
-    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.16 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
+    let mockBackendLog = '[11:20:01] 汉字转 PBOC 音标 v0.12.17 正在启动\n正在检查 base.json.gz ...\n数据准备完成';
     const mockUpdate = {
       id: 'mock-reading-update', batch_id: 'b1',
       timestamp: '2026-08-22 23:55:03', filename: 'base.json.gz',
@@ -3857,7 +4337,18 @@
     ];
     const scheme = {
       id: 'current_suno', name: '清响音修改', description: '浏览器预览数据',
-      options: { improve_pharyngeal: true, improve_syllable: false, voiced_stop_style: 'nasal', extra_h_voiceless_sonorant: false },
+      options: {
+        improve_pharyngeal: true, improve_syllable: false,
+        voiced_stop_style: 'nasal', extra_h_voiceless_sonorant: false,
+        dialect_xitu: false,
+        dialect_xitu_dongqin: false, dialect_xitu_dongqin_coda: 'ŋ',
+        dialect_xitu_qinzheng_only: false, dialect_xitu_qinzheng_only_coda: 'ŋ',
+        dialect_xitu_jizhi: false, dialect_xitu_jizhi_target: 'ɯ', dialect_xitu_jizhi_tone: 'k',
+        dialect_han_zhiyou: false, dialect_han_zhiyou_target: 'ɯ',
+        dialect_han_xitu_zhijue: false, dialect_han_xitu_zhijue_target: 'ɯ', dialect_han_xitu_zhijue_u: false, dialect_han_xitu_zhijue_u_target: 'ɯ',
+        dialect_han_dongtu: false, dialect_han_dongtu_zhiyou: false,
+        dialect_han_dongtu_zhiyou_target: 'ɯ',
+      },
       option_definitions: {
         voiced_stop_style: {
           type: 'choice', label: '浊塞音拼写', description: '选择预设或直接修改基础映射。',
@@ -3865,12 +4356,46 @@
           presets: { nasal: { b: 'mб', d: 'nд', g: 'ŋг' }, english: { b: 'б', d: 'ντ', g: 'γκ' } },
         },
         extra_h_voiceless_sonorant: { type: 'boolean', label: '清响音前额外加 h', description: '转写清响音声母时，在方案输出前再添加一个 h。' },
+        dialect_xitu: { type: 'boolean', label: '西土方言', description: '启用西土方言的合韵修改。', group: 'dialect' },
+        dialect_xitu_dongqin: { type: 'boolean', label: '冬侵合韵·侵', description: 'u 元音、m 韵尾。修改韵尾。', group: 'dialect' },
+        dialect_xitu_dongqin_coda: { type: 'text', label: '冬侵合韵·侵目标韵尾', default: 'ŋ', group: 'dialect', parent: 'dialect_xitu_dongqin' },
+        dialect_xitu_dongqin_dong: { type: 'boolean', label: '冬侵合韵·冬', description: 'u 元音、ŋ 韵尾。修改韵尾。', group: 'dialect' },
+        dialect_xitu_dongqin_dong_coda: { type: 'text', label: '冬侵合韵·冬目标韵尾', default: 'm', group: 'dialect', parent: 'dialect_xitu_dongqin_dong' },
+        dialect_xitu_qinzheng_only: { type: 'boolean', label: '侵蒸合韵·侵', description: 'ə 元音、m 韵尾。修改韵尾。', group: 'dialect' },
+        dialect_xitu_qinzheng_only_coda: { type: 'text', label: '侵蒸合韵·侵目标韵尾', default: 'ŋ', group: 'dialect', parent: 'dialect_xitu_qinzheng_only' },
+        dialect_xitu_qinzheng_only_zheng: { type: 'boolean', label: '侵蒸合韵·蒸', description: 'ə 元音、ŋ 韵尾。修改韵尾。', group: 'dialect' },
+        dialect_xitu_qinzheng_only_zheng_coda: { type: 'text', label: '侵蒸合韵·蒸目标韵尾', default: 'm', group: 'dialect', parent: 'dialect_xitu_qinzheng_only_zheng' },
+        dialect_han_zhiyou: { type: 'boolean', label: '之幽合韵', description: 'u、ə 元音、无韵尾。修改元音。', group: 'dialect_han_xitu' },
+        dialect_han_zhiyou_target: { type: 'text', label: '之幽合韵目标元音', default: 'ɯ', group: 'dialect_han_xitu', parent: 'dialect_han_zhiyou' },
+        dialect_han_dongtu: { type: 'boolean', label: '汉代东土', description: '启用汉代东土音变。', group: 'dialect_group' },
+        dialect_han_dongtu_zhiyou: { type: 'boolean', label: '之部合口字之幽合韵', description: 'u 元音、无韵尾；w 介音 + ə 元音、无韵尾。修改介音和元音。', group: 'dialect_han_dongtu' },
+        dialect_han_dongtu_zhiyou_target: { type: 'text', label: '之部合口字之幽合韵目标元音', default: 'ɯ', group: 'dialect_han_dongtu', parent: 'dialect_han_dongtu_zhiyou' },
+        dialect_han_xitu_dongqin: { type: 'boolean', label: '冬侵合韵·侵', description: 'u 元音、m 韵尾。修改韵尾。', group: 'dialect_han_xitu' },
+        dialect_han_xitu_dongqin_coda: { type: 'text', label: '冬侵合韵·侵目标韵尾', default: 'ŋ', group: 'dialect_han_xitu', parent: 'dialect_han_xitu_dongqin' },
+        dialect_han_xitu_dongqin_dong: { type: 'boolean', label: '冬侵合韵·冬', description: 'u 元音、ŋ 韵尾。修改韵尾。', group: 'dialect_han_xitu' },
+        dialect_han_xitu_dongqin_dong_coda: { type: 'text', label: '冬侵合韵·冬目标韵尾', default: 'm', group: 'dialect_han_xitu', parent: 'dialect_han_xitu_dongqin_dong' },
+        dialect_han_xitu_qinzheng_only: { type: 'boolean', label: '侵蒸合韵·侵', description: 'ə 元音、m 韵尾。修改韵尾。', group: 'dialect_han_xitu' },
+        dialect_han_xitu_qinzheng_only_coda: { type: 'text', label: '侵蒸合韵·侵目标韵尾', default: 'ŋ', group: 'dialect_han_xitu', parent: 'dialect_han_xitu_qinzheng_only' },
+        dialect_han_xitu_qinzheng_only_zheng: { type: 'boolean', label: '侵蒸合韵·蒸', description: 'ə 元音、ŋ 韵尾。修改韵尾。', group: 'dialect_han_xitu' },
+        dialect_han_xitu_qinzheng_only_zheng_coda: { type: 'text', label: '侵蒸合韵·蒸目标韵尾', default: 'm', group: 'dialect_han_xitu', parent: 'dialect_han_xitu_qinzheng_only_zheng' },
+        dialect_han_xitu_zhijue: { type: 'boolean', label: '職覺合韵·職', description: 'ə 元音、无韵尾、k、t 或 p 声调。修改元音。', group: 'dialect_han_xitu' },
+        dialect_han_xitu_zhijue_target: { type: 'text', label: '職覺合韵·職目标元音', default: 'ɯ', group: 'dialect_han_xitu', parent: 'dialect_han_xitu_zhijue' },
+        dialect_han_xitu_zhijue_u: { type: 'boolean', label: '職覺合韵·覺', description: 'u 元音、无韵尾、k 声调。修改元音。', group: 'dialect_han_xitu' },
+        dialect_han_xitu_zhijue_u_target: { type: 'text', label: '職覺合韵·覺目标元音', default: 'ɯ', group: 'dialect_han_xitu', parent: 'dialect_han_xitu_zhijue_u' },
+        dialect_han: { type: 'boolean', label: '汉代', description: '启用汉代音变。', group: 'dialect_group' },
+        dialect_han_xitu: { type: 'boolean', label: '汉代西土', description: '启用汉代西土音变。', group: 'dialect_group' },
+        dialect_donghan_late_xitu: { type: 'boolean', label: '东汉晚期西土', description: '启用东汉晚期西土音变。', group: 'dialect_group' },
+        dialect_xitu_jizhi: { type: 'boolean', label: '緝職合韵·緝', description: 'ə 元音、无韵尾、p 声调。修改元音和声调。', group: 'dialect' },
+        dialect_xitu_jizhi_target: { type: 'text', label: '緝職合韵·緝目标元音', description: '緝職合韵·緝使用的目标元音。', default: 'ɯ', group: 'dialect', parent: 'dialect_xitu_jizhi' },
+        dialect_xitu_jizhi_tone: { type: 'text', label: '緝職合韵·緝目标声调', description: '緝職合韵·緝使用的目标声调。', default: 'k', group: 'dialect', parent: 'dialect_xitu_jizhi' },
       },
       maps: { onset: { k: 'к', t: 'т', b: 'mб', d: 'nд', g: 'ŋг' }, glide: { r: 'р' }, nucleus: { a: 'α' }, coda: { n: 'n' }, tone: { s: 's' }, residual: {} },
       labels: {}, parse_order: {}, rules: { pre_normalize: [['ʰ', 'h', '送气符号改写']], residual_preprocess: [], residual_replace: [], pharyngeal_relax: [], syllable_relax: [], post_replace: [] }
     };
     const mockDrafts = [{ filename: 'demo.json', name: '关雎', preview: '关关雎在河之洲', stale: true, unselected_polyphonic: 2, manually_completed: false }, { filename: 'notes.json', name: '风雅笔记', preview: '采采卷耳', stale: false, unselected_polyphonic: 0, manually_completed: true }];
+    const mockUiPreferences = { inspector_width: 320, phonology_details_open: false, debug_mode: false };
     const previewChangelog = [
+      { version: '0.12.17', date: '2026-10-07', title: '文稿库与导出界面细节修复', items: ['文稿库中的音变名称改为紧跟文稿标题显示，不再占据标题行右侧。', '修复导出设置浮层在窄窗口中向外溢出、选项文字被裁切的问题。', '统一音变选项说明，简化韵尾修改表述。'] },
       { version: '0.12.16', date: '2026-09-20', title: 'Windows 窗口边框修复', items: ['移除 Windows 无边框窗口顶部异常出现的浅色边条，同时保留四边与四角拖动缩放。'] },
       { version: '0.12.15', date: '2026-09-09', title: '更新状态与提示修复', items: ['获取更新信息时不再用反复清空的进度条表示等待；开始下载后才显示安装包的实际百分比与文件大小。', '下载失败、安装授权和系统安装器启动结果会持续显示在更新区域，并提供重试、继续安装或重新打开操作；更新错误同步写入后台输出。', '右下角提示提升到窗口顶层，在关于、导出和方案编辑等模态窗口打开时不再被遮罩遮挡。'] },
       { version: '0.12.14', date: '2026-09-09', title: '音韵详情与文稿库交互', items: ['当前读音可展开音韵详情，拆分声母、开合、等、类别、韵和声调，并显示声首；说明补全发音部位与清浊、圆唇特征、介音与主元音、重纽、韵摄与韵尾、舒声与促声等知识，展开状态会保存，详情文字可以选择复制。', '文稿和文件夹支持双击重命名；单击仍分别用于打开文稿和展开或折叠文件夹，操作菜单和拖放区域不会误触重命名。', '修复 Windows 无边框窗口无法从边缘拖动缩放的问题，并恢复原生尺寸边框；重命名等对话框支持点击背景取消，慢启动详情出现时不再挤动加载布局。'] },
@@ -3912,9 +4437,11 @@
       { version: '0.9.1', date: '2026-07-20', title: 'HTML 界面全面调整', items: ['全面调整读音面板、拖动交互、滚动条和弹窗布局。'] },
       { version: '0.9.0', date: '2026-07-16', title: 'HTML 桌面界面预览版', items: ['界面迁移到 HTML 与 WebView2。'] },
     ];
-    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.16', ui_preferences: { inspector_width: 320, debug_mode: false, phonology_details_open: false }, changelog: previewChangelog });
+    const full = () => ({ ok: true, editor: clone(mock), drafts: mockDrafts, recent_drafts: [mockDrafts[0]], groups: [{ id: 'g1', name: '诗经', expanded: mockGroupExpanded, files: ['demo.json'], children: [] }], schemes, selected_scheme: 'current_suno', theme: 'light', version: '0.12.17', ui_preferences: clone(mockUiPreferences), changelog: previewChangelog });
     return new Proxy({
       initialize: async () => full(),
+      get_draft_dialect_options: async () => ({ options: Object.fromEntries(Object.entries(scheme.options).filter(([key]) => key.startsWith('dialect_'))), definitions: Object.fromEntries(Object.entries(scheme.option_definitions).filter(([key]) => key.startsWith('dialect_'))), override: false }),
+      set_draft_dialect_options: async (_filename, options) => { mock.dialect_options = options; mock.dialect_override = options !== null; mock.dialect_name = options ? (options.dialect_donghan_late_xitu ? '东汉晚期西土' : options.dialect_han_xitu ? '汉代西土' : options.dialect_han ? '汉代' : options.dialect_xitu ? '西土' : '') : ''; return full(); },
       start_initialize: async () => ({ phase: 'ready', message: '准备就绪', progress: 100, step: 6, step_count: 6, detail: '启动完成', indeterminate: false }),
       get_startup_status: async () => ({ phase: 'ready', message: '准备就绪', progress: 100, step: 6, step_count: 6, detail: '启动完成', indeterminate: false }),
       get_cell_details: async (li, ci) => {
@@ -3968,6 +4495,7 @@
       }),
       export_image: async () => ({ ok: true, path: '预览目录/关雎.png' }),
       set_caret: async (li, ci, extend) => { if (extend && !mock.selection) mock.selection = [clone(mock.cursor), [li, ci]]; else if (extend) mock.selection[1] = [li, ci]; else mock.selection = null; mock.cursor = [li, ci]; return clone(mock); },
+      set_selection: async (al, ac, li, ci) => { mock.selection = [[al, ac], [li, ci]]; mock.cursor = [li, ci]; return clone(mock); },
       editor_action: async () => clone(mock), get_copy_payload: async () => ({ text: mock.raw, buffer: [], cell_info: [] }), get_phonetic_text: async () => 'kˤro[n]',
       reading_conflicts: async () => [], apply_reading: async () => clone(mock),
       review_cell_update: async (li, ci, _eventId, action, phonetic) => {
@@ -3998,16 +4526,16 @@
       },
       get_polyphonic_summary: async () => [{ char: '关', count: 2, readings: { 'kˤro[n]s': 1, 'kˤro[n]': 1 }, options: [{ phonetic: 'kˤro[n]s' }, { phonetic: 'kˤro[n]' }] }],
       batch_apply_reading: async () => clone(mock), get_draft_history: async () => [{ id: 'demo.json', name: '关雎', modified: '2026-07-16T12:00:00', preview: '关关雎在河之洲' }],
-      get_diagnostics: async () => ({ app_version: '0.12.16', draft_schema_version: 3, scheme_schema_version: 3, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
+      get_diagnostics: async () => ({ app_version: '0.12.17', draft_schema_version: 4, scheme_schema_version: 4, python: '3.13', webview: '6.2.1', frozen: false, runtime_mode: '源码预览', draft_count: 2, scheme_count: 3, app_dir: '预览目录', draft_dir: '预览目录/drafts', scheme_dir: '预览目录/schemes' }),
       get_backend_logs: async () => ({ text: mockBackendLog, started_at: '2026-08-28T11:20:01+08:00', characters: mockBackendLog.length }),
       clear_backend_logs: async () => { mockBackendLog = ''; return { text: '', started_at: '2026-08-28T11:20:01+08:00', characters: 0 }; },
       import_old_library: async () => ({ ok: true, imported: 2, skipped: 1, renamed: 0, errors: [], state: full() }),
       open_releases_page: async () => ({ ok: true }),
-      check_for_updates: async () => ({ ok: true, current: '0.12.16', latest: '0.12.16', available: false }),
-      start_update_check: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.16', latest: '0.12.16', available: false }, error: null }),
-      get_update_check_status: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.16', latest: '0.12.16', available: false }, error: null }),
-      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.16', platform: 'windows', path: 'preview-update.exe' } }),
-      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.16', platform: 'windows', path: 'preview-update.exe' } }),
+      check_for_updates: async () => ({ ok: true, current: '0.12.17', latest: '0.12.17', available: false }),
+      start_update_check: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.17', latest: '0.12.17', available: false }, error: null }),
+      get_update_check_status: async () => ({ phase: 'ready', message: '更新检查完成', result: { ok: true, current: '0.12.17', latest: '0.12.17', available: false }, error: null }),
+      start_update_download: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.17', platform: 'windows', path: 'preview-update.exe' } }),
+      get_update_download_status: async () => ({ phase: 'ready', progress: 100, downloaded: 1024, total: 1024, result: { ok: true, version: '0.12.17', platform: 'windows', path: 'preview-update.exe' } }),
       install_downloaded_update: async () => ({ ok: true, scheduled: true }),
       get_data_change_batches: async () => ({ ok: true, exists: true, file_size: 77729928, total: 2, items: [
         { id: 'b2', timestamp: '2026-08-22 23:55:12', filename: 'extra.json.gz', count: 10427 },
@@ -4033,7 +4561,7 @@
       reorder_schemes: async ids => { schemes.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)); return { ok: true, schemes: clone(schemes) }; },
       update_scheme_description: async (id, description) => { const item = schemes.find(value => value.id === id); if (item) item.description = description.trim(); return { ok: true, scheme: clone(item), schemes: clone(schemes) }; },
       set_scheme_archived: async (id, archived) => { const item = schemes.find(value => value.id === id); if (item) item.archived = archived; const selected = archived && id === 'current_suno' ? schemes.find(value => !value.archived)?.id || null : 'current_suno'; return { ok: true, schemes: clone(schemes), selected_scheme: selected }; },
-      select_scheme: async () => ({ ok: true }), get_theme_preference: async () => ({ theme: document.documentElement.dataset.theme || 'light' }), set_theme: async theme => ({ theme }), set_ui_preference: async (_key, value) => ({ ok: true, value }), save_editor_view: async () => ({ ok: true }), open_source_url: async () => ({ ok: true }), restart_app: async () => ({ ok: true }), get_window_state: async () => ({ maximized: false }), minimize_window: async () => ({ ok: true }), toggle_maximize_window: async () => ({ ok: true, maximized: document.documentElement.classList.toggle('window-maximized') }), close_window: async () => ({ ok: true })
+      select_scheme: async () => ({ ok: true }), get_theme_preference: async () => ({ theme: document.documentElement.dataset.theme || 'light' }), set_theme: async theme => ({ theme }), set_ui_preference: async (key, value) => { mockUiPreferences[key] = clone(value); return { ok: true, key, value }; }, save_editor_view: async () => ({ ok: true }), open_source_url: async () => ({ ok: true }), restart_app: async () => ({ ok: true }), get_window_state: async () => ({ maximized: false }), minimize_window: async () => ({ ok: true }), toggle_maximize_window: async () => ({ ok: true, maximized: document.documentElement.classList.toggle('window-maximized') }), close_window: async () => ({ ok: true })
     }, { get(target, prop) { return target[prop] || (async () => full()); } });
   }
 

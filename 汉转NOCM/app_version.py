@@ -7,10 +7,10 @@ import sys
 
 
 APP_NAME = '汉字转 PBOC 音标'
-__version__ = '0.12.16'
+__version__ = '0.12.17'
 
-DRAFT_SCHEMA_VERSION = 3
-SCHEME_SCHEMA_VERSION = 3
+DRAFT_SCHEMA_VERSION = 4
+SCHEME_SCHEMA_VERSION = 4
 BACKUP_SCHEMA_VERSION = 1
 
 RELEASES_API_URL = (
@@ -20,11 +20,22 @@ RELEASES_PAGE_URL = (
 
 CHANGELOG = [
     {
+        'version': '0.12.17',
+        'date': '2026-10-07',
+        'title': '文稿库与导出界面细节修复',
+        'items': [
+            '文稿库中的音变名称改为紧跟文稿标题显示，不再占据标题行右侧。',
+            '修复导出设置浮层在窄窗口中向外溢出、选项文字被裁切的问题。',
+            '统一音变选项说明，简化韵尾修改表述。',
+        ],
+    },
+    {
         'version': '0.12.16',
         'date': '2026-09-20',
         'title': 'Windows 窗口边框修复',
         'items': [
             '移除 Windows 无边框窗口顶部异常出现的浅色边条，同时保留四边与四角拖动缩放。',
+            '文稿更多操作新增音变设置，可独立覆盖方案音变；正文标题后显示最后启用的音变类别。',
         ],
     },
     {

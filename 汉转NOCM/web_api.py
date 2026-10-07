@@ -23,17 +23,19 @@ from data_loader import (download_and_update, get_current_data_revision,
                          get_data_dir, get_reading_change_events,
                          load_map_from_json_gz,
                          parse_phonological_position)
-from draft_io import (delete_draft, draft_has_pending_updates, get_draft_name,
+from draft_io import (delete_draft, draft_has_pending_updates,
+                      get_draft_dialect_options as load_draft_dialect_options, get_draft_name,
                       list_draft_history, list_drafts, list_recent_drafts,
                       load_draft, rename_draft, restore_draft_history,
                       save_draft, set_draft_completed,
+                      set_draft_dialect_options as save_draft_dialect_options,
                       update_draft_editor_state)
 from editor_buffer import EditorBuffer
 from folder_manager import (create_group, delete_group, get_groups,
                             move_group_into, move_to_group, rename_group,
                             reorder_file_in_group, reorder_group, toggle_group)
 from library_import import import_legacy_library
-from nocm_phonology import DEFAULT_TONE_ORDER, consume_suffix
+from nocm_phonology import DEFAULT_TONE_ORDER, consume_suffix, parse_syllable
 from nocm_transcriber import (DEFAULT_SCHEME_ID, NocmTranscriber, diff_schemes,
                               get_scheme_dir, list_schemes,
                               load_preferred_scheme_id, load_scheme,
@@ -62,12 +64,16 @@ _EXPORT_OPTION_KEYS = {
     'clean_line_breaks',
     'ignore_bracket_control_lines',
     'remove_pharyngeal',
-    'remove_tones',
     'remove_glottal_tone',
-    'entry_before_glottal',
-    'departing_before_glottal',
+    'remove_pure_entry_before_glottal',
 }
 _EXPORT_CONTENT_KEYS = ('raw', 'phon', 'suno')
+_DIALECT_MASTER_NAMES = (
+    ('dialect_xitu', '西土'),
+    ('dialect_han_xitu', '汉代西土'),
+    ('dialect_han_dongtu', '汉代东土'),
+    ('dialect_donghan_late_xitu', '东汉晚期西土'),
+)
 
 
 def _calculate_window_resize_bounds(edge, rect, delta_x, delta_y,
@@ -90,7 +96,15 @@ def _load_ui_preferences():
         try:
             with open(_UI_STATE_PATH, 'r', encoding='utf-8') as file:
                 data = json.load(file)
-            return data if isinstance(data, dict) else {}
+            if not isinstance(data, dict):
+                return {}
+            export_options = data.get('export_options')
+            if isinstance(export_options, dict):
+                data['export_options'] = {
+                    name: bool(export_options.get(name, False))
+                    for name in _EXPORT_OPTION_KEYS
+                }
+            return data
         except (OSError, json.JSONDecodeError):
             return {}
 
@@ -130,6 +144,20 @@ def _draft_library_snapshot():
     for draft in recent:
         draft['stale'] = stale_by_filename.get(
             draft.get('filename'), False)
+    # Show the effective per-document dialect beside its title in the library.
+    # This is deliberately derived from saved draft settings, not the currently
+    # open editor, so every row remains accurate when browsing the library.
+    for draft in drafts + recent:
+        try:
+            dialect_options = load_draft_dialect_options(draft.get('filename'))
+            name = ''
+            if isinstance(dialect_options, dict):
+                for key, label in _DIALECT_MASTER_NAMES:
+                    if dialect_options.get(key):
+                        name = label
+            draft['dialect_name'] = name
+        except (OSError, ValueError, TypeError):
+            draft['dialect_name'] = ''
     return drafts, recent
 
 
@@ -145,6 +173,7 @@ class WebApi:
         self.buf: Optional[EditorBuffer] = (
             EditorBuffer(mapping, self.data_revision) if mapping else None)
         self.current_draft: Optional[str] = None
+        self.dialect_options = None
         self.export_scheme_id = load_preferred_scheme_id()
         self.scroll_top = 0
         self._window_maximized = False
@@ -454,6 +483,13 @@ class WebApi:
             return self._editor_snapshot(self._require_buffer())
 
     def _editor_snapshot(self, buf):
+        dialect_scheme = None
+        if self.export_scheme_id:
+            try:
+                dialect_scheme = self._effective_dialect_scheme(
+                    load_scheme(self.export_scheme_id))
+            except (OSError, json.JSONDecodeError, ValueError):
+                pass
         lines = []
         for chars, infos in zip(buf.buffer, buf.cell_info):
             cells = []
@@ -463,9 +499,17 @@ class WebApi:
                 is_poly = bool(info.get('is_poly'))
                 stale = bool(info.get('stale'))
                 bracket = in_bracket(ci, brackets)
+                if bracket or dialect_scheme is None:
+                    dialect_phonetic, dialect_reason = phonetic, []
+                else:
+                    dialect_phonetic, dialect_reason = (
+                        self._apply_dialect_phonetic_details(
+                            char, phonetic, dialect_scheme))
                 cell = {
                     'char': char,
                     'phonetic': phonetic,
+                    'dialect_phonetic': dialect_phonetic,
+                    'dialect_reason': dialect_reason,
                     'is_poly': is_poly,
                     'selected': info.get('selected', 'none'),
                     'manual_hl': bool(info.get('manual_hl')),
@@ -478,6 +522,7 @@ class WebApi:
                 }
                 cells.append(cell)
             lines.append(cells)
+        dialect_settings = self._dialect_settings_snapshot()
         return {
             'lines': lines,
             'cursor': [buf.cur_line, buf.cur_col],
@@ -490,7 +535,42 @@ class WebApi:
             'can_redo': bool(buf.redo_stack),
             'raw': buf.copy_raw(),
             'scroll_top': self.scroll_top,
+            'dialect_options': dialect_settings['options'],
+            'dialect_option_definitions': dialect_settings['definitions'],
+            'dialect_override': self.dialect_options is not None,
         }
+
+    def _dialect_settings_snapshot(self):
+        if not self.export_scheme_id:
+            return {'options': {}, 'definitions': {}, 'name': ''}
+        try:
+            scheme = migrate_scheme_data(
+                load_scheme(self.export_scheme_id))[0]
+        except (OSError, json.JSONDecodeError, ValueError):
+            return {'options': {}, 'definitions': {}, 'name': ''}
+        definitions = {
+            key: copy.deepcopy(value)
+            for key, value in scheme.get('option_definitions', {}).items()
+            if key.startswith('dialect_')
+        }
+        if self.dialect_options is None:
+            options = {
+                key: copy.deepcopy(value)
+                for key, value in scheme.get('options', {}).items()
+                if key.startswith('dialect_')
+            }
+        else:
+            options = {
+                key: copy.deepcopy(value)
+                for key, definition in definitions.items()
+                for value in [self.dialect_options.get(
+                    key, definition.get('default', False))]
+            }
+        name = ''
+        for key, label in _DIALECT_MASTER_NAMES:
+            if options.get(key):
+                name = label
+        return {'options': options, 'definitions': definitions, 'name': name}
 
     def _view_state(self):
         buf = self._require_buffer()
@@ -516,7 +596,7 @@ class WebApi:
 
     # Editor operations ---------------------------------------------------
 
-    def set_caret(self, line, column, extend=False):
+    def set_caret(self, line, column, extend=False, persist=True):
         with self._lock:
             buf = self._require_buffer()
             line = max(0, min(int(line), len(buf.buffer) - 1))
@@ -526,9 +606,24 @@ class WebApi:
             elif not extend:
                 buf.sel_anchor = None
             buf.cur_line, buf.cur_col = line, column
-            if self.current_draft:
+            if persist and self.current_draft:
                 update_draft_editor_state(
                     self.current_draft, self._view_state())
+            return self._editor_snapshot(buf)
+
+    def set_selection(self, anchor_line, anchor_column, line, column,
+                      persist=True):
+        """Set a mouse selection from explicit anchor and caret positions."""
+        with self._lock:
+            buf = self._require_buffer()
+            anchor_line = max(0, min(int(anchor_line), len(buf.buffer) - 1))
+            line = max(0, min(int(line), len(buf.buffer) - 1))
+            anchor_column = max(0, min(int(anchor_column), len(buf.buffer[anchor_line])))
+            column = max(0, min(int(column), len(buf.buffer[line])))
+            buf.sel_anchor = (anchor_line, anchor_column)
+            buf.cur_line, buf.cur_col = line, column
+            if persist and self.current_draft:
+                update_draft_editor_state(self.current_draft, self._view_state())
             return self._editor_snapshot(buf)
 
     def save_editor_view(self, scroll_top):
@@ -627,11 +722,15 @@ class WebApi:
                     option['position'])
                 option['position_details'] = position_details
             same_char_count = sum(row.count(char) for row in buf.buffer)
+            dialect_phonetic, dialect_reason = self._dialect_preview_details(
+                char, info.get('phonetic', char))
             return {
                 'line': line,
                 'column': column,
                 'char': char,
                 'phonetic': info.get('phonetic', char),
+                'dialect_phonetic': dialect_phonetic,
+                'dialect_reason': dialect_reason,
                 'is_poly': bool(info.get('is_poly')),
                 'selected': info.get('selected', 'none'),
                 'manual_hl': bool(info.get('manual_hl')),
@@ -642,6 +741,108 @@ class WebApi:
                 'same_char_count': same_char_count,
             }
 
+    def _dialect_preview(self, char, phonetic):
+        return self._dialect_preview_details(char, phonetic)[0]
+
+    def _dialect_preview_details(self, char, phonetic):
+        scheme_id = self.export_scheme_id
+        if not scheme_id or not phonetic:
+            return phonetic, []
+        try:
+            scheme = load_scheme(scheme_id)
+        except (OSError, json.JSONDecodeError, ValueError):
+            return phonetic, []
+        return self._apply_dialect_phonetic_details(
+            char, phonetic, self._effective_dialect_scheme(scheme))
+
+    def _effective_dialect_scheme(self, scheme):
+        if self.dialect_options is None:
+            return scheme
+        effective, _ = migrate_scheme_data(copy.deepcopy(scheme))
+        options = effective.setdefault('options', {})
+        definitions = effective.get('option_definitions', {})
+        for key in list(options):
+            if key.startswith('dialect_'):
+                options.pop(key)
+        for key, definition in definitions.items():
+            if key.startswith('dialect_'):
+                options[key] = copy.deepcopy(
+                    self.dialect_options.get(
+                        key, definition.get('default', False)))
+        for key, value in self.dialect_options.items():
+            if key.startswith('dialect_') and key not in definitions:
+                options[key] = copy.deepcopy(value)
+        return effective
+
+    def _draft_dialect_template(self):
+        try:
+            scheme = load_scheme(self.export_scheme_id) if self.export_scheme_id else {}
+        except (OSError, json.JSONDecodeError, ValueError):
+            scheme = {}
+        return migrate_scheme_data(copy.deepcopy(scheme))[0]
+
+    def get_draft_dialect_options(self, filename):
+        with self._lock:
+            try:
+                override = load_draft_dialect_options(filename)
+            except (OSError, ValueError, TypeError):
+                override = None
+            scheme = self._draft_dialect_template()
+            definitions = {
+                key: copy.deepcopy(value)
+                for key, value in scheme.get('option_definitions', {}).items()
+                if key.startswith('dialect_')
+            }
+            source = override if override is not None else scheme.get('options', {})
+            options = {
+                key: copy.deepcopy(source.get(
+                    key, definition.get('default', False)))
+                for key, definition in definitions.items()
+            }
+            return {
+                'options': options,
+                'definitions': definitions,
+                'override': override is not None,
+            }
+
+    def set_draft_dialect_options(self, filename, options):
+        with self._lock:
+            if options is None:
+                normalized = None
+            elif isinstance(options, dict):
+                filename = os.path.basename(str(filename or ''))
+                if not filename:
+                    raise ValueError('没有指定文稿')
+                try:
+                    saved_options = load_draft_dialect_options(filename)
+                except (OSError, ValueError, TypeError):
+                    saved_options = None
+                template = self._draft_dialect_template()
+                definitions = {
+                    key: value for key, value in
+                    template.get('option_definitions', {}).items()
+                    if key.startswith('dialect_')
+                }
+                normalized = {}
+                keys = set(definitions) | set(saved_options or {})
+                for key in keys:
+                    if not key.startswith('dialect_'):
+                        continue
+                    definition = definitions.get(key, {})
+                    default = definition.get('default', False)
+                    value = options.get(key, (saved_options or {}).get(key, default))
+                    normalized[key] = (
+                        str(value if value is not None else default)[:128]
+                        if definition.get('type') == 'text' or
+                        (not definition and isinstance(value, str))
+                        else bool(value))
+            else:
+                raise ValueError('文稿音变设置无效')
+            save_draft_dialect_options(filename, normalized)
+            if self.current_draft == filename:
+                self.dialect_options = normalized
+            # 返回重新计算过的编辑器快照，使当前正文立即反映文稿级音变设置。
+            return self.get_state()
     def reading_conflicts(self, line, column, phonetic):
         with self._lock:
             buf = self._require_buffer()
@@ -830,9 +1031,11 @@ class WebApi:
         with self._lock:
             self.buf = EditorBuffer(self.mapping)
             self.scroll_top = 0
+            self.dialect_options = None
             self.current_draft = save_draft(
                 None, '未命名文稿', self.buf.buffer, self.buf.cell_info,
                 self._view_state())
+            save_draft_dialect_options(self.current_draft, None)
             _set_ui_state_value('current_draft', self.current_draft)
             return self.get_state()
 
@@ -844,6 +1047,7 @@ class WebApi:
             self.current_draft = save_draft(
                 self.current_draft, None, buf.buffer, buf.cell_info,
                 self._view_state(), create_history=True)
+            save_draft_dialect_options(self.current_draft, self.dialect_options)
             _set_ui_state_value('current_draft', self.current_draft)
             buf.dirty = False
             return {'ok': True, 'state': self.get_state()}
@@ -870,6 +1074,10 @@ class WebApi:
         buf.redo_stack.clear()
         buf.dirty = False
         self.current_draft = filename
+        try:
+            self.dialect_options = load_draft_dialect_options(filename)
+        except (OSError, ValueError, TypeError):
+            self.dialect_options = None
         if persist_current:
             _set_ui_state_value('current_draft', filename)
         self.reading_events = get_reading_change_events()
@@ -913,6 +1121,7 @@ class WebApi:
             if self.current_draft == filename:
                 self.buf = EditorBuffer(self.mapping)
                 self.current_draft = None
+                self.dialect_options = None
                 self.scroll_top = 0
                 _set_ui_state_value('current_draft', None)
             return self.get_state()
@@ -1066,7 +1275,11 @@ class WebApi:
             load_scheme(scheme_id)
             self.export_scheme_id = scheme_id
             save_preferred_scheme_id(scheme_id)
-            return {'ok': True, 'selected_scheme': scheme_id}
+            return {
+                'ok': True,
+                'selected_scheme': scheme_id,
+                'editor': self._editor_snapshot(self._require_buffer()),
+            }
 
     def reorder_schemes(self, scheme_ids):
         with self._lock:
@@ -1135,6 +1348,7 @@ class WebApi:
                 'scheme': load_scheme(scheme_id),
                 'schemes': list_schemes(),
                 'selected_scheme': scheme_id,
+                'editor': self._editor_snapshot(self._require_buffer()),
             }
 
     def clone_scheme(self, scheme):
@@ -1232,37 +1446,40 @@ class WebApi:
             return {'ok': True, 'path': os.path.abspath(path)}
 
     def export_text(self, mode='phon', scheme_id=None, punct_split=False,
-                    entry_before_glottal=False,
-                    departing_before_glottal=False,
-                    remove_pharyngeal=False,
-                    remove_tones=False,
-                    clean_line_breaks=False,
+                    remove_pharyngeal=False, clean_line_breaks=False,
                     remove_glottal_tone=False,
                     extra_h_before_voiceless_sonorant=False,
-                    ignore_bracket_control_lines=False):
+                    ignore_bracket_control_lines=False,
+                    remove_pure_entry_before_glottal=False):
         with self._lock:
             buf = self._require_buffer()
             raw = buf.copy_raw().strip()
-            phon = self._phonetic_text(buf)
             scheme_id = scheme_id or self.export_scheme_id
+            scheme = None
+            if scheme_id:
+                try:
+                    scheme = load_scheme(scheme_id)
+                except (OSError, json.JSONDecodeError, ValueError):
+                    scheme = None
+            if scheme is not None:
+                scheme = self._effective_dialect_scheme(scheme)
+            phon = self._phonetic_text(buf, scheme=scheme)
             requested_modes = [
                 item for item in str(mode).split('+')
                 if item in {'raw', 'phon', 'suno'}
             ]
             combined = len(requested_modes) > 1
             if combined:
-                scheme = None
                 if 'suno' in requested_modes:
                     if not scheme_id:
                         raise ValueError('没有可用方案，请先导入方案')
-                    scheme = load_scheme(scheme_id)
+                    scheme = scheme or load_scheme(scheme_id)
                 result = self._combined_text(
                     buf, requested_modes, bool(punct_split), scheme,
-                    bool(entry_before_glottal),
-                    bool(departing_before_glottal),
-                    bool(remove_pharyngeal), bool(remove_tones),
+                    bool(remove_pharyngeal),
                     bool(remove_glottal_tone),
-                    bool(extra_h_before_voiceless_sonorant))
+                    bool(extra_h_before_voiceless_sonorant),
+                    bool(remove_pure_entry_before_glottal))
             elif mode == 'raw':
                 result = raw
             elif mode == 'both':
@@ -1270,19 +1487,16 @@ class WebApi:
             elif mode == 'suno':
                 if not scheme_id:
                     raise ValueError('没有可用方案，请先导入方案')
-                scheme = load_scheme(scheme_id)
+                scheme = scheme or load_scheme(scheme_id)
                 phon = self._phonetic_text(
-                    buf, bool(entry_before_glottal),
-                    bool(departing_before_glottal),
-                    bool(remove_pharyngeal), bool(remove_tones),
+                    buf, bool(remove_pharyngeal),
                     scheme.get('maps', {}).get('tone'),
                     scheme.get('parse_order', {}).get('tone'),
-                    bool(remove_glottal_tone))
+                    bool(remove_glottal_tone), scheme)
                 transcriber = NocmTranscriber(scheme)
-                if extra_h_before_voiceless_sonorant:
-                    result = transcriber.convert_text(phon, True)
-                else:
-                    result = transcriber.convert_text(phon)
+                result = transcriber.convert_text(
+                    phon, bool(extra_h_before_voiceless_sonorant),
+                    bool(remove_pure_entry_before_glottal))
             else:
                 result = phon
             if punct_split and mode != 'both' and not combined:
@@ -1390,10 +1604,11 @@ class WebApi:
         os.execv(executable, args)
 
     def set_ui_preference(self, key, value):
-        if key not in ('inspector_width', 'editor_zoom', 'debug_mode',
+        if key not in ('inspector_width', 'editor_zoom',
                        'auto_check_updates', 'export_options',
                        'export_contents', 'selection_copy_mode',
-                       'phonology_details_open'):
+                       'phonology_details_open', 'scheme_editor_views',
+                       'debug_mode'):
             raise ValueError('不支持的界面偏好')
         if key == 'inspector_width':
             normalized = max(230, min(520, int(value)))
@@ -1412,6 +1627,27 @@ class WebApi:
             ] or ['phon']
         elif key == 'selection_copy_mode':
             normalized = value if value in ('raw', 'phon') else 'raw'
+        elif key == 'scheme_editor_views':
+            tabs = {'options', 'phonology', 'maps', 'rules', 'tools'}
+            normalized = {}
+            if isinstance(value, dict):
+                for scheme_id, view in list(value.items())[:100]:
+                    if (not isinstance(scheme_id, str)
+                            or not 0 < len(scheme_id) <= 128
+                            or not isinstance(view, dict)):
+                        continue
+                    scroll = view.get('scroll')
+                    normalized[scheme_id] = {
+                        'tab': view.get('tab') if view.get('tab') in tabs
+                        else 'options',
+                        'scroll': {
+                            tab: max(0, min(1000000, position))
+                            for tab, position in (scroll.items()
+                                                  if isinstance(scroll, dict)
+                                                  else [])
+                            if tab in tabs and type(position) is int
+                        },
+                    }
         else:
             normalized = bool(value)
         with _UI_STATE_LOCK:
@@ -1661,6 +1897,7 @@ class WebApi:
         self.export_scheme_id = load_preferred_scheme_id()
         self.buf = EditorBuffer(self.mapping)
         self.current_draft = None
+        self.dialect_options = None
         self.scroll_top = 0
         _set_ui_state_value('current_draft', None)
         return {**result, 'state': self.get_state()}
@@ -1719,18 +1956,14 @@ class WebApi:
 
     # Text rendering helpers ---------------------------------------------
 
-    @staticmethod
-    def _phonetic_line(chars, infos, entry_before_glottal=False,
-                       departing_before_glottal=False,
-                       remove_pharyngeal=False, remove_tones=False,
+    def _phonetic_line(self, chars, infos, remove_pharyngeal=False,
                        tone_map=None, tone_order=None,
-                       remove_glottal_tone=False):
+                       remove_glottal_tone=False, scheme=None):
         brackets = find_bracket_ranges(chars)
-        phonetics = WebApi._line_phonetics(
-            chars, infos, brackets, entry_before_glottal,
-            departing_before_glottal, remove_pharyngeal,
-            remove_tones, tone_map, tone_order,
-            remove_glottal_tone)
+        phonetics = self._line_phonetics(
+            chars, infos, brackets, remove_pharyngeal,
+            tone_map, tone_order,
+            remove_glottal_tone, scheme)
         parts, bracket_buf = [], []
         for ci, char in enumerate(chars):
             if in_bracket(ci, brackets):
@@ -1744,29 +1977,23 @@ class WebApi:
             parts.append(''.join(bracket_buf))
         return ' '.join(parts)
 
-    @staticmethod
-    def _phonetic_text(buf, entry_before_glottal=False,
-                       departing_before_glottal=False,
-                       remove_pharyngeal=False, remove_tones=False,
+    def _phonetic_text(self, buf, remove_pharyngeal=False,
                        tone_map=None, tone_order=None,
-                       remove_glottal_tone=False):
+                       remove_glottal_tone=False, scheme=None):
         lines = [
-            WebApi._phonetic_line(
-                chars, infos, entry_before_glottal,
-                departing_before_glottal, remove_pharyngeal,
-                remove_tones, tone_map, tone_order,
-                remove_glottal_tone)
+            self._phonetic_line(
+                chars, infos, remove_pharyngeal,
+                tone_map, tone_order,
+                remove_glottal_tone, scheme)
             for chars, infos in zip(buf.buffer, buf.cell_info)
         ]
         return '\n'.join(lines).strip()
 
-    @staticmethod
-    def _combined_text(buf, modes, punct_split=False, scheme=None,
-                       entry_before_glottal=False,
-                       departing_before_glottal=False,
-                       remove_pharyngeal=False, remove_tones=False,
+    def _combined_text(self, buf, modes, punct_split=False, scheme=None,
+                       remove_pharyngeal=False,
                        remove_glottal_tone=False,
-                       extra_h_before_voiceless_sonorant=False):
+                       extra_h_before_voiceless_sonorant=False,
+                       remove_pure_entry_before_glottal=False):
         output = []
         pending_blank = False
         tone_map = (scheme or {}).get('maps', {}).get('tone')
@@ -1775,15 +2002,15 @@ class WebApi:
 
         for chars, infos in zip(buf.buffer, buf.cell_info):
             raw_line = ''.join(chars)
-            phon_line = WebApi._phonetic_line(
-                chars, infos, entry_before_glottal,
-                departing_before_glottal, remove_pharyngeal,
-                remove_tones, tone_map, tone_order,
-                remove_glottal_tone)
+            phon_line = self._phonetic_line(
+                chars, infos, remove_pharyngeal,
+                tone_map, tone_order,
+                remove_glottal_tone, scheme)
             rendered = {'raw': raw_line, 'phon': phon_line}
             if transcriber is not None:
                 rendered['suno'] = transcriber.convert_text(
-                    phon_line, bool(extra_h_before_voiceless_sonorant))
+                    phon_line, bool(extra_h_before_voiceless_sonorant),
+                    bool(remove_pure_entry_before_glottal))
             lines_by_mode = {
                 item: (WebApi._split_punctuation(rendered[item]).split('\n')
                        if punct_split else [rendered[item]])
@@ -1813,12 +2040,9 @@ class WebApi:
                     pending_blank = True
         return '\n'.join(output).rstrip()
 
-    @staticmethod
-    def _line_phonetics(chars, infos, brackets, entry_before_glottal,
-                        departing_before_glottal=False,
-                        remove_pharyngeal=False, remove_tones=False,
+    def _line_phonetics(self, chars, infos, brackets, remove_pharyngeal=False,
                         tone_map=None, tone_order=None,
-                        remove_glottal_tone=False):
+                       remove_glottal_tone=False, scheme=None):
         phonetics = [
             str(info.get('phonetic', char))
             for char, info in zip(chars, infos)
@@ -1829,32 +2053,7 @@ class WebApi:
                 else phonetic.replace('ˤ', '')
                 for ci, phonetic in enumerate(phonetics)
             ]
-        if entry_before_glottal or departing_before_glottal:
-            for ci in range(1, len(phonetics)):
-                if (in_bracket(ci, brackets)
-                        or in_bracket(ci - 1, brackets)
-                        or not phonetics[ci].startswith('ʔ')):
-                    continue
-                previous = phonetics[ci - 1]
-                if (entry_before_glottal
-                        and previous.endswith(('p', 't', 'k'))):
-                    phonetics[ci - 1] = f'{previous[:-1]}ʔ'
-                    continue
-                if departing_before_glottal:
-                    for suffix in ('ps', 'ts', 'ks', 'ʔs', 's'):
-                        if previous.endswith(suffix):
-                            phonetics[ci - 1] = (
-                                f'{previous[:-len(suffix)]}ʔ')
-                            break
-        if remove_tones:
-            source = tone_map or {key: key for key in DEFAULT_TONE_ORDER}
-            order = tone_order or DEFAULT_TONE_ORDER
-            phonetics = [
-                phonetic if in_bracket(ci, brackets)
-                else consume_suffix(phonetic, source, order)[0]
-                for ci, phonetic in enumerate(phonetics)
-            ]
-        elif remove_glottal_tone:
+        if remove_glottal_tone:
             source = tone_map or {key: key for key in DEFAULT_TONE_ORDER}
             order = tone_order or DEFAULT_TONE_ORDER
             cleaned = []
@@ -1865,7 +2064,302 @@ class WebApi:
                 body, tone = consume_suffix(phonetic, source, order)
                 cleaned.append(f"{body}{tone.replace('ʔ', '')}")
             phonetics = cleaned
+        if scheme:
+            phonetics = [
+                phonetic if in_bracket(ci, brackets) else
+                self._apply_dialect_phonetic(
+                    char, phonetic, scheme)
+                for ci, (char, phonetic) in enumerate(zip(chars, phonetics))
+            ]
         return phonetics
+
+    def _apply_dialect_phonetic(self, char, phonetic, scheme):
+        """Apply enabled dialect changes using the selected reading's rime."""
+        return self._apply_dialect_phonetic_details(char, phonetic, scheme)[0]
+
+    def _apply_dialect_phonetic_details(self, char, phonetic, scheme):
+        """Return the dialect reading and the rules that changed it."""
+        options = scheme.get('options', {})
+        xitu_enabled = bool(options.get('dialect_xitu'))
+        han_xitu_enabled = bool(options.get('dialect_han_xitu', False))
+        late_donghan_xitu_enabled = bool(
+            options.get('dialect_donghan_late_xitu', xitu_enabled))
+        han_dongtu_enabled = bool(options.get('dialect_han_dongtu', False))
+        if not (xitu_enabled or han_xitu_enabled
+                or han_dongtu_enabled or late_donghan_xitu_enabled):
+            return phonetic, []
+        def option_enabled(key, legacy_key=None):
+            if key in options:
+                return bool(options.get(key))
+            return bool(options.get(legacy_key)) if legacy_key else False
+
+        def option_text(key, default, legacy_key=None):
+            if key in options:
+                return str(options.get(key) or default)
+            return str(options.get(legacy_key) or default) if legacy_key else default
+
+        west_dongqin = xitu_enabled and option_enabled('dialect_xitu_dongqin')
+        west_dongqin_dong = xitu_enabled and option_enabled('dialect_xitu_dongqin_dong')
+        west_qinzheng_only = xitu_enabled and option_enabled('dialect_xitu_qinzheng_only')
+        west_qinzheng_only_zheng = xitu_enabled and option_enabled('dialect_xitu_qinzheng_only_zheng')
+        han_dongqin = han_xitu_enabled and option_enabled('dialect_han_xitu_dongqin')
+        han_dongqin_dong = han_xitu_enabled and option_enabled('dialect_han_xitu_dongqin_dong')
+        han_qinzheng_only = han_xitu_enabled and option_enabled('dialect_han_xitu_qinzheng_only')
+        han_qinzheng_only_zheng = han_xitu_enabled and option_enabled('dialect_han_xitu_qinzheng_only_zheng')
+        west_zhiyou_e = xitu_enabled and option_enabled('dialect_xitu_zhiyou_e')
+        west_zhiyou_u = xitu_enabled and option_enabled('dialect_xitu_zhiyou_u')
+        # Keep the legacy standalone 汉代 switch functional for old schemes;
+        # current UI places this rule under 汉代西土.
+        han_enabled = bool(options.get('dialect_han', False))
+        han_zhiyou_e = han_xitu_enabled and option_enabled('dialect_han_zhiyou_e')
+        han_zhiyou_u = han_xitu_enabled and option_enabled('dialect_han_zhiyou_u')
+        west_zhijue_e = xitu_enabled and option_enabled('dialect_xitu_zhijue')
+        west_zhijue_u = xitu_enabled and option_enabled('dialect_xitu_zhijue_u')
+        han_zhijue_e = han_xitu_enabled and option_enabled('dialect_han_xitu_zhijue')
+        han_zhijue_u = han_xitu_enabled and option_enabled('dialect_han_xitu_zhijue_u')
+        you_xiao_first_i = xitu_enabled and bool(options.get('dialect_xitu_you_xiao_first'))
+        you_xiao_first_e = xitu_enabled and bool(options.get('dialect_xitu_you_xiao_first_e'))
+        you_xiao_second_u = xitu_enabled and bool(options.get('dialect_xitu_you_xiao_second'))
+        you_xiao_second_a = xitu_enabled and bool(options.get('dialect_xitu_you_xiao_second_a'))
+        xiaoyu_houyao = han_xitu_enabled and bool(options.get('dialect_xitu_xiaoyu_houyao'))
+        donghan_zhibu = late_donghan_xitu_enabled and bool(options.get('dialect_xitu_donghan_zhibu_qianhua'))
+        donghan_youyuhou = late_donghan_xitu_enabled and bool(options.get('dialect_xitu_donghan_youyuhou'))
+        xitu_jizhi = xitu_enabled and bool(options.get('dialect_xitu_jizhi'))
+        han_dongtu_zhiyou = han_dongtu_enabled and bool(options.get('dialect_han_dongtu_zhiyou'))
+        if not (west_dongqin or west_dongqin_dong
+                or west_qinzheng_only or west_qinzheng_only_zheng
+                or han_dongqin or han_dongqin_dong
+                or han_qinzheng_only or han_qinzheng_only_zheng
+                or west_zhiyou_e or west_zhiyou_u
+                or han_zhiyou_e or han_zhiyou_u
+                or west_zhijue_e or west_zhijue_u or han_zhijue_e or han_zhijue_u
+                or you_xiao_first_i or you_xiao_first_e or you_xiao_second_u or you_xiao_second_a
+                or xiaoyu_houyao or donghan_zhibu or donghan_youyuhou
+                or xitu_jizhi or han_dongtu_zhiyou):
+            return phonetic, []
+        reasons = []
+        def add_reason(reason):
+            if reason not in reasons:
+                reasons.append(reason)
+
+        parsed = parse_syllable(phonetic, scheme)
+        if not parsed.nucleus:
+            nucleus = next((key for key in scheme.get('maps', {}).get('nucleus', {})
+                            if key and key in phonetic), '')
+            if nucleus:
+                parsed = parsed.__class__(
+                    original=parsed.original, onset=parsed.onset,
+                    glide=parsed.glide, residual=parsed.residual,
+                    nucleus=nucleus, coda=parsed.coda, tone=parsed.tone)
+        source_phonetic = phonetic
+        # Older schemes may not list every tone in their parser maps.  Infer
+        # a known suffix as a fallback so an explicit tone is never treated
+        # as the no-tone case by the 之幽 restriction.
+        tone_map = scheme.get('maps', {}).get('tone', {})
+        tone_order = scheme.get('parse_order', {}).get('tone')
+        _, inferred_tone = consume_suffix(
+            source_phonetic, tone_map, tone_order)
+        if not inferred_tone:
+            _, inferred_tone = consume_suffix(
+                source_phonetic,
+                {tone: tone for tone in DEFAULT_TONE_ORDER},
+                DEFAULT_TONE_ORDER)
+        nucleus = parsed.nucleus or next(
+            (v for v in ('ə', 'u') if v in source_phonetic), '')
+        rendered_nucleus = nucleus
+        source_tone = parsed.tone or inferred_tone or next(
+            (tone for tone in ('k', 't', 'p')
+             if source_phonetic.endswith(tone)), '')
+        zhiyou_tone_allowed = source_tone in {'', 'ʔ'}
+
+        def replace_rendered_nucleus(target):
+            """Replace the current rendered nucleus, preserving rule order."""
+            nonlocal phonetic, rendered_nucleus
+            index = phonetic.find(rendered_nucleus)
+            if index < 0:
+                return False
+            phonetic = (phonetic[:index] + target
+                        + phonetic[index + len(rendered_nucleus):])
+            rendered_nucleus = target
+            return True
+
+        source_tone_start = (len(source_phonetic) - len(source_tone)
+                             if source_tone else len(source_phonetic))
+        source_coda = parsed.coda if parsed.coda in {'m', 'ŋ'} else next(
+            (coda for coda in ('m', 'ŋ')
+             if source_phonetic[:source_tone_start].endswith(coda)), '')
+        # Some schemes do not list m/ŋ in the coda map. Infer them from the
+        # source token so the independent 侵蒸/冬侵 rules still match.
+        if not source_coda:
+            source_coda = next(
+                (coda for coda in ('m', 'ŋ')
+                 if source_phonetic[:source_tone_start].endswith(coda)), '')
+        rendered_coda = source_coda
+        has_no_coda = not parsed.coda and not any(
+            source_phonetic.endswith(v)
+            for v in ('m', 'n', 'ŋ', 'j', 'w', 'r'))
+        tone_start = len(phonetic) - len(source_tone) if source_tone else len(phonetic)
+
+        def replace_rendered_coda(target):
+            """Replace the source coda immediately before the preserved tone."""
+            nonlocal phonetic, rendered_coda
+            if not rendered_coda:
+                return False
+            current_tone_start = (len(phonetic) - len(source_tone)
+                                  if source_tone else len(phonetic))
+            coda_start = current_tone_start - len(rendered_coda)
+            if phonetic[coda_start:current_tone_start] != rendered_coda:
+                return False
+            phonetic = (phonetic[:coda_start] + target
+                        + phonetic[current_tone_start:])
+            rendered_coda = target
+            return True
+
+        # Every condition below reads the original parsed syllable. Only the
+        # rendered phonetic value is carried forward, so later rules replace
+        # earlier output without changing their matching basis.
+        if (west_zhiyou_e and nucleus == 'ə' and has_no_coda
+                and zhiyou_tone_allowed):
+            target = option_text('dialect_xitu_zhiyou_e_target', 'ɯ')
+            if replace_rendered_nucleus(target):
+                add_reason('之幽合韵·之')
+        if (west_zhiyou_u and nucleus == 'u' and has_no_coda
+                and zhiyou_tone_allowed):
+            target = option_text('dialect_xitu_zhiyou_u_target', 'ɯ')
+            if replace_rendered_nucleus(target):
+                add_reason('之幽合韵·幽')
+
+        if (han_zhiyou_e and nucleus == 'ə' and has_no_coda
+                and zhiyou_tone_allowed):
+            target = option_text('dialect_han_zhiyou_e_target', 'ɯ')
+            if replace_rendered_nucleus(target):
+                add_reason('之幽合韵·之')
+        if (han_zhiyou_u and nucleus == 'u' and has_no_coda
+                and zhiyou_tone_allowed):
+            target = option_text('dialect_han_zhiyou_u_target', 'ɯ')
+            if replace_rendered_nucleus(target):
+                add_reason('之幽合韵·幽')
+
+        # 汉代东土仅处理带合口介音的之部口元音对应条件，输出去除介音后统一为目标元音。
+        if han_dongtu_zhiyou and has_no_coda and (
+                (parsed.nucleus == 'u' and not parsed.glide) or
+                (parsed.nucleus == 'ə' and parsed.glide == 'w')):
+            target = str(options.get('dialect_han_dongtu_zhiyou_target') or 'ɯ')
+            if parsed.glide == 'w':
+                phonetic = phonetic.replace('w', '', 1)
+            if replace_rendered_nucleus(target):
+                add_reason('之部合口字之幽合韵')
+
+        if donghan_zhibu and parsed.nucleus == 'ə' and has_no_coda:
+            target = str(options.get('dialect_xitu_donghan_zhibu_qianhua_target') or 'ɨ')
+            if replace_rendered_nucleus(target):
+                add_reason('之部前化')
+
+        if donghan_youyuhou and parsed.nucleus in {'u', 'a', 'o'} and has_no_coda:
+            target = str(options.get('dialect_xitu_donghan_youyuhou_target') or 'o')
+            target_coda = str(options.get('dialect_xitu_donghan_youyuhou_coda') or 'w')
+            replace_rendered_nucleus(target)
+            tone_start = len(phonetic) - len(source_tone) if source_tone else len(phonetic)
+            phonetic = phonetic[:tone_start] + target_coda + phonetic[tone_start:]
+            add_reason('幽魚侯合韵')
+
+        if you_xiao_first_i and parsed.nucleus == 'i' and parsed.coda == 'w':
+            target = str(options.get('dialect_xitu_you_xiao_first_target') or 'ɯ')
+            if replace_rendered_nucleus(target):
+                add_reason('第一类幽宵合韵·幽')
+        if you_xiao_first_e and parsed.nucleus == 'e' and parsed.coda == 'w':
+            target = str(options.get('dialect_xitu_you_xiao_first_e_target') or 'ɯ')
+            if replace_rendered_nucleus(target):
+                add_reason('第一类幽宵合韵·宵')
+
+        second_match = (
+            (you_xiao_second_u and parsed.nucleus == 'u' and has_no_coda
+             and parsed.tone in {'', 'ʔ'})
+            or (you_xiao_second_a and parsed.nucleus == 'a' and parsed.coda == 'w')
+        )
+        if second_match:
+            if parsed.nucleus == 'u':
+                target = str(options.get('dialect_xitu_you_xiao_second_target') or 'ɯ')
+                target_coda = str(options.get('dialect_xitu_you_xiao_second_coda') or 'w')
+                replace_rendered_nucleus(target)
+                tone_start = len(phonetic) - len(source_tone) if source_tone else len(phonetic)
+                phonetic = phonetic[:tone_start] + target_coda + phonetic[tone_start:]
+                add_reason('第二类幽宵合韵·幽')
+            else:
+                target = str(options.get('dialect_xitu_you_xiao_second_a_target') or 'ɯ')
+                if replace_rendered_nucleus(target):
+                    add_reason('第二类幽宵合韵·宵')
+        xiaoyu_houyao_match = (
+            xiaoyu_houyao
+            and ((parsed.nucleus == 'a' and parsed.coda in {'', 'w'})
+                 or (parsed.nucleus == 'o' and parsed.coda == ''))
+        )
+        if xiaoyu_houyao_match:
+            target = str(options.get('dialect_xitu_xiaoyu_houyao_target') or 'o')
+            target_coda = str(options.get('dialect_xitu_xiaoyu_houyao_coda') or 'w')
+            replace_rendered_nucleus(target)
+            tone_start = len(phonetic) - len(source_tone) if source_tone else len(phonetic)
+            if parsed.coda:
+                coda_start = tone_start - len(parsed.coda)
+                phonetic = phonetic[:coda_start] + target_coda + phonetic[tone_start:]
+            else:
+                phonetic = phonetic[:tone_start] + target_coda + phonetic[tone_start:]
+            add_reason('宵魚侯/藥屋合韵')
+        if west_dongqin and nucleus == 'u' and source_coda == 'm':
+            replace_rendered_coda(option_text('dialect_xitu_dongqin_coda', 'ŋ'))
+            add_reason('冬侵合韵·侵')
+        if west_dongqin_dong and nucleus == 'u' and source_coda == 'ŋ':
+            replace_rendered_coda(option_text('dialect_xitu_dongqin_dong_coda', 'm'))
+            add_reason('冬侵合韵·冬')
+        if west_qinzheng_only and nucleus == 'ə' and source_coda == 'm':
+            replace_rendered_coda(option_text('dialect_xitu_qinzheng_only_coda', 'ŋ'))
+            add_reason('侵蒸合韵·侵')
+        if west_qinzheng_only_zheng and nucleus == 'ə' and source_coda == 'ŋ':
+            replace_rendered_coda(option_text('dialect_xitu_qinzheng_only_zheng_coda', 'm'))
+            add_reason('侵蒸合韵·蒸')
+        if han_dongqin and nucleus == 'u' and source_coda == 'm':
+            replace_rendered_coda(option_text('dialect_han_xitu_dongqin_coda', 'ŋ'))
+            add_reason('冬侵合韵·侵')
+        if han_dongqin_dong and nucleus == 'u' and source_coda == 'ŋ':
+            replace_rendered_coda(option_text('dialect_han_xitu_dongqin_dong_coda', 'm'))
+            add_reason('冬侵合韵·冬')
+        if han_qinzheng_only and nucleus == 'ə' and source_coda == 'm':
+            replace_rendered_coda(option_text('dialect_han_xitu_qinzheng_only_coda', 'ŋ'))
+            add_reason('侵蒸合韵·侵')
+        if han_qinzheng_only_zheng and nucleus == 'ə' and source_coda == 'ŋ':
+            replace_rendered_coda(option_text('dialect_han_xitu_qinzheng_only_zheng_coda', 'm'))
+            add_reason('侵蒸合韵·蒸')
+        if west_zhijue_e and nucleus == 'ə' and has_no_coda \
+                and source_tone == 'k':
+            target = option_text('dialect_xitu_zhijue_target', 'ɯ')
+            if replace_rendered_nucleus(target):
+                add_reason('職覺合韵·職')
+        if west_zhijue_u and nucleus == 'u' and has_no_coda \
+                and source_tone == 'k':
+            target = option_text('dialect_xitu_zhijue_u_target', 'ɯ')
+            if replace_rendered_nucleus(target):
+                add_reason('職覺合韵·覺')
+        if han_zhijue_e and nucleus == 'ə' and has_no_coda \
+                and source_tone == 'k':
+            target = option_text('dialect_han_xitu_zhijue_target', 'ɯ')
+            if replace_rendered_nucleus(target):
+                add_reason('職覺合韵·職')
+        if han_zhijue_u and nucleus == 'u' and has_no_coda \
+                and source_tone == 'k':
+            target = option_text('dialect_han_xitu_zhijue_u_target', 'ɯ')
+            if replace_rendered_nucleus(target):
+                add_reason('職覺合韵·覺')
+
+        if xitu_jizhi and nucleus == 'ə' \
+                and has_no_coda and source_tone == 'p':
+            target = option_text('dialect_xitu_jizhi_target', 'ɯ')
+            target_tone = option_text('dialect_xitu_jizhi_tone', 'k')
+            replace_rendered_nucleus(target)
+            tone_start = len(phonetic) - len(source_tone)
+            phonetic = (phonetic[:tone_start] + target_tone
+                        + phonetic[tone_start + len(source_tone):])
+            add_reason('緝職合韵·緝')
+        return phonetic, reasons
 
     @staticmethod
     def _selection_phonetic(buf):
@@ -1934,9 +2428,7 @@ class WebApi:
                 pending_blank = True
         return '\n'.join(output)
 
-    @staticmethod
-    def _both_text(buf, punct_split, entry_before_glottal=False,
-                   departing_before_glottal=False):
+    def _both_text(self, buf, punct_split):
         output = []
         pending_blank = False
 
@@ -1959,9 +2451,8 @@ class WebApi:
         for chars, infos in zip(buf.buffer, buf.cell_info):
             line_has_phon = False
             brackets = find_bracket_ranges(chars)
-            phonetics = WebApi._line_phonetics(
-                chars, infos, brackets, entry_before_glottal,
-                departing_before_glottal)
+            phonetics = self._line_phonetics(
+                chars, infos, brackets)
             raw_buf, phon_parts = [], []
             for ci, (char, info) in enumerate(zip(chars, infos)):
                 if in_bracket(ci, brackets):
