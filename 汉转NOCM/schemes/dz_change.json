@@ -673,7 +673,7 @@
     "dialect_xitu_dongqin": {
       "type": "boolean",
       "label": "冬侵合韵·侵",
-      "description": "u 元音、m 韵尾。修改韵尾为指定值。",
+      "description": "u 元音、m 韵尾。修改韵尾。",
       "group": "dialect"
     },
     "dialect_xitu_dongqin_coda": {
@@ -686,7 +686,7 @@
     "dialect_xitu_qinzheng_only": {
       "type": "boolean",
       "label": "侵蒸合韵·侵",
-      "description": "ə 元音、m 韵尾。修改韵尾为指定值。",
+      "description": "ə 元音、m 韵尾。修改韵尾。",
       "group": "dialect"
     },
     "dialect_xitu_qinzheng_only_coda": {
@@ -699,7 +699,7 @@
     "dialect_han_xitu_dongqin": {
       "type": "boolean",
       "label": "冬侵合韵·侵",
-      "description": "u 元音、m 韵尾。修改韵尾为指定值。",
+      "description": "u 元音、m 韵尾。修改韵尾。",
       "group": "dialect_han_xitu"
     },
     "dialect_han_xitu_dongqin_coda": {
@@ -712,7 +712,7 @@
     "dialect_han_xitu_qinzheng_only": {
       "type": "boolean",
       "label": "侵蒸合韵·侵",
-      "description": "ə 元音、m 韵尾。修改韵尾为指定值。",
+      "description": "ə 元音、m 韵尾。修改韵尾。",
       "group": "dialect_han_xitu"
     },
     "dialect_han_xitu_qinzheng_only_coda": {
@@ -849,7 +849,7 @@
     "dialect_xitu_dongqin_dong": {
       "type": "boolean",
       "label": "冬侵合韵·冬",
-      "description": "u 元音、ŋ 韵尾。修改韵尾为指定值。",
+      "description": "u 元音、ŋ 韵尾。修改韵尾。",
       "group": "dialect"
     },
     "dialect_xitu_dongqin_dong_coda": {
@@ -862,7 +862,7 @@
     "dialect_xitu_qinzheng_only_zheng": {
       "type": "boolean",
       "label": "侵蒸合韵·蒸",
-      "description": "ə 元音、ŋ 韵尾。修改韵尾为指定值。",
+      "description": "ə 元音、ŋ 韵尾。修改韵尾。",
       "group": "dialect"
     },
     "dialect_xitu_qinzheng_only_zheng_coda": {
@@ -875,7 +875,7 @@
     "dialect_han_xitu_dongqin_dong": {
       "type": "boolean",
       "label": "冬侵合韵·冬",
-      "description": "u 元音、ŋ 韵尾。修改韵尾为指定值。",
+      "description": "u 元音、ŋ 韵尾。修改韵尾。",
       "group": "dialect_han_xitu"
     },
     "dialect_han_xitu_dongqin_dong_coda": {
@@ -888,7 +888,7 @@
     "dialect_han_xitu_qinzheng_only_zheng": {
       "type": "boolean",
       "label": "侵蒸合韵·蒸",
-      "description": "ə 元音、ŋ 韵尾。修改韵尾为指定值。",
+      "description": "ə 元音、ŋ 韵尾。修改韵尾。",
       "group": "dialect_han_xitu"
     },
     "dialect_han_xitu_qinzheng_only_zheng_coda": {
