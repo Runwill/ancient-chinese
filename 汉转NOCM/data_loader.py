@@ -23,6 +23,9 @@ BASE_JSON_GZ_URL = 'https://qwert-ly.github.io/xtext/base.json.gz'
 EXTRA_JSON_GZ_URL = 'https://qwert-ly.github.io/xtext/extra.json.gz'
 _DATA_UPDATE_LOG = 'data_update.log'
 _READING_CHANGE_EVENTS_FILE = 'reading_change_events.json'
+# 启动时只用 HEAD 请求判断远程文件是否更新。这个请求失败时会继续使用
+# 本地数据，因此不应让一个无响应的数据源长时间阻塞整个启动流程。
+_REMOTE_METADATA_TIMEOUT_SECONDS = 3
 _DATA_CHANGE_HEADER = re.compile(
     r'^\[(?P<timestamp>[^]]+)] (?P<filename>.+?) 更新 — 共 (?P<count>\d+) 处差异$')
 _DATA_CHANGE_ENTRY = re.compile(r'^  \[(?P<kind>新增|删除|修改)]\s*(?P<body>.*)$')
@@ -201,7 +204,8 @@ def _get_remote_last_modified(url: str) -> Optional[float]:
     """获取远程文件的 Last-Modified 时间戳，失败返回 None。"""
     try:
         req = urllib.request.Request(url, method='HEAD', headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(
+                req, timeout=_REMOTE_METADATA_TIMEOUT_SECONDS) as resp:
             lm = resp.headers.get('Last-Modified')
             if lm:
                 from email.utils import parsedate_to_datetime
@@ -696,7 +700,7 @@ def download_and_update(on_status=None, on_progress=None):
         try:
             _status(f'正在检查 {filename} ...')
             if not _needs_update(url, local_path):
-                _status(f'[跳过] {filename} 已是最新')
+                _status(f'[跳过] {filename} 使用本地文件')
                 report['files'].append({
                     'filename': filename, 'url': url,
                     'path': local_path, 'status': 'current',

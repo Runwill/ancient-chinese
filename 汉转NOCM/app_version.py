@@ -7,7 +7,7 @@ import sys
 
 
 APP_NAME = '汉字转 PBOC 音标'
-__version__ = '0.12.18'
+__version__ = '0.12.19'
 
 DRAFT_SCHEMA_VERSION = 5
 SCHEME_SCHEMA_VERSION = 4
@@ -19,6 +19,14 @@ RELEASES_PAGE_URL = (
     'https://github.com/Runwill/ancient-chinese/releases')
 
 CHANGELOG = [
+    {
+        'version': '0.12.19',
+        'date': '2026-10-27',
+        'title': '启动数据检查优化',
+        'items': [
+            '缩短启动时远程数据更新时间检查的等待时间；网络无响应时及时使用本地数据，避免卡在扩展注释数据检查步骤。',
+        ],
+    },
     {
         'version': '0.12.18',
         'date': '2026-10-07',
