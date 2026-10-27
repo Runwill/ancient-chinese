@@ -7,7 +7,7 @@ import sys
 
 
 APP_NAME = '汉字转 PBOC 音标'
-__version__ = '0.12.19'
+__version__ = '0.12.20'
 
 DRAFT_SCHEMA_VERSION = 5
 SCHEME_SCHEMA_VERSION = 4
@@ -20,11 +20,11 @@ RELEASES_PAGE_URL = (
 
 CHANGELOG = [
     {
-        'version': '0.12.19',
+        'version': '0.12.20',
         'date': '2026-10-27',
-        'title': '启动数据检查优化',
+        'title': '启动页布局修复',
         'items': [
-            '缩短启动时远程数据更新时间检查的等待时间；网络无响应时及时使用本地数据，避免卡在扩展注释数据检查步骤。',
+            '修复慢启动时的步骤说明与进度条重叠、位置错位问题。',
         ],
     },
     {

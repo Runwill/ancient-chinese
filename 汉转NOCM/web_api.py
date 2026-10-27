@@ -377,8 +377,8 @@ class WebApi:
                     message = f'正在下载{label}...'
                     detail = f'{filename} · 正在连接数据源'
                     indeterminate = True
-                elif '已是最新' in raw or '使用本地文件' in raw:
-                    message = f'{label}已就绪'
+                elif '已是最新' in raw:
+                    message = f'{label}已是最新'
                     detail = f'{filename} · 使用本地文件'
                     indeterminate = False
                 elif '下载失败' in raw:
