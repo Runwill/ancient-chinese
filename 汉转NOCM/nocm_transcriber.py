@@ -477,6 +477,32 @@ def migrate_scheme_data(scheme):
             'group': 'dialect_donghan_late_xitu',
             'parent': 'dialect_xitu_donghan_youyuhou',
         },
+        'dialect_xitu_ruiliu_wubu': {
+            'type': 'boolean',
+            'label': '锐流音物部次入',
+            'description': 'r̥、r、C.r、l̥、l 声母、ə 元音、s 声调。修改元音。',
+            'group': 'dialect',
+        },
+        'dialect_xitu_ruiliu_wubu_target': {
+            'type': 'text',
+            'label': '锐流音物部次入目标元音',
+            'default': 'ɪ',
+            'group': 'dialect',
+            'parent': 'dialect_xitu_ruiliu_wubu',
+        },
+        'dialect_xitu_shang_k': {
+            'type': 'boolean',
+            'label': '上声-k入合韵',
+            'description': 'k 声调。修改声调。',
+            'group': 'dialect',
+        },
+        'dialect_xitu_shang_k_tone': {
+            'type': 'text',
+            'label': '上声-k入合韵目标声调',
+            'default': 'ʔ',
+            'group': 'dialect',
+            'parent': 'dialect_xitu_shang_k',
+        },
         'dialect_xitu_jizhi': {
             'type': 'boolean',
             'label': '緝職合韵·緝',

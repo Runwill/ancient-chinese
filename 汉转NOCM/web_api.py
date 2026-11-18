@@ -2198,6 +2198,8 @@ class WebApi:
         donghan_zhibu = late_donghan_xitu_enabled and bool(options.get('dialect_xitu_donghan_zhibu_qianhua'))
         donghan_youyuhou = late_donghan_xitu_enabled and bool(options.get('dialect_xitu_donghan_youyuhou'))
         xitu_jizhi = xitu_enabled and bool(options.get('dialect_xitu_jizhi'))
+        xitu_ruiliu_wubu = xitu_enabled and option_enabled('dialect_xitu_ruiliu_wubu')
+        xitu_shang_k = xitu_enabled and option_enabled('dialect_xitu_shang_k')
         han_dongtu_zhiyou = han_dongtu_enabled and bool(options.get('dialect_han_dongtu_zhiyou'))
         if not (west_dongqin or west_dongqin_dong
                 or west_qinzheng_only or west_qinzheng_only_zheng
@@ -2208,7 +2210,8 @@ class WebApi:
                 or west_zhijue_e or west_zhijue_u or han_zhijue_e or han_zhijue_u
                 or you_xiao_first_i or you_xiao_first_e or you_xiao_second_u or you_xiao_second_a
                 or xiaoyu_houyao or donghan_zhibu or donghan_youyuhou
-                or xitu_jizhi or han_dongtu_zhiyou):
+                or xitu_jizhi or xitu_ruiliu_wubu or xitu_shang_k
+                or han_dongtu_zhiyou):
             return phonetic, []
         reasons = []
         def add_reason(reason):
@@ -2432,6 +2435,15 @@ class WebApi:
             phonetic = (phonetic[:tone_start] + target_tone
                         + phonetic[tone_start + len(source_tone):])
             add_reason('緝職合韵·緝')
+        if (xitu_ruiliu_wubu and parsed.onset in {'r̥', 'r', 'C.r', 'l̥', 'l'}
+                and nucleus == 'ə' and source_tone == 's'):
+            target = option_text('dialect_xitu_ruiliu_wubu_target', 'ɪ')
+            if replace_rendered_nucleus(target):
+                add_reason('锐流音物部次入')
+        if xitu_shang_k and source_tone == 'k':
+            target_tone = option_text('dialect_xitu_shang_k_tone', 'ʔ')
+            phonetic = phonetic[:-len(source_tone)] + target_tone
+            add_reason('上声-k入合韵')
         return phonetic, reasons
 
     @staticmethod
