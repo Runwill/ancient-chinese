@@ -1111,7 +1111,7 @@ class WebApiEditorTests(unittest.TestCase):
             'maps': {
                 'onset': {key: key for key in ('r̥', 'r', 'C.r', 'l̥', 'l', 't', 'n')},
                 'glide': {key: key for key in ('ˤ', 'j', 'w')},
-                'nucleus': {key: key for key in ('ia', 'ə', 'a', 'u', 'ɪ')},
+                'nucleus': {key: key for key in ('ia', 'ə', 'a', 'u', 'ɪ', 'i')},
                 'coda': {key: key for key in ('n', 'm', 'ŋ')},
                 'tone': {key: key for key in ('ks', 'ps', 'ʔs', 's', 'k', 'p', 'ʔ')},
             },
@@ -1123,6 +1123,8 @@ class WebApiEditorTests(unittest.TestCase):
         scheme = self._new_xitu_scheme()
         for key, field, target in (
                 ('dialect_xitu_ruiliu_wubu', 'target', 'ɪ'),
+                ('dialect_xitu_ruiliu_wen', 'target', 'i'),
+                ('dialect_xitu_ruiliu_wen', 'coda', 'ŋ'),
                 ('dialect_xitu_shang_k', 'tone', 'ʔ')):
             self.assertFalse(scheme['options'][key])
             self.assertEqual(scheme['options'][f'{key}_{field}'], target)
@@ -1162,6 +1164,37 @@ class WebApiEditorTests(unittest.TestCase):
         self.assertEqual(self.api._apply_dialect_phonetic_details(
             'x', 'rəs', scheme), ('rəs', []))
 
+    def test_ruiliu_wen_requires_five_onsets_e_n_and_no_tone(self):
+        scheme = self._new_xitu_scheme()
+        scheme['options']['dialect_xitu_ruiliu_wen'] = True
+        for onset in ('r̥', 'r', 'C.r', 'l̥', 'l'):
+            for glide in ('', 'ˤ', 'j', 'w'):
+                with self.subTest(onset=onset, glide=glide):
+                    self.assertEqual(self.api._apply_dialect_phonetic_details(
+                        'x', onset + glide + 'ən', scheme),
+                        (onset + glide + 'iŋ', ['锐流音后文部进入钝真部']))
+        for source in ('tən', 'nən', 'ran', 'run', 'rian', 'rə', 'rəm', 'rəŋ',
+                       'rəns', 'rənʔ', 'rənk', 'rənp', 'rənks', 'rənʔs'):
+            with self.subTest(source=source):
+                self.assertEqual(self.api._apply_dialect_phonetic_details(
+                    'x', source, scheme), (source, []))
+
+    def test_ruiliu_wen_custom_targets_master_and_legacy_parser(self):
+        scheme = self._new_xitu_scheme()
+        scheme['options'].update({
+            'dialect_xitu_ruiliu_wen': True,
+            'dialect_xitu_ruiliu_wen_target': 'ɪ',
+            'dialect_xitu_ruiliu_wen_coda': 'm',
+        })
+        self.assertEqual(self.api._apply_dialect_phonetic_details(
+            'x', 'rən', scheme), ('rɪm', ['锐流音后文部进入钝真部']))
+        scheme['maps']['coda'].pop('n')
+        self.assertEqual(self.api._apply_dialect_phonetic_details(
+            'x', 'rən', scheme), ('rɪm', ['锐流音后文部进入钝真部']))
+        scheme['options']['dialect_xitu'] = False
+        self.assertEqual(self.api._apply_dialect_phonetic_details(
+            'x', 'rən', scheme), ('rən', []))
+
     def test_shang_k_changes_only_original_k_tone(self):
         scheme = self._new_xitu_scheme()
         scheme['options']['dialect_xitu_shang_k'] = True
@@ -1197,14 +1230,16 @@ class WebApiEditorTests(unittest.TestCase):
         scheme = self._new_xitu_scheme()
         scheme['options'].update({
             'dialect_xitu_ruiliu_wubu': True,
+            'dialect_xitu_ruiliu_wen': True,
             'dialect_xitu_shang_k': True,
         })
         self.api.mapping = {
             '甲': [{'phonetic': 'rəs'}],
             '乙': [{'phonetic': 'tuk'}],
+            '丙': [{'phonetic': 'lən'}],
         }
         self.api.buf = web_api.EditorBuffer(self.api.mapping)
-        self.api.buf.insert_chars_raw('[甲]\n甲乙')
+        self.api.buf.insert_chars_raw('[甲]\n甲乙丙')
         self.api.export_scheme_id = 'test'
         with patch('web_api.load_scheme', return_value=scheme):
             snapshot = self.api.get_editor()
@@ -1212,13 +1247,15 @@ class WebApiEditorTests(unittest.TestCase):
             self.assertEqual(cells[0]['dialect_phonetic'], 'rɪs')
             self.assertEqual(cells[0]['dialect_reason'], ['锐流音物部次入'])
             self.assertEqual(cells[1]['dialect_phonetic'], 'tuʔ')
+            self.assertEqual(cells[2]['dialect_phonetic'], 'liŋ')
+            self.assertEqual(cells[2]['dialect_reason'], ['锐流音后文部进入钝真部'])
             details = self.api.get_cell_details(1, 1)
             self.assertEqual(details['dialect_reason'], ['上声-k入合韵'])
             self.assertEqual(self.api.export_text('phon', scheme_id='test'),
-                             '[甲]\nrɪs tuʔ')
+                             '[甲]\nrɪs tuʔ liŋ')
             image = self.api.get_image_export_data()
             self.assertEqual([cell['phonetic'] for cell in image['lines'][1]['cells']],
-                             ['rɪs', 'tuʔ'])
+                             ['rɪs', 'tuʔ', 'liŋ'])
 
     def test_jizhi_replaces_vowel_and_tone(self):
         scheme = {

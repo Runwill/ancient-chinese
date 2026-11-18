@@ -2199,6 +2199,7 @@ class WebApi:
         donghan_youyuhou = late_donghan_xitu_enabled and bool(options.get('dialect_xitu_donghan_youyuhou'))
         xitu_jizhi = xitu_enabled and bool(options.get('dialect_xitu_jizhi'))
         xitu_ruiliu_wubu = xitu_enabled and option_enabled('dialect_xitu_ruiliu_wubu')
+        xitu_ruiliu_wen = xitu_enabled and option_enabled('dialect_xitu_ruiliu_wen')
         xitu_shang_k = xitu_enabled and option_enabled('dialect_xitu_shang_k')
         han_dongtu_zhiyou = han_dongtu_enabled and bool(options.get('dialect_han_dongtu_zhiyou'))
         if not (west_dongqin or west_dongqin_dong
@@ -2210,7 +2211,7 @@ class WebApi:
                 or west_zhijue_e or west_zhijue_u or han_zhijue_e or han_zhijue_u
                 or you_xiao_first_i or you_xiao_first_e or you_xiao_second_u or you_xiao_second_a
                 or xiaoyu_houyao or donghan_zhibu or donghan_youyuhou
-                or xitu_jizhi or xitu_ruiliu_wubu or xitu_shang_k
+                or xitu_jizhi or xitu_ruiliu_wubu or xitu_ruiliu_wen or xitu_shang_k
                 or han_dongtu_zhiyou):
             return phonetic, []
         reasons = []
@@ -2261,14 +2262,14 @@ class WebApi:
 
         source_tone_start = (len(source_phonetic) - len(source_tone)
                              if source_tone else len(source_phonetic))
-        source_coda = parsed.coda if parsed.coda in {'m', 'ŋ'} else next(
-            (coda for coda in ('m', 'ŋ')
+        source_coda = parsed.coda if parsed.coda in {'m', 'n', 'ŋ'} else next(
+            (coda for coda in ('m', 'n', 'ŋ')
              if source_phonetic[:source_tone_start].endswith(coda)), '')
-        # Some schemes do not list m/ŋ in the coda map. Infer them from the
-        # source token so the independent 侵蒸/冬侵 rules still match.
+        # Older schemes may omit nasal codas from their parser maps.
+        # Infer them from the source token for the independent coda rules.
         if not source_coda:
             source_coda = next(
-                (coda for coda in ('m', 'ŋ')
+                (coda for coda in ('m', 'n', 'ŋ')
                  if source_phonetic[:source_tone_start].endswith(coda)), '')
         rendered_coda = source_coda
         has_no_coda = not parsed.coda and not any(
@@ -2440,6 +2441,13 @@ class WebApi:
             target = option_text('dialect_xitu_ruiliu_wubu_target', 'ɪ')
             if replace_rendered_nucleus(target):
                 add_reason('锐流音物部次入')
+        if (xitu_ruiliu_wen and parsed.onset in {'r̥', 'r', 'C.r', 'l̥', 'l'}
+                and nucleus == 'ə' and source_coda == 'n' and source_tone == ''):
+            target = option_text('dialect_xitu_ruiliu_wen_target', 'i')
+            target_coda = option_text('dialect_xitu_ruiliu_wen_coda', 'ŋ')
+            replace_rendered_nucleus(target)
+            replace_rendered_coda(target_coda)
+            add_reason('锐流音后文部进入钝真部')
         if xitu_shang_k and source_tone == 'k':
             target_tone = option_text('dialect_xitu_shang_k_tone', 'ʔ')
             phonetic = phonetic[:-len(source_tone)] + target_tone

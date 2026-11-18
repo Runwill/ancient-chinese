@@ -490,6 +490,26 @@ def migrate_scheme_data(scheme):
             'group': 'dialect',
             'parent': 'dialect_xitu_ruiliu_wubu',
         },
+        'dialect_xitu_ruiliu_wen': {
+            'type': 'boolean',
+            'label': '锐流音后文部进入钝真部',
+            'description': 'r̥、r、C.r、l̥、l 声母、ə 元音、n 韵尾、无声调。修改元音和韵尾。',
+            'group': 'dialect',
+        },
+        'dialect_xitu_ruiliu_wen_target': {
+            'type': 'text',
+            'label': '锐流音后文部进入钝真部目标元音',
+            'default': 'i',
+            'group': 'dialect',
+            'parent': 'dialect_xitu_ruiliu_wen',
+        },
+        'dialect_xitu_ruiliu_wen_coda': {
+            'type': 'text',
+            'label': '锐流音后文部进入钝真部目标韵尾',
+            'default': 'ŋ',
+            'group': 'dialect',
+            'parent': 'dialect_xitu_ruiliu_wen',
+        },
         'dialect_xitu_shang_k': {
             'type': 'boolean',
             'label': '上声-k入合韵',
