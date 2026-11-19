@@ -274,7 +274,8 @@ def count_unselected_polyphonic(data):
     for row in (data.get('cell_info') or []):
         for info in row:
             if (isinstance(info, dict) and info.get('is_poly')
-                    and info.get('selected', 'none') == 'none'):
+                    and info.get('selected', 'none') == 'none'
+                    and not info.get('manual_phonetic')):
                 total += 1
     return total
 
@@ -315,6 +316,7 @@ def save_draft(filename, name, buffer, cell_info, editor_state=None,
         for info in row:
             serialized_row.append({
                 'phonetic': info['phonetic'],
+                'manual_phonetic': info.get('manual_phonetic', ''),
                 'is_poly': bool(info.get('is_poly')),
                 'selected': info.get('selected', 'none'),
                 'manual_hl': bool(info.get('manual_hl')),
@@ -371,6 +373,7 @@ def load_draft(filename, mapping, include_state=False):
                              if isinstance(first, dict) else str(first))
             rebuilt.append({
                 'phonetic': info.get('phonetic', fallback_phon),
+                'manual_phonetic': info.get('manual_phonetic', ''),
                 'options': opts if is_poly and opts and len(opts) > 1 else None,
                 'is_poly': is_poly,
                 'selected': info.get('selected', 'none'),

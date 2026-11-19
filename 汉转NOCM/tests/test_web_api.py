@@ -1701,12 +1701,14 @@ class WebApiEditorTests(unittest.TestCase):
             [
                 {
                     'char': 'x', 'phonetic': 'x1', 'is_poly': True,
+                    'manual_phonetic': '',
                     'dialect_changed': False,
                     'selected': 'global_recent', 'manual_hl': True,
                     'stale': False, 'missing_phonetic': False,
                 },
                 {
                     'char': 'y', 'phonetic': 'y1', 'is_poly': False,
+                    'manual_phonetic': '',
                     'dialect_changed': False,
                     'selected': 'none', 'manual_hl': False,
                     'stale': False, 'missing_phonetic': False,

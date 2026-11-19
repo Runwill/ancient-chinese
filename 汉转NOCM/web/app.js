@@ -1000,7 +1000,7 @@
           }
         }
         if (search.scope !== 'char') line.forEach((cell, ci) => {
-          if (cell.phonetic.toLowerCase().includes(query)) seen.add(searchKey(li, ci));
+          if ((cell.manual_phonetic || cell.phonetic).toLowerCase().includes(query)) seen.add(searchKey(li, ci));
         });
       });
       search.matches = [...seen].map(key => key.split(':').map(Number));
@@ -1030,6 +1030,7 @@
         const key = searchKey(li, ci);
         node.className = [
           'cell', cell.is_poly ? 'poly' : '', cell.in_bracket ? 'bracket' : '',
+          cell.manual_phonetic ? 'manual-pronunciation' : '',
           cell.missing_phonetic ? 'missing-phonetic' : '',
           cell.manual_hl ? 'manual-highlight' : '', cell.stale ? 'stale' : '',
           cell.selected !== 'none' ? `selected-${cell.selected}` : '',
@@ -1041,7 +1042,9 @@
         const dialectChanged = cell.dialect_phonetic && cell.dialect_phonetic !== cell.phonetic;
         const dialectReason = Array.isArray(cell.dialect_reason)
           ? cell.dialect_reason.join('、') : String(cell.dialect_reason || '');
-        const phoneticHtml = dialectChanged
+        const phoneticHtml = cell.manual_phonetic
+          ? `<span class="cell-phon manual-phon" title="${esc(cell.phonetic)} → ${esc(cell.manual_phonetic)} · 手动修改">${esc(cell.manual_phonetic)}</span>`
+          : dialectChanged
           ? `<span class="cell-phon dialect-phon" title="${esc(cell.phonetic)} → ${esc(cell.dialect_phonetic)}${dialectReason ? ` · ${esc(dialectReason)}` : ''}"><b>${esc(cell.dialect_phonetic)}</b></span>`
           : `<span class="cell-phon" title="${esc(cell.phonetic)}">${esc(cell.phonetic)}</span>`;
         node.innerHTML = `<span class="cell-char">${esc(cell.char)}</span>${phoneticHtml}`;
@@ -1085,15 +1088,17 @@
   }
 
   function scheduleDragSelection(line, column) {
-    const revision = ++selectionRevision;
-    selectionRequest = { line, column };
+    if (!dragSelection) return;
+    // Keep the committed endpoint current even if mouseup precedes the next frame.
+    dragSelection[1] = [line, column];
+    selectionRequest = { line, column, revision: ++selectionRevision };
     if (selectionFrame) return;
     selectionFrame = requestAnimationFrame(async () => {
       selectionFrame = 0;
       const request = selectionRequest;
       selectionRequest = null;
       if (!request || !mouseDown) return;
-      if (revision !== selectionRevision) return;
+      if (request.revision !== selectionRevision) return;
       if (!dragSelection) return;
       const [[anchorLine, anchorColumn]] = dragSelection;
       editor.selection = [[anchorLine, anchorColumn], [request.line, request.column]];
@@ -1168,21 +1173,29 @@
           ? details.dialect_reason.join('、') : String(details.dialect_reason || '');
         const dialectReasonHtml = dialectChanged && dialectReason
           ? `<span class="dialect-reason">${esc(dialectReason)}</span>` : '';
-        const readingStatus = dialectChanged
+        const readingStatus = details.manual_phonetic
+          ? `<s>${esc(details.phonetic)}</s> <b class="manual-reading">${esc(details.manual_phonetic)}</b><span class="manual-reading-label">手动修改</span>`
+          : dialectChanged
           ? `<s>${esc(details.phonetic)}</s> <b class="dialect-reading">${esc(details.dialect_phonetic)}</b>${dialectReasonHtml}`
           : `${esc(details.phonetic)}`;
         const readingStatusWithState = `${readingStatus}${details.stale ? '<span> · 文稿原读音</span>' : ''}`;
         const readingControl = currentOption?.position_details
           ? `<button class="inspector-reading-trigger ${details.stale ? 'reading-stale' : ''}" id="phonology-detail-trigger" type="button" aria-expanded="${phonologyDetailsOpen}" aria-controls="phonology-detail" title="查看音韵地位详情">${readingStatusWithState}<svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4.5 3 3 3-3"></path></svg></button>`
-          : `<p class="${details.stale ? 'reading-stale' : ''}">${unrecorded ? '未收录' : readingStatusWithState}</p>`;
+          : `<p class="${details.stale ? 'reading-stale' : ''}">${unrecorded && !details.manual_phonetic ? '未收录' : readingStatusWithState}</p>`;
         root.innerHTML = `
           <div class="inspector-title">
             <div><h2>${details.stale ? '读音更新待确认' : details.is_poly ? '选择读音' : '字词信息'}</h2>${readingControl}</div>
             <span class="inspector-char">${esc(details.char)}</span>
           </div>
+          ${details.in_bracket ? '' : `<div class="manual-reading-actions"><button type="button" class="button subtle" id="edit-manual-phonetic" title="仅修改此处，优先于音变"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5-12 12H4v-5Z"></path><path d="m14 5 5 5"></path></svg>修改音标</button>${details.manual_phonetic ? '<button type="button" class="button subtle" id="reset-manual-phonetic" title="清除手动音标，恢复当前方案的自动结果">恢复自动</button>' : ''}</div>`}
           ${positionPanel}
           ${updatePanel}
           <div class="reading-list">${unrecorded ? '<div class="reading-empty">该字符不在数据库中</div>' : options.map(option => readingOptionHtml(option, details)).join('')}</div>`;
+        const editManual = $('#edit-manual-phonetic', root);
+        if (editManual) editManual.onclick = () => editManualPhonetic(details);
+        const resetManual = $('#reset-manual-phonetic', root);
+        if (resetManual) resetManual.onclick = () => queue(async () => applyResult(
+          await invoke('set_manual_phonetic', line, column, '', details.char, details.phonetic, details.draft_id)));
         const positionTrigger = $('#phonology-detail-trigger', root);
         if (positionTrigger) positionTrigger.onclick = () => {
           const panel = $('#phonology-detail', root);
@@ -1274,12 +1287,12 @@
     const note = typeof option === 'object'
       ? option.note || option.definition || option.gloss || option.fanqie || '' : '';
     const pending = (details.pending_updates || [])[0];
-    const current = !pending && phonetic === details.phonetic;
-    const selectable = details.is_poly || Boolean(pending);
+    const current = !details.manual_phonetic && !pending && phonetic === details.phonetic;
+    const selectable = details.is_poly || Boolean(pending) || Boolean(details.manual_phonetic);
     const localTag = selectable ? 'button' : 'span';
     const localAttr = pending
       ? `data-update-reading="${esc(pending.id)}" data-phonetic="${esc(phonetic)}"`
-      : details.is_poly ? `data-reading-local data-phonetic="${esc(phonetic)}"` : '';
+      : selectable ? `data-reading-local data-phonetic="${esc(phonetic)}"` : '';
     const globalButton = details.is_poly && details.same_char_count > 1
       ? `<button class="reading-global" data-reading-global data-phonetic="${esc(phonetic)}">全局</button>` : '';
     const noteHtml = note ? formatReadingNote(note, option.note_parts) : '';
@@ -1313,6 +1326,18 @@
         ? `<span class="note-index">${index}</span> ` : '';
       return `${prefix}${formatNoteText(part?.text)}`;
     }).join('\n');
+  }
+
+  async function editManualPhonetic(details) {
+    const value = await promptBox(`修改“${details.char}”的音标`,
+      '仅修改此处，优先于音变', details.effective_phonetic || details.phonetic);
+    if (value === null) return;
+    if (!value || value.length > 128 || /[\s\x00-\x1f\x7f]/.test(value)) {
+      toast('请输入单个字的音标，不含空格或换行，最多 128 个字符', 'error');
+      return;
+    }
+    queue(async () => applyResult(await invoke('set_manual_phonetic',
+      details.line, details.column, value, details.char, details.phonetic, details.draft_id)));
   }
 
   async function applyReading(phonetic, globalApply) {
@@ -1473,7 +1498,8 @@
   function syncCurrentDraftCompletion() {
     if (!state || !editor?.current_draft) return;
     const pendingCount = editor.lines.reduce((total, line) => total + line.filter(
-      cell => cell.is_poly && (cell.selected || 'none') === 'none').length, 0);
+      cell => cell.is_poly && !cell.manual_phonetic
+        && (cell.selected || 'none') === 'none').length, 0);
     let changed = false;
     for (const collection of [state.drafts || [], state.recent_drafts || []]) {
       const draft = collection.find(item => item.filename === editor.current_draft);
@@ -1938,6 +1964,7 @@
         const classes = [
           'image-line-mini-cell', cell.is_poly ? 'poly' : '',
           cell.dialect_changed ? 'dialect-changed' : '',
+          cell.manual_phonetic ? 'manual-phonetic' : '',
           cell.missing_phonetic ? 'missing' : '',
           cell.selected && cell.selected !== 'none' ? `selected-${cell.selected}` : '',
           cell.manual_hl ? 'manual-highlight' : '', cell.stale ? 'stale' : '',
@@ -1970,6 +1997,7 @@
       green: color('green'), greenSoft: color('green-soft'),
       blue: color('blue'), blueSoft: color('blue-soft'),
       accent: color('accent'),
+      manualPhonetic: color('manual-phonetic'),
       pink: color('pink'), pinkSoft: color('pink-soft'),
       unknown: color('unknown'), unknownSoft: color('unknown-soft'),
       border: color('border'), muted: color('muted'),
@@ -2032,7 +2060,7 @@
       context.fillStyle = colors.orange;
       context.fill();
     }
-    let charColor = cell.is_poly ? colors.orange : colors.text;
+    let charColor = cell.is_poly && !cell.manual_phonetic ? colors.orange : colors.text;
     if (cell.missing_phonetic) charColor = colors.unknown;
     if (cell.selected === 'manual') charColor = colors.green;
     if (cell.selected === 'global' || cell.selected === 'global_recent') charColor = colors.blue;
@@ -2046,6 +2074,7 @@
 
     context.font = `${spec.phonSize}px Cambria, "Times New Roman", serif`;
     context.fillStyle = cell.missing_phonetic ? colors.unknown
+      : cell.manual_phonetic ? colors.manualPhonetic
       : cell.dialect_changed ? colors.accent : colors.text2;
     context.fillText(
       fitCanvasText(context, cell.phonetic, spec.cellWidth - 6),
@@ -3144,6 +3173,7 @@
       root.innerHTML = `<section class="maintenance-section"><h3>基本操作</h3><ol class="guide-list">
           <li>直接在编辑区输入或粘贴汉字，正文会实时显示注音。</li>
           <li>点击正文中的字，在右侧查看读音和释义；多音字可选择当前读音。</li>
+          <li>右侧“修改音标”可单独修改此处的最终音标，优先于音变；“恢复自动”清除手动修改。修改随文稿保存，支持撤回、重做，并用于复制和导出。</li>
           <li>同一个字出现多次时，可在读音右侧点击“全局”，逐处处理已有的手动选择。</li>
           <li>拖动、Shift+点击或 Shift+方向键可以选择文本；选区可复制原文或音标。</li>
           <li>导出支持 PBOC、Suno、原文及组合内容。方案选项会随方案保存；导出设置只影响本次导出，可转换标点、清除无效换行或清理 Suno 输出。</li>
@@ -3156,6 +3186,7 @@
           <span><i class="legend-swatch recent"></i>蓝色边框：最近一次全局应用</span>
           <span><i class="legend-swatch stale"></i>琥珀色：词库更新后读音有变化</span>
           <span><i class="legend-swatch highlight"></i>粉色：手动高亮</span>
+          <span><i class="legend-swatch manual-phonetic"></i>紫色音标：手动修改</span>
         </div></section>
         <section class="maintenance-section"><h3>查找与高亮</h3><p class="muted">Ctrl+F 会按当前焦点查找：焦点在正文中时打开正文查找，在正文外时打开文稿库搜索；Enter 跳到下一个，Shift+Enter 返回上一个，Esc 关闭。进入高亮模式后点击正文中的字可添加或取消高亮，再次点击高亮按钮或按 Esc 退出。</p></section>`;
       return;
@@ -4206,11 +4237,19 @@
       mouseDown = {
         x: event.clientX, y: event.clientY, line, column,
         caretColumn,
+        anchor: event.shiftKey
+          ? [...(editor.selection?.[0] || editor.cursor)]
+          : [line, caretColumn],
         shiftKey: event.shiftKey
       };
-      selectionRevision++;
+      const revision = ++selectionRevision;
       dragSelection = null;
-      queue(async () => setCaret(line, caretColumn, event.shiftKey));
+      queue(async () => {
+        visualNavX = null;
+        const result = await invoke('set_caret', line, caretColumn, event.shiftKey);
+        // A delayed initial caret response must not replace a newer drag preview.
+        if (revision === selectionRevision) applyResult(result);
+      });
     });
     window.addEventListener('mousemove', event => {
       if (!mouseDown || !(event.buttons & 1)) return;
@@ -4225,7 +4264,7 @@
       if (!lineNode) return;
       const line = Number(lineNode.dataset.line);
       if (!dragSelection) {
-        dragSelection = [[mouseDown.line, mouseDown.caretColumn], [line, 0]];
+        dragSelection = [[...mouseDown.anchor], [line, 0]];
       }
       let column = editor.lines[line].length;
       if (cell) {
@@ -4236,8 +4275,21 @@
       scheduleDragSelection(line, column);
     });
     window.addEventListener('mouseup', async event => {
-      if (!mouseDown) return;
+      if (!mouseDown || event.button !== 0) return;
       const clickInfo = mouseDown;
+      // Read the release position too: the last move may not have been delivered.
+      const releaseCell = event.target.closest?.('.cell');
+      const releaseLine = event.target.closest?.('.editor-line');
+      if (mouseMoved && dragSelection && releaseLine) {
+        let column = editor.lines[Number(releaseLine.dataset.line)].length;
+        if (releaseCell) {
+          const rect = releaseCell.getBoundingClientRect();
+          column = Number(releaseCell.dataset.column)
+            + (event.clientX > rect.left + rect.width / 2 ? 1 : 0);
+        }
+        dragSelection[1] = [Number(releaseLine.dataset.line), column];
+      }
+      const completedSelection = dragSelection?.map(position => [...position]);
       mouseDown = null;
       mouseSelecting = false;
       selectionRequest = null;
@@ -4262,15 +4314,17 @@
         }
       }
       focusEditor();
-      if (mouseMoved && clickInfo) {
+      if (mouseMoved && completedSelection) {
         const revision = ++selectionRevision;
-        const final = dragSelection?.[1] || [clickInfo.line, clickInfo.caretColumn];
-        const finalLine = final[0];
-        const finalColumn = final[1];
+        const [anchor, final] = completedSelection;
+        // Display the exact release selection while its backend commit is queued.
+        editor.selection = completedSelection;
+        editor.cursor = [...final];
+        renderSelectionOnly();
+        updateSelectionInspector();
         queue(async () => {
-          const anchor = dragSelection?.[0] || [clickInfo.line, clickInfo.caretColumn];
           const result = await invoke(
-            'set_selection', anchor[0], anchor[1], finalLine, finalColumn, true);
+            'set_selection', anchor[0], anchor[1], final[0], final[1], true);
           if (revision !== selectionRevision) return;
           applyResult(result);
         });
@@ -4622,7 +4676,8 @@
         lines: mock.lines.map((line, sourceLine) => {
           const cells = line.filter(cell => !cell.in_bracket).map(cell => ({
             char: cell.char,
-            phonetic: cell.phonetic,
+            phonetic: cell.manual_phonetic || cell.dialect_phonetic || cell.phonetic,
+            manual_phonetic: cell.manual_phonetic || '',
             is_poly: cell.is_poly,
             selected: cell.selected,
             manual_hl: cell.manual_hl,
@@ -4638,6 +4693,13 @@
       set_selection: async (al, ac, li, ci) => { mock.selection = [[al, ac], [li, ci]]; mock.cursor = [li, ci]; return clone(mock); },
       editor_action: async () => clone(mock), get_copy_payload: async () => ({ text: mock.raw, buffer: [], cell_info: [] }), get_phonetic_text: async () => 'kˤro[n]',
       reading_conflicts: async () => [], apply_reading: async () => clone(mock),
+      set_manual_phonetic: async (li, ci, value) => {
+        const cell = mock.lines[li][ci];
+        cell.manual_phonetic = value;
+        cell.effective_phonetic = value || cell.dialect_phonetic || cell.phonetic;
+        cell.missing_phonetic = !value && cell.phonetic === cell.char;
+        return clone(mock);
+      },
       review_cell_update: async (li, ci, _eventId, action, phonetic) => {
         const cell = mock.lines[li][ci];
         const before = cell.phonetic;

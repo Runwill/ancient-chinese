@@ -7,7 +7,7 @@ import sys
 
 
 APP_NAME = '汉字转 PBOC 音标'
-__version__ = '0.12.21'
+__version__ = '0.12.22'
 
 DRAFT_SCHEMA_VERSION = 5
 SCHEME_SCHEMA_VERSION = 4
@@ -19,6 +19,16 @@ RELEASES_PAGE_URL = (
     'https://github.com/Runwill/ancient-chinese/releases')
 
 CHANGELOG = [
+    {
+        'version': '0.12.22',
+        'date': '2026-11-19',
+        'title': '逐字手动音标',
+        'items': [
+            '正文中的字支持单独修改音标，只影响当前文稿中的这一处，优先于音变，并以紫色音标区别于自动音变。',
+            '手动音标随文稿保存，支持撤回、重做和恢复自动结果，复制、文本转写和图片导出同步使用。',
+            '修复鼠标拖选正文后松开鼠标选区回缩的问题，并修正快速拖选、反向拖选及 Shift 扩选时的选区同步。',
+        ],
+    },
     {
         'version': '0.12.21',
         'date': '2026-11-18',

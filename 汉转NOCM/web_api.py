@@ -531,18 +531,21 @@ class WebApi:
                     dialect_phonetic, dialect_reason = (
                         self._apply_dialect_phonetic_details(
                             char, phonetic, dialect_scheme))
+                manual_phonetic = info.get('manual_phonetic', '') if not bracket else ''
                 cell = {
                     'char': char,
                     'phonetic': phonetic,
                     'dialect_phonetic': dialect_phonetic,
                     'dialect_reason': dialect_reason,
+                    'manual_phonetic': manual_phonetic,
+                    'effective_phonetic': manual_phonetic or dialect_phonetic,
                     'is_poly': is_poly,
                     'selected': info.get('selected', 'none'),
                     'manual_hl': bool(info.get('manual_hl')),
                     'stale': stale,
                     'in_bracket': bracket,
                     'missing_phonetic': (
-                        not bracket and not stale and not is_poly
+                        not bracket and not manual_phonetic and not stale and not is_poly
                         and phonetic == char
                         and _NORMAL_NON_HAN.fullmatch(char) is None),
                 }
@@ -751,13 +754,21 @@ class WebApi:
             same_char_count = sum(row.count(char) for row in buf.buffer)
             dialect_phonetic, dialect_reason = self._dialect_preview_details(
                 char, info.get('phonetic', char))
+            bracket = in_bracket(column, find_bracket_ranges(buf.buffer[line]))
+            if bracket:
+                dialect_phonetic, dialect_reason = info.get('phonetic', char), []
+            manual_phonetic = info.get('manual_phonetic', '') if not bracket else ''
             return {
                 'line': line,
                 'column': column,
+                'draft_id': self.current_draft or '',
                 'char': char,
                 'phonetic': info.get('phonetic', char),
                 'dialect_phonetic': dialect_phonetic,
                 'dialect_reason': dialect_reason,
+                'manual_phonetic': manual_phonetic,
+                'effective_phonetic': manual_phonetic or dialect_phonetic,
+                'in_bracket': bracket,
                 'is_poly': bool(info.get('is_poly')),
                 'selected': info.get('selected', 'none'),
                 'manual_hl': bool(info.get('manual_hl')),
@@ -892,6 +903,46 @@ class WebApi:
                 self.dialect_options_mode = mode
             # 返回重新计算过的编辑器快照，使当前正文立即反映文稿级音变设置。
             return self.get_state()
+
+    def set_manual_phonetic(self, line, column, phonetic, expected_char=None,
+                            expected_phonetic=None, expected_draft=None):
+        """Override one occurrence's final IPA without changing its source reading.
+
+        Empty text removes the override and resumes automatic sound changes.
+        """
+        with self._lock:
+            buf = self._require_buffer()
+            if (expected_draft is not None
+                    and expected_draft != (self.current_draft or '')):
+                raise ValueError('当前文稿已变化，请重新选择要修改的字')
+            line, column = int(line), int(column)
+            if not (0 <= line < len(buf.buffer)
+                    and 0 <= column < len(buf.buffer[line])):
+                raise ValueError('此处已不存在，请重新选择要修改的字')
+            char = buf.buffer[line][column]
+            info = buf.cell_info[line][column]
+            if ((expected_char is not None and char != expected_char)
+                    or (expected_phonetic is not None
+                        and info.get('phonetic', char) != expected_phonetic)):
+                raise ValueError('此处内容已变化，请重新选择要修改的字')
+            if in_bracket(column, find_bracket_ranges(buf.buffer[line])):
+                raise ValueError('方括号内容不生成音标，不能手动修改')
+            if not isinstance(phonetic, str):
+                raise ValueError('请输入音标文本')
+            phonetic = phonetic.strip()
+            if (len(phonetic) > 128 or any(
+                    ch.isspace() or ord(ch) < 32 or ord(ch) == 127
+                    for ch in phonetic)):
+                raise ValueError('请输入单个字的音标，不含空格或换行，最多 128 个字符')
+            if phonetic == info.get('manual_phonetic', ''):
+                return self._editor_snapshot(buf)
+            buf.save_undo()
+            if phonetic:
+                info['manual_phonetic'] = phonetic
+            else:
+                info.pop('manual_phonetic', None)
+            return self._changed()
+
     def reading_conflicts(self, line, column, phonetic):
         with self._lock:
             buf = self._require_buffer()
@@ -900,13 +951,14 @@ class WebApi:
             for li, (chars, infos) in enumerate(zip(buf.buffer, buf.cell_info)):
                 for ci, (ch, info) in enumerate(zip(chars, infos)):
                     if (ch == char and (li, ci) != (int(line), int(column))
-                            and info.get('is_poly')
-                            and info.get('selected') == 'manual'
-                            and info.get('phonetic') != phonetic):
+                            and ((info.get('is_poly')
+                                  and info.get('selected') == 'manual'
+                                  and info.get('phonetic') != phonetic)
+                                 or info.get('manual_phonetic'))):
                         conflicts.append({
                             'line': li,
                             'column': ci,
-                            'phonetic': info.get('phonetic'),
+                            'phonetic': info.get('manual_phonetic') or info.get('phonetic'),
                             'context': ''.join(chars),
                         })
             return conflicts
@@ -969,16 +1021,19 @@ class WebApi:
                             continue
                         if (li, ci) in skipped:
                             continue
-                        conflict = (info.get('selected') == 'manual'
-                                    and info.get('phonetic') != phonetic
+                        conflict = ((bool(info.get('manual_phonetic'))
+                                     or (info.get('selected') == 'manual'
+                                         and info.get('phonetic') != phonetic))
                                     and (li, ci) != (line, column))
                         if conflict and not overwrite_manual:
                             continue
                         same_manual = (
                             (li, ci) != (line, column)
                             and info.get('selected') == 'manual'
-                            and info.get('phonetic') == phonetic)
+                            and info.get('phonetic') == phonetic
+                            and not info.get('manual_phonetic'))
                         if not same_manual:
+                            info.pop('manual_phonetic', None)
                             pending_confirmed = self._confirm_pending_with_reading(
                                 ch, info, phonetic)
                             info['phonetic'] = phonetic
@@ -989,6 +1044,7 @@ class WebApi:
                         self._refresh_cell_update_state(ch, info)
             else:
                 info = buf.cell_info[line][column]
+                info.pop('manual_phonetic', None)
                 had_stale = self._confirm_pending_with_reading(
                     char, info, phonetic)
                 info['phonetic'] = phonetic
@@ -1034,6 +1090,7 @@ class WebApi:
                 info, event, status, before, after, previous_selected)
             if action == 'accept':
                 options = self.mapping.get(char) or []
+                info.pop('manual_phonetic', None)
                 info['phonetic'] = after
                 info['is_poly'] = len(options) > 1
                 info['options'] = options if len(options) > 1 else None
@@ -1244,7 +1301,8 @@ class WebApi:
             if scope == 'phon':
                 for li, infos in enumerate(buf.cell_info):
                     for ci, info in enumerate(infos):
-                        if query in str(info.get('phonetic', '')):
+                        if query in str(info.get('manual_phonetic')
+                                        or info.get('phonetic', '')):
                             if replace_all or (li == int(line) and ci == int(column)):
                                 targets.append((li, ci))
                                 if not replace_all:
@@ -1272,9 +1330,10 @@ class WebApi:
             if scope == 'phon':
                 for li, ci in targets:
                     info = buf.cell_info[li][ci]
-                    info['phonetic'] = str(info.get('phonetic', '')).replace(
-                        query, replacement)
-                    info['selected'] = 'manual'
+                    field = 'manual_phonetic' if info.get('manual_phonetic') else 'phonetic'
+                    info[field] = str(info.get(field, '')).replace(query, replacement)
+                    if field == 'phonetic':
+                        info['selected'] = 'manual'
                 buf.cur_line, buf.cur_col = targets[-1]
                 buf.cur_col += 1
             else:
@@ -1302,7 +1361,7 @@ class WebApi:
                         'char': char, 'count': 0, 'readings': {},
                         'options': copy.deepcopy(self.mapping.get(char) or [])})
                     item['count'] += 1
-                    phon = info.get('phonetic', '')
+                    phon = info.get('manual_phonetic') or info.get('phonetic', '')
                     item['readings'][phon] = item['readings'].get(phon, 0) + 1
             return sorted(summary.values(), key=lambda item: (-item['count'], item['char']))
 
@@ -1578,8 +1637,10 @@ class WebApi:
                     {
                         'char': char,
                         'phonetic': editor_lines[line_index][column].get(
-                            'dialect_phonetic', info.get('phonetic', char)),
+                            'effective_phonetic', info.get('phonetic', char)),
+                        'manual_phonetic': info.get('manual_phonetic', ''),
                         'dialect_changed': (
+                            not info.get('manual_phonetic') and
                             editor_lines[line_index][column].get(
                                 'dialect_phonetic', info.get('phonetic', char))
                             != info.get('phonetic', char)),
@@ -1588,7 +1649,8 @@ class WebApi:
                         'manual_hl': bool(info.get('manual_hl')),
                         'stale': bool(info.get('stale')),
                         'missing_phonetic': (
-                            not info.get('stale') and not info.get('is_poly')
+                            not info.get('manual_phonetic')
+                            and not info.get('stale') and not info.get('is_poly')
                             and info.get('phonetic', char) == char
                             and _NORMAL_NON_HAN.fullmatch(char) is None),
                     }
@@ -2108,7 +2170,7 @@ class WebApi:
                         tone_map=None, tone_order=None,
                        remove_glottal_tone=False, scheme=None):
         phonetics = [
-            str(info.get('phonetic', char))
+            str(info.get('manual_phonetic') or info.get('phonetic', char))
             for char, info in zip(chars, infos)
         ]
         if remove_pharyngeal:
@@ -2130,7 +2192,8 @@ class WebApi:
             phonetics = cleaned
         if scheme:
             phonetics = [
-                phonetic if in_bracket(ci, brackets) else
+                phonetic if (in_bracket(ci, brackets)
+                             or infos[ci].get('manual_phonetic')) else
                 self._apply_dialect_phonetic(
                     char, phonetic, scheme)
                 for ci, (char, phonetic) in enumerate(zip(chars, phonetics))
@@ -2471,7 +2534,8 @@ class WebApi:
                     if bracket_buf:
                         parts.append(''.join(bracket_buf))
                         bracket_buf = []
-                    parts.append(infos[ci].get('phonetic', chars[ci]))
+                    parts.append(infos[ci].get('manual_phonetic')
+                                 or infos[ci].get('phonetic', chars[ci]))
             if bracket_buf:
                 parts.append(''.join(bracket_buf))
             output.append(' '.join(parts))
