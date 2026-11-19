@@ -7,7 +7,7 @@ import sys
 
 
 APP_NAME = '汉字转 PBOC 音标'
-__version__ = '0.12.22'
+__version__ = '0.12.23'
 
 DRAFT_SCHEMA_VERSION = 5
 SCHEME_SCHEMA_VERSION = 4
@@ -19,6 +19,17 @@ RELEASES_PAGE_URL = (
     'https://github.com/Runwill/ancient-chinese/releases')
 
 CHANGELOG = [
+    {
+        'version': '0.12.23',
+        'date': '2026-11-20',
+        'title': '编辑与方案界面精简',
+        'items': [
+            '移除音韵详情中的知识说明区域，保留音韵地位及其各项属性。',
+            '修改音标与恢复自动改为音标旁的图标按钮，不再单独占行。',
+            '移除“浊塞音拼写”和“清响音前额外加 h”功能，保留已有基础映射，旧选项不再影响转写。',
+            '咽化与特殊音节改善开关移至附加替换的对应规则标题旁，移除“方案选项”页签。',
+        ],
+    },
     {
         'version': '0.12.22',
         'date': '2026-11-19',

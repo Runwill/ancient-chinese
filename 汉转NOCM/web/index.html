@@ -13,8 +13,8 @@
         || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     })();
   </script>
-  <link rel="icon" type="image/png" href="app-icon.png?v=0.12.22">
-  <link rel="stylesheet" href="styles.css?v=0.12.22">
+  <link rel="icon" type="image/png" href="app-icon.png?v=0.12.23">
+  <link rel="stylesheet" href="styles.css?v=0.12.23">
 </head>
 <body>
   <div id="startup" class="startup pywebview-drag-region">
@@ -41,8 +41,8 @@
   <main id="app" class="app hidden">
     <header id="app-titlebar" class="topbar pywebview-drag-region">
       <div class="brand pywebview-drag-region">
-        <img class="titlebar-icon titlebar-icon-light" src="app-icon.png?v=0.12.22" alt="">
-        <img class="titlebar-icon titlebar-icon-dark" src="app-icon-dark.png?v=0.12.22" alt="">
+        <img class="titlebar-icon titlebar-icon-light" src="app-icon.png?v=0.12.23" alt="">
+        <img class="titlebar-icon titlebar-icon-dark" src="app-icon-dark.png?v=0.12.23" alt="">
         <strong>汉字转 PBOC 音标</strong>
         <span id="document-title">未命名文稿</span>
         <span id="save-state" class="save-state">已自动保存</span>
@@ -323,13 +323,12 @@
         <label class="wide">备注<input id="scheme-description" class="text-input"></label>
       </section>
       <nav id="scheme-tabs" class="tabs" role="tablist" aria-label="方案编辑页面">
-        <button data-tab="options" class="active" role="tab" aria-selected="true">方案选项</button>
-        <button data-tab="phonology" role="tab" aria-selected="false">音变</button>
+        <button data-tab="phonology" class="active" role="tab" aria-selected="true">音变</button>
         <button data-tab="maps" role="tab" aria-selected="false">基础映射</button>
         <button data-tab="rules" role="tab" aria-selected="false">附加替换</button>
         <button data-tab="tools" role="tab" aria-selected="false">方案比较</button>
       </nav>
-      <div id="scheme-content" class="scheme-content" role="tabpanel" aria-label="选项"></div>
+      <div id="scheme-content" class="scheme-content" role="tabpanel" aria-label="音变"></div>
     </div>
   </dialog>
 
@@ -400,6 +399,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=0.12.22"></script>
+  <script src="app.js?v=0.12.23"></script>
 </body>
 </html>

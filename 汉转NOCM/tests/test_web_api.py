@@ -663,19 +663,23 @@ class WebApiEditorTests(unittest.TestCase):
                         },
                     },
                     'invalid': {'tab': 'bad', 'scroll': {'maps': -4}},
+                    'legacy': {'tab': 'options', 'scroll': {'rules': 140}},
                     'bad': 'not an object',
                 })
                 preferences = web_api._load_ui_preferences()
 
         self.assertEqual(result['value']['dz_change'], {
             'tab': 'rules',
-            'scroll': {'options': 120, 'rules': 840},
+            'scroll': {'rules': 840},
         })
         self.assertEqual(result['value']['invalid'], {
-            'tab': 'options',
+            'tab': 'phonology',
             'scroll': {'maps': 0},
         })
         self.assertNotIn('bad', result['value'])
+        self.assertEqual(result['value']['legacy'], {
+            'tab': 'rules', 'scroll': {'rules': 140},
+        })
         self.assertEqual(preferences['scheme_editor_views'], result['value'])
 
     def test_empty_export_contents_falls_back_to_pboc(self):
@@ -830,7 +834,7 @@ class WebApiEditorTests(unittest.TestCase):
         with (patch('web_api.load_scheme', return_value={}),
               patch('web_api.NocmTranscriber') as transcriber_cls):
             transcriber_cls.return_value.convert_text.side_effect = (
-                lambda value, *args: value)
+                lambda value, *args, **kwargs: value)
             suno = self.api.export_text('suno', remove_pharyngeal=True)
 
         self.assertEqual(nocm, 'kˤan lˤa [x]')
@@ -852,13 +856,13 @@ class WebApiEditorTests(unittest.TestCase):
         with (patch('web_api.load_scheme', return_value=scheme),
               patch('web_api.NocmTranscriber') as transcriber_cls):
             transcriber_cls.return_value.convert_text.side_effect = (
-                lambda value, *args: value)
+                lambda value, *args, **kwargs: value)
             suno = self.api.export_text('suno', remove_glottal_tone=True)
 
         self.assertEqual(nocm, ' '.join(source))
         self.assertEqual(suno, 'ʔa kas kap kas ʔa ka')
 
-    def test_scheme_extra_h_option_only_changes_suno(self):
+    def test_retired_extra_h_option_does_not_change_suno(self):
         self.api.insert_text('x')
         self.api.buf.cell_info[0][0]['phonetic'] = 'm̥a'
         scheme = {
@@ -877,7 +881,12 @@ class WebApiEditorTests(unittest.TestCase):
             suno = self.api.export_text('suno')
 
         self.assertEqual(nocm, 'm̥a')
-        self.assertEqual(suno, 'hhma')
+        self.assertEqual(suno, 'hma')
+        with patch('web_api.load_scheme', return_value=scheme):
+            self.assertEqual(self.api.export_text(
+                'suno', extra_h_before_voiceless_sonorant=True), 'hma')
+            self.assertEqual(self.api.export_text(
+                'phon+suno', extra_h_before_voiceless_sonorant=True), 'm̥a\nhma')
 
     def test_dialect_options_change_matching_rimes_and_skip_brackets(self):
         self.api.insert_text('[tag]\nx\ny\nz')

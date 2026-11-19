@@ -639,8 +639,8 @@ class WebAssetContractTests(unittest.TestCase):
         self.assertNotIn('id="entry-before-glottal"', markup)
         self.assertNotIn('id="departing-before-glottal"', markup)
         self.assertIn('class="export-settings-scope">仅影响本次导出，不会写入方案', markup)
-        self.assertIn('>方案选项</button>', markup)
-        self.assertIn('data-tab="phonology" role="tab" aria-selected="false">音变', markup)
+        self.assertNotIn('>方案选项</button>', markup)
+        self.assertIn('data-tab="phonology" class="active" role="tab" aria-selected="true">音变', markup)
         self.assertIn('.compact-dialog > form > header', styles)
         self.assertIn('.export-dialog > form > header', styles)
         self.assertIn('border-bottom: 0', styles)
@@ -942,14 +942,12 @@ class SchemeToolTests(unittest.TestCase):
 
         self.assertTrue(changed)
         self.assertEqual(scheme['schema_version'], SCHEME_SCHEMA_VERSION)
-        self.assertIs(scheme['options']['extra_h_voiceless_sonorant'], False)
+        self.assertNotIn('extra_h_voiceless_sonorant', scheme['options'])
         self.assertNotIn('remove_pure_entry_before_glottal', scheme['options'])
         self.assertNotIn('checked_before_glottal_onset', scheme['options'])
         self.assertNotIn(
             'checked_before_glottal_onset', scheme['option_definitions'])
-        self.assertEqual(
-            scheme['option_definitions']['extra_h_voiceless_sonorant']['label'],
-            '清响音前额外加 h')
+        self.assertNotIn('extra_h_voiceless_sonorant', scheme['option_definitions'])
         self.assertNotIn(
             'remove_pure_entry_before_glottal', scheme['option_definitions'])
         self.assertFalse(scheme['options']['dialect_xitu'])
@@ -1196,7 +1194,7 @@ class SchemeToolTests(unittest.TestCase):
         self.assertEqual(differences[0]['category'], '基础映射')
         self.assertEqual(differences[0]['key'], 'onset.k')
 
-    def test_old_voiced_stop_boolean_migrates_to_nasal_preset(self):
+    def test_old_voiced_stop_boolean_is_removed_without_overwriting_maps(self):
         scheme, changed = migrate_scheme_data({
             'schema_version': 2,
             'maps': {'onset': {'b': 'old-b', 'd': 'old-d', 'g': 'old-g'}},
@@ -1205,12 +1203,12 @@ class SchemeToolTests(unittest.TestCase):
         })
 
         self.assertTrue(changed)
-        self.assertEqual(scheme['options']['voiced_stop_style'], 'nasal')
+        self.assertNotIn('voiced_stop_style', scheme['options'])
         self.assertNotIn('english_voiced_stops', scheme['options'])
         self.assertEqual(scheme['maps']['onset'], {
-            'b': 'mб', 'd': 'nд', 'g': 'ŋг'})
+            'b': 'old-b', 'd': 'old-d', 'g': 'old-g'})
 
-    def test_old_voiced_stop_boolean_migrates_to_english_preset(self):
+    def test_old_voiced_stop_boolean_does_not_create_new_maps(self):
         scheme, changed = migrate_scheme_data({
             'schema_version': 2,
             'maps': {'onset': {}},
@@ -1219,9 +1217,8 @@ class SchemeToolTests(unittest.TestCase):
         })
 
         self.assertTrue(changed)
-        self.assertEqual(scheme['options']['voiced_stop_style'], 'english')
-        self.assertEqual(scheme['maps']['onset'], {
-            'b': 'б', 'd': 'ντ', 'g': 'γκ'})
+        self.assertNotIn('voiced_stop_style', scheme['options'])
+        self.assertEqual(scheme['maps']['onset'], {})
 
     def test_custom_voiced_stop_maps_are_not_overridden(self):
         scheme = {
@@ -1243,7 +1240,7 @@ class SchemeToolTests(unittest.TestCase):
         self.assertEqual(NocmTranscriber(scheme).convert_text('ba da ga'),
                          'B!A D!A G!A')
 
-    def test_missing_voiced_stop_option_defaults_to_custom_without_guessing(self):
+    def test_missing_voiced_stop_option_is_not_reintroduced(self):
         onsets = {'b': 'mб', 'd': 'nд', 'g': 'ŋг', 'dz': 'nц'}
         scheme, changed = migrate_scheme_data({
             'schema_version': SCHEME_SCHEMA_VERSION,
@@ -1253,13 +1250,9 @@ class SchemeToolTests(unittest.TestCase):
         })
 
         self.assertTrue(changed)
-        self.assertEqual(scheme['options']['voiced_stop_style'], 'custom')
+        self.assertNotIn('voiced_stop_style', scheme['options'])
         self.assertEqual(scheme['maps']['onset'], onsets)
-        definition = scheme['option_definitions']['voiced_stop_style']
-        self.assertEqual(definition['type'], 'choice')
-        self.assertEqual(
-            [item['value'] for item in definition['choices']],
-            ['nasal', 'english', 'custom'])
+        self.assertNotIn('voiced_stop_style', scheme['option_definitions'])
 
     def test_mapping_table_order_controls_overlapping_onsets(self):
         scheme = {
@@ -1317,20 +1310,25 @@ class SchemeToolTests(unittest.TestCase):
         self.assertNotIn('data-sort-map', script)
         self.assertNotIn('data-sort-rule', script)
 
-    def test_scheme_editor_supports_voiced_stop_choice_and_custom_state(self):
+    def test_scheme_editor_keeps_rule_switches_next_to_their_rules(self):
         script = Path('web/app.js').read_text(encoding='utf-8')
         markup = Path('web/index.html').read_text(encoding='utf-8')
         styles = Path('web/styles.css').read_text(encoding='utf-8')
         self.assertIn('data-option-choice', script)
         self.assertIn('Object.assign(schemeDraft.maps.onset, preset)', script)
-        self.assertIn("schemeDraft.options.voiced_stop_style = 'custom'", script)
+        self.assertNotIn('markVoicedStopsCustom', script)
+        self.assertNotIn('voiced_stop_style', script)
+        self.assertNotIn('extra_h_voiceless_sonorant', script)
         self.assertIn("rows.length ? `<div class=\"data-table\">", script)
         self.assertIn("rules.length ? `<div class=\"rule-list\">", script)
-        self.assertIn("['rules', '转写优化'", script)
+        self.assertIn("pharyngeal_relax: 'improve_pharyngeal'", script)
+        self.assertIn("syllable_relax: 'improve_syllable'", script)
+        self.assertIn('data-rule-option=', script)
+        self.assertNotIn('data-tab="options"', markup)
         self.assertIn('以下设置随方案保存，使用该方案时自动生效', script)
         self.assertIn('remove-pure-entry-before-glottal', markup)
         self.assertIn('remove_pure_entry_before_glottal', script)
-        self.assertIn("['output', '输出拼写'", script)
+        self.assertNotIn("['output', '输出拼写'", script)
         self.assertIn('data-tab="maps" role="tab" aria-selected="false">基础映射', markup)
         self.assertIn('data-tab="rules" role="tab" aria-selected="false">附加替换', markup)
         self.assertIn("['dialect_han', '汉代'", script)
@@ -1542,7 +1540,7 @@ class SchemeToolTests(unittest.TestCase):
         self.assertEqual(NocmTranscriber(scheme).convert_text('kap ʔa'),
                          'kap ʔa')
 
-    def test_extra_h_uses_source_voiceless_sonorant_after_mapping(self):
+    def test_voiceless_sonorants_only_use_their_manual_maps(self):
         transcriber = NocmTranscriber({
             'maps': {
                 'onset': {
@@ -1558,10 +1556,10 @@ class SchemeToolTests(unittest.TestCase):
         })
 
         result = transcriber.convert_text(
-            'm̥a n̥a r̥a l̥a ŋ̊a ma [m̥a]', True)
+            'm̥a n̥a r̥a l̥a ŋ̊a ma [m̥a]')
 
         self.assertEqual(
-            result, 'hhma hhna hรa hhla hhงa ma [m̥a]')
+            result, 'hma hna รa hla hงa ma [m̥a]')
 
 
 class BackupTests(unittest.TestCase):

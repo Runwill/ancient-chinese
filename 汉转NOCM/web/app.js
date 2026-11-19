@@ -18,8 +18,6 @@
     ['syllable_relax', '音节改善'], ['post_replace', '最终替换']
   ];
   const SCHEME_OPTION_GROUPS = [
-    ['rules', '转写优化', ['improve_pharyngeal', 'improve_syllable']],
-    ['output', '输出拼写', ['voiced_stop_style', 'extra_h_voiceless_sonorant']],
     ['dialect', '西土', [
       'dialect_xitu_zhiyou_e', 'dialect_xitu_zhiyou_e_target',
       'dialect_xitu_zhiyou_u', 'dialect_xitu_zhiyou_u_target',
@@ -77,8 +75,6 @@
   const SCHEME_OPTION_LABELS = {
     improve_pharyngeal: '改善咽化组合',
     improve_syllable: '改善特殊音节',
-    voiced_stop_style: '浊塞音拼写',
-    extra_h_voiceless_sonorant: '清响音前额外加 h',
     dialect_xitu: '西土方言',
     dialect_xitu_zhiyou_e: '之幽合韵·之',
     dialect_xitu_zhiyou_e_target: '之幽合韵·之目标元音',
@@ -192,8 +188,8 @@
   let schemeDraft = null;
   let schemePickerId = null;
   let schemePickerFilter = 'active';
-  let schemeTab = 'options';
-  const SCHEME_EDITOR_TABS = ['options', 'phonology', 'maps', 'rules', 'tools'];
+  let schemeTab = 'phonology';
+  const SCHEME_EDITOR_TABS = ['phonology', 'maps', 'rules', 'tools'];
   let schemeEditorViews = {};
   let schemeEditorViewKey = null;
   let schemeEditorScrollTimer = null;
@@ -661,7 +657,7 @@
       state.ui_preferences.debug_mode = active;
     }
     if (schemeDraft && $('#scheme-dialog')?.open
-        && (schemeTab === 'options' || schemeTab === 'phonology')) {
+        && schemeTab === 'phonology') {
       renderSchemeOptions();
     }
     if (draftDialectDraft && $('#draft-dialect-dialog')?.open) {
@@ -1182,12 +1178,12 @@
         const readingControl = currentOption?.position_details
           ? `<button class="inspector-reading-trigger ${details.stale ? 'reading-stale' : ''}" id="phonology-detail-trigger" type="button" aria-expanded="${phonologyDetailsOpen}" aria-controls="phonology-detail" title="查看音韵地位详情">${readingStatusWithState}<svg viewBox="0 0 12 12" aria-hidden="true"><path d="m3 4.5 3 3 3-3"></path></svg></button>`
           : `<p class="${details.stale ? 'reading-stale' : ''}">${unrecorded && !details.manual_phonetic ? '未收录' : readingStatusWithState}</p>`;
+        const manualActions = details.in_bracket ? '' : `<div class="manual-reading-actions"><button type="button" class="icon-button small" id="edit-manual-phonetic" aria-label="修改音标" title="修改音标（仅此处，优先于音变）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5-12 12H4v-5Z"></path><path d="m14 5 5 5"></path></svg></button>${details.manual_phonetic ? '<button type="button" class="icon-button small" id="reset-manual-phonetic" aria-label="恢复自动" title="恢复自动（清除手动音标）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4v6h6"></path><path d="M3.5 10a8 8 0 1 1 1.7 8.1"></path></svg></button>' : ''}</div>`;
         root.innerHTML = `
           <div class="inspector-title">
-            <div><h2>${details.stale ? '读音更新待确认' : details.is_poly ? '选择读音' : '字词信息'}</h2>${readingControl}</div>
+            <div class="inspector-title-main"><h2>${details.stale ? '读音更新待确认' : details.is_poly ? '选择读音' : '字词信息'}</h2><div class="inspector-reading-row">${readingControl}${manualActions}</div></div>
             <span class="inspector-char">${esc(details.char)}</span>
           </div>
-          ${details.in_bracket ? '' : `<div class="manual-reading-actions"><button type="button" class="button subtle" id="edit-manual-phonetic" title="仅修改此处，优先于音变"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5-12 12H4v-5Z"></path><path d="m14 5 5 5"></path></svg>修改音标</button>${details.manual_phonetic ? '<button type="button" class="button subtle" id="reset-manual-phonetic" title="清除手动音标，恢复当前方案的自动结果">恢复自动</button>' : ''}</div>`}
           ${positionPanel}
           ${updatePanel}
           <div class="reading-list">${unrecorded ? '<div class="reading-empty">该字符不在数据库中</div>' : options.map(option => readingOptionHtml(option, details)).join('')}</div>`;
@@ -1269,16 +1265,11 @@
     if (!details) return '';
     const parts = (details.parts || []).map(part => `
       <div><dt>${esc(part.label)}</dt><dd>${esc(part.value)}</dd></div>`).join('');
-    const explanations = (details.explanations || []).map(item => (
-      typeof item === 'string' ? { text: item, indent: false } : item
-    )).filter(item => item?.text).map(item =>
-      `<p${item.indent ? ' class="subpoint"' : ''}>${esc(item.text)}</p>`).join('');
     const seriesHead = option.series_head
       ? `<span class="phonology-headword"><small>声首</small>${esc(option.series_head)}</span>` : '';
     return `<section class="phonology-details" id="phonology-detail"${expanded ? '' : ' hidden'}>
       <div class="phonology-overview"><span><small>音韵地位</small><strong>${esc(details.raw || option.position || '')}</strong></span>${seriesHead}</div>
       <dl class="phonology-parts">${parts}</dl>
-      ${explanations ? `<div class="phonology-explanation"><h3>说明</h3>${explanations}</div>` : ''}
     </section>`;
   }
 
@@ -2282,7 +2273,8 @@
     const scroll = saved?.scroll && typeof saved.scroll === 'object'
       ? saved.scroll : {};
     return {
-      tab: SCHEME_EDITOR_TABS.includes(saved?.tab) ? saved.tab : 'options',
+      tab: saved?.tab === 'options' ? 'rules'
+        : SCHEME_EDITOR_TABS.includes(saved?.tab) ? saved.tab : 'phonology',
       scroll: Object.fromEntries(SCHEME_EDITOR_TABS.map(tab => [
         tab, Number.isFinite(Number(scroll[tab]))
           ? Math.max(0, Math.round(Number(scroll[tab]))) : 0,
@@ -2400,7 +2392,7 @@
     });
     $('#scheme-content').setAttribute('aria-label',
       $(`#scheme-tabs [data-tab="${schemeTab}"]`)?.textContent || '方案内容');
-    if (schemeTab === 'options' || schemeTab === 'phonology') renderSchemeOptions();
+    if (schemeTab === 'phonology') renderSchemeOptions();
     if (schemeTab === 'maps') renderSchemeMaps();
     if (schemeTab === 'rules') renderSchemeRules();
     if (schemeTab === 'tools') renderSchemeTools();
@@ -2555,13 +2547,6 @@
     restoreSchemeEditorView();
   }
 
-  function markVoicedStopsCustom(section, ...sources) {
-    if (section !== 'onset' || !sources.some(source => ['b', 'd', 'g'].includes(source))) return;
-    if (schemeDraft.options?.voiced_stop_style !== undefined) {
-      schemeDraft.options.voiced_stop_style = 'custom';
-    }
-  }
-
   function mapOrder(section) {
     const map = schemeDraft.maps?.[section] || {};
     const seen = new Set();
@@ -2706,7 +2691,6 @@
       const row = button.closest('.table-row');
       commitSchemeHistory();
       const { section, source } = row.dataset;
-      markVoicedStopsCustom(section, source);
       delete schemeDraft.maps[section][source];
       delete schemeDraft.labels?.[section]?.[source];
       schemeDraft.parse_order[section] = mapOrder(section).filter(key => key !== source);
@@ -2745,7 +2729,6 @@
       if (field === 'target') {
         commitSchemeHistory();
         schemeDraft.maps[section][oldSource] = input.value;
-        markVoicedStopsCustom(section, oldSource);
       }
       if (field === 'label') {
         commitSchemeHistory();
@@ -2770,7 +2753,6 @@
           return;
         }
         commitSchemeHistory();
-        markVoicedStopsCustom(section, oldSource, source);
         const order = mapOrder(section);
         const target = schemeDraft.maps[section][oldSource];
         const label = schemeDraft.labels?.[section]?.[oldSource];
@@ -2789,12 +2771,21 @@
   function renderSchemeRules() {
     captureSchemeEditorView();
     schemeDraft.rules ||= {};
+    schemeDraft.options ||= {};
     $('#scheme-content').innerHTML = `<div class="scheme-rule-sections">${RULE_SECTIONS.map(([section, title]) => {
       const rules = schemeDraft.rules[section] ||= [];
+      const option = { pharyngeal_relax: 'improve_pharyngeal', syllable_relax: 'improve_syllable' }[section];
+      const toggle = option ? `<label class="switch" title="${esc(SCHEME_OPTION_LABELS[option])}"><input type="checkbox" data-rule-option="${option}" ${schemeDraft.options[option] ? 'checked' : ''} aria-label="${esc(SCHEME_OPTION_LABELS[option])}"><span></span></label>` : '';
       return `<section class="scheme-section rule-section ${rules.length ? 'filled' : 'empty'}" data-rule-section="${section}">
-        <div class="section-heading"><h3>${title}${rules.length ? `<span>${rules.length}</span>` : ''}</h3><button class="button" data-add-rule="${section}">新增</button></div>
+        <div class="section-heading"><h3>${title}${rules.length ? `<span>${rules.length}</span>` : ''}</h3><div class="rule-section-actions">${toggle}<button class="button" data-add-rule="${section}">新增</button></div></div>
         ${rules.length ? `<div class="rule-list"><div class="table-row rule header rule-list-header"><span>查找方式</span><span>查找</span><span>替换为</span><span>中文说明</span><span>操作</span></div>${rules.map((rule, index) => ruleRowHtml(section, title, rule, index)).join('')}</div>` : ''}</section>`;
     }).join('')}</div>`;
+    $$('[data-rule-option]', $('#scheme-content')).forEach(input => input.onchange = () => {
+      flushPendingSchemeInput();
+      commitSchemeHistory();
+      schemeDraft.options[input.dataset.ruleOption] = input.checked;
+      markSchemeDirty();
+    });
     bindSchemeRuleEvents();
   }
 
@@ -3176,7 +3167,7 @@
           <li>右侧“修改音标”可单独修改此处的最终音标，优先于音变；“恢复自动”清除手动修改。修改随文稿保存，支持撤回、重做，并用于复制和导出。</li>
           <li>同一个字出现多次时，可在读音右侧点击“全局”，逐处处理已有的手动选择。</li>
           <li>拖动、Shift+点击或 Shift+方向键可以选择文本；选区可复制原文或音标。</li>
-          <li>导出支持 PBOC、Suno、原文及组合内容。方案选项会随方案保存；导出设置只影响本次导出，可转换标点、清除无效换行或清理 Suno 输出。</li>
+          <li>导出支持 PBOC、Suno、原文及组合内容。音变、映射与附加替换会随方案保存；咽化和特殊音节改善可在对应规则标题旁开关。导出设置可转换标点、清除无效换行或清理 Suno 输出。</li>
           <li>方括号 [] 内的内容保持原样，不参与转写。</li>
         </ol></section>
         <section class="maintenance-section"><h3>正文状态</h3><div class="state-legend">
@@ -4495,7 +4486,6 @@
       id: 'current_suno', name: '清响音修改', description: '浏览器预览数据',
       options: {
         improve_pharyngeal: true, improve_syllable: false,
-        voiced_stop_style: 'nasal', extra_h_voiceless_sonorant: false,
         dialect_xitu: false,
         dialect_xitu_dongqin: false, dialect_xitu_dongqin_coda: 'ŋ',
         dialect_xitu_qinzheng_only: false, dialect_xitu_qinzheng_only_coda: 'ŋ',
@@ -4509,12 +4499,6 @@
         dialect_han_dongtu_zhiyou_target: 'ɯ',
       },
       option_definitions: {
-        voiced_stop_style: {
-          type: 'choice', label: '浊塞音拼写', description: '选择预设或直接修改基础映射。',
-          choices: [{ value: 'nasal', label: '鼻音诱导' }, { value: 'english', label: '英美' }, { value: 'custom', label: '自定义' }],
-          presets: { nasal: { b: 'mб', d: 'nд', g: 'ŋг' }, english: { b: 'б', d: 'ντ', g: 'γκ' } },
-        },
-        extra_h_voiceless_sonorant: { type: 'boolean', label: '清响音前额外加 h', description: '转写清响音声母时，在方案输出前再添加一个 h。' },
         dialect_xitu: { type: 'boolean', label: '西土方言', description: '启用西土方言的合韵修改。', group: 'dialect' },
         dialect_xitu_dongqin: { type: 'boolean', label: '冬侵合韵·侵', description: 'u 元音、m 韵尾。修改韵尾。', group: 'dialect' },
         dialect_xitu_dongqin_coda: { type: 'text', label: '冬侵合韵·侵目标韵尾', default: 'ŋ', group: 'dialect', parent: 'dialect_xitu_dongqin' },

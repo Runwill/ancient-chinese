@@ -1565,6 +1565,7 @@ class WebApi:
                     extra_h_before_voiceless_sonorant=False,
                     ignore_bracket_control_lines=False,
                     remove_pure_entry_before_glottal=False):
+        # Keep the retired extra-h argument as an ignored positional slot for old clients.
         with self._lock:
             buf = self._require_buffer()
             raw = buf.copy_raw().strip()
@@ -1592,7 +1593,6 @@ class WebApi:
                     buf, requested_modes, bool(punct_split), scheme,
                     bool(remove_pharyngeal),
                     bool(remove_glottal_tone),
-                    bool(extra_h_before_voiceless_sonorant),
                     bool(remove_pure_entry_before_glottal))
             elif mode == 'raw':
                 result = raw
@@ -1609,8 +1609,8 @@ class WebApi:
                     bool(remove_glottal_tone), scheme)
                 transcriber = NocmTranscriber(scheme)
                 result = transcriber.convert_text(
-                    phon, bool(extra_h_before_voiceless_sonorant),
-                    bool(remove_pure_entry_before_glottal))
+                    phon, remove_pure_entry_before_glottal=bool(
+                        remove_pure_entry_before_glottal))
             else:
                 result = phon
             if punct_split and mode != 'both' and not combined:
@@ -1751,7 +1751,7 @@ class WebApi:
         elif key == 'selection_copy_mode':
             normalized = value if value in ('raw', 'phon') else 'raw'
         elif key == 'scheme_editor_views':
-            tabs = {'options', 'phonology', 'maps', 'rules', 'tools'}
+            tabs = {'phonology', 'maps', 'rules', 'tools'}
             normalized = {}
             if isinstance(value, dict):
                 for scheme_id, view in list(value.items())[:100]:
@@ -1761,8 +1761,9 @@ class WebApi:
                         continue
                     scroll = view.get('scroll')
                     normalized[scheme_id] = {
-                        'tab': view.get('tab') if view.get('tab') in tabs
-                        else 'options',
+                        'tab': ('rules' if view.get('tab') == 'options' else
+                                view.get('tab') if view.get('tab') in tabs
+                                else 'phonology'),
                         'scroll': {
                             tab: max(0, min(1000000, position))
                             for tab, position in (scroll.items()
@@ -2118,7 +2119,6 @@ class WebApi:
     def _combined_text(self, buf, modes, punct_split=False, scheme=None,
                        remove_pharyngeal=False,
                        remove_glottal_tone=False,
-                       extra_h_before_voiceless_sonorant=False,
                        remove_pure_entry_before_glottal=False):
         output = []
         pending_blank = False
@@ -2135,8 +2135,8 @@ class WebApi:
             rendered = {'raw': raw_line, 'phon': phon_line}
             if transcriber is not None:
                 rendered['suno'] = transcriber.convert_text(
-                    phon_line, bool(extra_h_before_voiceless_sonorant),
-                    bool(remove_pure_entry_before_glottal))
+                    phon_line, remove_pure_entry_before_glottal=bool(
+                        remove_pure_entry_before_glottal))
             lines_by_mode = {
                 item: (WebApi._split_punctuation(rendered[item]).split('\n')
                        if punct_split else [rendered[item]])

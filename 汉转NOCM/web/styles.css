@@ -436,6 +436,8 @@ body.highlight-mode-active .editor-scroll, body.highlight-mode-active .cell:not(
 .inspector-placeholder { min-height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: var(--muted); }
 .inspector-placeholder strong { margin-bottom: 5px; color: var(--text-2); }
 .inspector-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 16px; }
+.inspector-title-main { min-width: 0; flex: 1; }
+.inspector-reading-row { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
 .inspector-char { font-size: 34px; line-height: 1; }
 .inspector-title h2 { margin: 0 0 3px; font-size: 15px; }
 .inspector-title p { margin: 0; color: var(--muted); font: 12px Cambria, serif; }
@@ -449,9 +451,10 @@ body.highlight-mode-active .editor-scroll, body.highlight-mode-active .cell:not(
 .dialect-phon b, .dialect-reading { color: var(--accent); font-weight: 400; }
 .cell-phon.manual-phon, .manual-reading { color: var(--manual-phonetic); font-weight: 400; }
 .manual-reading-label { color: var(--text-2); font: 10px "Microsoft YaHei UI", "Microsoft YaHei", sans-serif; }
-.manual-reading-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: -6px 0 12px; }
-.manual-reading-actions .button { display: inline-flex; align-items: center; gap: 4px; min-height: 25px; padding: 2px 5px; font-size: 11px; }
-.manual-reading-actions svg { width: 12px; height: 12px; flex: 0 0 auto; }
+.manual-reading-actions { display: inline-flex; align-items: center; flex: 0 0 auto; gap: 2px; }
+.manual-reading-actions .icon-button { width: 24px; min-height: 24px; padding: 4px; color: var(--muted); border-color: transparent; background: transparent; }
+.manual-reading-actions .icon-button:hover { color: var(--accent); background: var(--accent-soft); }
+.manual-reading-actions svg { width: 13px; height: 13px; flex: 0 0 auto; }
 .cell.manual-pronunciation.poly:not(.selected-manual):not(.selected-global):not(.selected-global_recent) .cell-char { color: var(--text); }
 .dialect-phon s { color: var(--muted); }
 .dialect-reason { color: var(--text-2); font: 10px "Microsoft YaHei UI", "Microsoft YaHei", sans-serif; }
@@ -466,10 +469,6 @@ body.highlight-mode-active .editor-scroll, body.highlight-mode-active .cell:not(
 .phonology-parts div { min-width: 0; }
 .phonology-parts dt, .phonology-parts dd { margin: 0; }
 .phonology-parts dd { margin-top: 1px; color: var(--text-2); font-size: 11px; overflow-wrap: anywhere; }
-.phonology-explanation { margin-top: 11px; padding-top: 9px; border-top: 1px solid var(--divider); }
-.phonology-explanation h3 { margin: 0 0 5px; color: var(--text-2); font-size: 10px; font-weight: 600; }
-.phonology-explanation p { margin: 3px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
-.phonology-explanation p.subpoint { padding-left: 20px; }
 .reading-updates { display: grid; gap: 7px; margin-bottom: 10px; }
 .reading-update-card { padding: 8px 9px; border-radius: 6px; background: var(--surface-soft); border: 1px solid var(--divider); }
 .reading-update-card.pending { border-color: color-mix(in srgb, var(--orange), transparent 55%); background: var(--orange-soft); }
@@ -682,6 +681,7 @@ body.highlight-mode-active .editor-scroll, body.highlight-mode-active .cell:not(
 .rule-section.empty .section-heading { min-height: 42px; padding: 0 2px; border-bottom: 1px solid var(--divider); }
 .rule-section.empty .section-heading h3 { color: var(--text-2); font-size: 13px; }
 .rule-section .section-heading .button { min-height: 29px; padding-inline: 9px; }
+.rule-section-actions { display: flex; align-items: center; flex: 0 0 auto; gap: 10px; }
 .order-actions { display: flex; align-items: center; gap: 3px; }
 .data-table { min-width: 680px; }
 .table-row { display: grid; min-height: 40px; }

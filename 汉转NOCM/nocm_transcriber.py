@@ -18,7 +18,6 @@ from nocm_phonology import (apply_replacements, mapping_pairs, parse_syllable,
 DEFAULT_SCHEME_ID = 'current_suno'
 _SCHEME_ID_PATTERN = re.compile(r'[^A-Za-z0-9_-]+')
 _SCHEME_ORDER_FILENAME = '_order.json'
-_VOICELESS_SONORANT_ONSETS = {'m̥', 'n̥', 'r̥', 'l̥', 'ŋ̊'}
 
 
 def _scheme_pref_path() -> str:
@@ -184,28 +183,6 @@ def migrate_scheme_data(scheme):
         if old_key in definitions:
             definitions.pop(old_key)
             changed = True
-    presets = {
-        'nasal': {'b': 'mб', 'd': 'nд', 'g': 'ŋг'},
-        'english': {'b': 'б', 'd': 'ντ', 'g': 'γκ'},
-    }
-    voiced_stop_definition = {
-        'type': 'choice',
-        'label': '浊塞音拼写',
-        'description': ('鼻音诱导：mб / nд / ŋг；英美：б / ντ / γκ；'
-                        '手动修改映射后使用自定义。'),
-        'choices': [
-            {'value': 'nasal', 'label': '鼻音诱导'},
-            {'value': 'english', 'label': '英美'},
-            {'value': 'custom', 'label': '自定义'},
-        ],
-        'presets': presets,
-    }
-    extra_h_definition = {
-        'type': 'boolean',
-        'label': '清响音前额外加 h',
-        'description': '转写清响音声母时，在方案输出前再添加一个 h。',
-        'group': 'transcription',
-    }
     dialect_definitions = {
         'dialect_xitu': {
             'type': 'boolean',
@@ -547,30 +524,13 @@ def migrate_scheme_data(scheme):
         },
     }
     legacy_glottal_key = 'checked_before_glottal_onset'
-    if ('english_voiced_stops' in options or
-            'english_voiced_stops' in definitions):
-        style = ('english' if bool(options.get('english_voiced_stops', False))
-                 else 'nasal')
-        scheme['maps'].setdefault('onset', {}).update(presets[style])
-        options.pop('english_voiced_stops', None)
-        definitions.pop('english_voiced_stops', None)
-        options['voiced_stop_style'] = style
-        definitions['voiced_stop_style'] = voiced_stop_definition
-        changed = True
-    elif 'voiced_stop_style' not in definitions:
-        if options.get('voiced_stop_style') not in presets:
-            options['voiced_stop_style'] = 'custom'
-        definitions['voiced_stop_style'] = voiced_stop_definition
-        changed = True
-    elif options.get('voiced_stop_style') not in {*presets, 'custom'}:
-        options['voiced_stop_style'] = 'custom'
-        changed = True
-    if 'extra_h_voiceless_sonorant' not in options:
-        options['extra_h_voiceless_sonorant'] = False
-        changed = True
-    if 'extra_h_voiceless_sonorant' not in definitions:
-        definitions['extra_h_voiceless_sonorant'] = extra_h_definition
-        changed = True
+    # Retired spelling shortcuts must not override existing manual mappings.
+    for key in ('english_voiced_stops', 'voiced_stop_style',
+                'extra_h_voiceless_sonorant'):
+        for values in (options, definitions, scheme['labels']):
+            if key in values:
+                values.pop(key)
+                changed = True
     # Older schemes used one key for rules that appeared under multiple
     # historical classes.  Keep that key as the 西土 value and seed the new
     # class-specific keys from it once, so later switches are independent.
@@ -867,7 +827,6 @@ class NocmTranscriber:
 
     def convert_token(
             self, token: str,
-            extra_h_before_voiceless_sonorant: bool = False,
             parsed_syllable=None) -> str:
         if not token:
             return token
@@ -888,17 +847,10 @@ class NocmTranscriber:
                 self.rules.get('syllable_relax', []), self.scheme))
         text = apply_replacements(text, replacement_pairs(
             self.rules.get('post_replace', []), self.scheme))
-        extra_h = self.options.get(
-            'extra_h_voiceless_sonorant',
-            extra_h_before_voiceless_sonorant)
-        if (extra_h
-                and parsed.onset in _VOICELESS_SONORANT_ONSETS):
-            text = f'h{text}'
         return text
 
     def convert_line(
             self, line: str,
-            extra_h_before_voiceless_sonorant: bool = False,
             remove_pure_entry_before_glottal: bool = False) -> str:
         self._remove_pure_entry_before_glottal = bool(
             remove_pure_entry_before_glottal)
@@ -915,7 +867,7 @@ class NocmTranscriber:
             for match, syllable in zip(matches, syllables):
                 pieces.append(text[cursor:match.start()])
                 pieces.append(self.convert_token(
-                    match.group(), extra_h_before_voiceless_sonorant,
+                    match.group(),
                     parsed_syllable=syllable))
                 cursor = match.end()
             pieces.append(text[cursor:])
@@ -948,11 +900,9 @@ class NocmTranscriber:
 
     def convert_text(
             self, text: str,
-            extra_h_before_voiceless_sonorant: bool = False,
             remove_pure_entry_before_glottal: bool = False) -> str:
         return '\n'.join(
-            self.convert_line(line, extra_h_before_voiceless_sonorant,
-                              remove_pure_entry_before_glottal)
+            self.convert_line(line, remove_pure_entry_before_glottal)
             for line in text.splitlines()).strip()
 
 
